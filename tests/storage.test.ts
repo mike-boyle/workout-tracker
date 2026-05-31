@@ -51,7 +51,7 @@ describe('Storage Service', () => {
   });
 
   it('should handle corrupted JSON by falling back to INITIAL_STATE', () => {
-    localStorage.setItem('p90x_tracker_state', '{ corrupted_json: ');
+    localStorage.setItem('workout_tracker_state', '{ corrupted_json: ');
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const state = loadState();

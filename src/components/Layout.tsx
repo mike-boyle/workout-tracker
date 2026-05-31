@@ -21,7 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const { state, linkGoogleDrive, syncGoogleDriveData, resetDatabase } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
   const [clientId, setClientId] = useState(() => {
-    const saved = localStorage.getItem('p90x_gdrive_client_id');
+    const saved = localStorage.getItem('workout_tracker_gdrive_client_id');
     if (saved) return saved;
     if (
       GOOGLE_CLIENT_ID &&
@@ -55,7 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     }
 
     setSyncStatus('linking');
-    localStorage.setItem('p90x_gdrive_client_id', clientId.trim());
+    localStorage.setItem('workout_tracker_gdrive_client_id', clientId.trim());
 
     try {
       initTokenClient(clientId.trim(), async (_accessToken) => {
@@ -64,7 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           const fileId = await findBackupFile();
           if (fileId) {
             // Found existing file, download and merge
-            localStorage.setItem('p90x_gdrive_file_id', fileId);
+            localStorage.setItem('workout_tracker_gdrive_file_id', fileId);
             const remoteData = await downloadBackup(fileId);
             syncGoogleDriveData(
               remoteData.logs,
@@ -83,7 +83,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               logs: state.logs,
               gdriveLinked: true,
             });
-            localStorage.setItem('p90x_gdrive_file_id', newFileId);
+            localStorage.setItem('workout_tracker_gdrive_file_id', newFileId);
             linkGoogleDrive(true);
             setSyncStatus('synced');
           }
@@ -104,7 +104,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
   // Perform auto-sync on workout log modifications if connected
   useEffect(() => {
-    const fileId = localStorage.getItem('p90x_gdrive_file_id');
+    const fileId = localStorage.getItem('workout_tracker_gdrive_file_id');
     if (state.gdriveLinked && fileId) {
       setSyncStatus('syncing');
       updateBackupFile(fileId, {
@@ -128,7 +128,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     <div className="app-container">
       <header>
         <div className="logo-section">
-          <span className="logo-text">P90X Tracker</span>
+          <span className="logo-text">Workout Tracker</span>
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
             Cycle {state.currentCycle} • Week {state.currentWeek} • Day {state.currentDay}
           </p>
@@ -241,7 +241,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                   )
                 ) {
                   resetDatabase();
-                  localStorage.removeItem('p90x_gdrive_file_id');
+                  localStorage.removeItem('workout_tracker_gdrive_file_id');
                 }
               }}
             >
@@ -262,7 +262,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           fontSize: '0.85rem',
         }}
       >
-        P90X Workout Tracker • Keep pushing play, do your best, and forget the rest!
+        Workout Tracker • Keep pushing play, do your best, and forget the rest!
       </footer>
     </div>
   );

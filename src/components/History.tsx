@@ -39,7 +39,7 @@ export const History: React.FC = () => {
   const handleStartNewCycle = () => {
     if (
       confirm(
-        'Are you sure you want to start a new P90X cycle early? Your current progress pointer will reset to Day 1 of the new cycle, but all past history will be safely preserved.'
+        'Are you sure you want to start a new training cycle early? Your current progress pointer will reset to Day 1 of the new cycle, but all past history will be safely preserved.'
       )
     ) {
       startNewCycle();
@@ -65,7 +65,7 @@ export const History: React.FC = () => {
         <div>
           <h2 style={{ fontSize: '1.6rem' }}>Cycles Tracker History</h2>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Browse and review your P90X history across all training cycles
+            Browse and review your workout history across all training cycles
           </p>
         </div>
 

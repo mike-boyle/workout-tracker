@@ -1,4 +1,4 @@
-# P90X Workout Tracker
+# Workout Tracker
 
 A premium, client-side React web application designed to track P90X workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using versioned LocalStorage and syncs securely to Google Drive via OAuth for cloud backup.
 
@@ -42,7 +42,7 @@ A premium, client-side React web application designed to track P90X workouts ove
 ## 📂 Project Directory Layout
 
 ```text
-p90x/
+workout-tracker/
 ├── Fitness Guide/           # Original PDF manuals & Excel worksheets
 │   └── ...
 ├── src/
@@ -146,12 +146,12 @@ sequenceDiagram
     GIS->>User: Display Google Auth Prompt
     User->>GIS: Approve permissions
     GIS->>App: Return Access Token
-    App->>Drive: Query for 'p90x-tracker-data.json'
+    App->>Drive: Query for 'workout-tracker-data.json'
     alt File exists
         Drive->>App: Fetch JSON file content
         App->>App: Merge remote logs with LocalStorage
     else File does not exist
-        App->>Drive: Create new file 'p90x-tracker-data.json'
+        App->>Drive: Create new file 'workout-tracker-data.json'
     end
     App->>App: Update gdriveLinked = true in LocalStorage
     Note over App,Drive: Auto-Sync on workout completion

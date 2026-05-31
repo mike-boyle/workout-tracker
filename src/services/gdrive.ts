@@ -78,7 +78,7 @@ export const findBackupFile = async (): Promise<string | null> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='p90x-tracker-data.json'+and+'appDataFolder'+in+parents&spaces=appDataFolder&fields=files(id)`,
+    `https://www.googleapis.com/drive/v3/files?q=name='workout-tracker-data.json'+and+'appDataFolder'+in+parents&spaces=appDataFolder&fields=files(id)`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -125,7 +125,7 @@ export const createBackupFile = async (data: UserState): Promise<string> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const metadata = {
-    name: 'p90x-tracker-data.json',
+    name: 'workout-tracker-data.json',
     parents: ['appDataFolder'],
   };
 

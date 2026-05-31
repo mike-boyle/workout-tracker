@@ -242,7 +242,7 @@ export const Dashboard: React.FC = () => {
             🎉 Congratulations! Cycle Complete!
           </h2>
           <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
-            You completed all 13 weeks of this P90X cycle. Ready to start another round of muscle
+            You completed all 13 weeks of this training cycle. Ready to start another round of muscle
             confusion?
           </p>
           <button

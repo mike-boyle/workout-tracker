@@ -1,6 +1,6 @@
 import type { UserState } from '../types';
 
-const STORAGE_KEY = 'p90x_tracker_state';
+const STORAGE_KEY = 'workout_tracker_state';
 const CURRENT_VERSION = 1;
 
 export const INITIAL_STATE: UserState = {

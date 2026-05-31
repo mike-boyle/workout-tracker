@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('P90X Tracker E2E Flow', () => {
+test.describe('Workout Tracker E2E Flow', () => {
   // Set high timeout since we are simulating 189 days of workouts purely through the UI
   test.setTimeout(300000);
 
