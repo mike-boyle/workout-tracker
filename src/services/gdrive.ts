@@ -1,7 +1,49 @@
 import type { UserState } from '../types';
 
 let tokenClient: any = null;
-let accessToken: string | null = null;
+
+const getStoredToken = (): string | null => {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const token = localStorage.getItem('workout_tracker_gdrive_access_token');
+    const expiresAtStr = localStorage.getItem('workout_tracker_gdrive_token_expires_at');
+    if (!token || !expiresAtStr) return null;
+
+    const expiresAt = parseInt(expiresAtStr, 10);
+    if (Date.now() >= expiresAt) {
+      localStorage.removeItem('workout_tracker_gdrive_access_token');
+      localStorage.removeItem('workout_tracker_gdrive_token_expires_at');
+      return null;
+    }
+    return token;
+  } catch (e) {
+    console.error('Failed to read from localStorage:', e);
+    return null;
+  }
+};
+
+const saveToken = (token: string, expiresInSeconds: number) => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.setItem('workout_tracker_gdrive_access_token', token);
+    const expiresAt = Date.now() + expiresInSeconds * 1000;
+    localStorage.setItem('workout_tracker_gdrive_token_expires_at', expiresAt.toString());
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+};
+
+const clearStoredToken = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.removeItem('workout_tracker_gdrive_access_token');
+    localStorage.removeItem('workout_tracker_gdrive_token_expires_at');
+  } catch (e) {
+    console.error('Failed to clear localStorage:', e);
+  }
+};
+
+let accessToken: string | null = getStoredToken();
 
 // Dynamically load the Google Identity Services SDK script
 export const loadGsiScript = (): Promise<void> => {
@@ -43,6 +85,9 @@ export const initTokenClient = (clientId: string, onTokenReceived: (token: strin
         return;
       }
       accessToken = response.access_token;
+      if (response.access_token && response.expires_in) {
+        saveToken(response.access_token, response.expires_in);
+      }
       onTokenReceived(response.access_token);
     },
   });
@@ -63,12 +108,32 @@ export const signInGdrive = (): void => {
  */
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
+  if (token) {
+    saveToken(token, 3600); // Default to 1 hour
+  } else {
+    clearStoredToken();
+  }
 };
 
 /**
  * Get active token
  */
 export const getAccessToken = () => accessToken;
+
+/**
+ * Helper to handle response validation and auto-clear expired tokens on 401 Unauthorized
+ */
+const handleResponse = async (response: Response, errorPrefix: string) => {
+  if (response.status === 401) {
+    setAccessToken(null);
+    throw new Error('Google Drive session expired. Please sign in again.');
+  }
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`${errorPrefix}: ${err}`);
+  }
+  return response;
+};
 
 /**
  * Search for the backup file in the user's Drive appDataFolder.
@@ -86,10 +151,7 @@ export const findBackupFile = async (): Promise<string | null> => {
     }
   );
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Drive search failed: ${err}`);
-  }
+  await handleResponse(response, 'Drive search failed');
 
   const result = await response.json();
   if (result.files && result.files.length > 0) {
@@ -110,10 +172,7 @@ export const downloadBackup = async (fileId: string): Promise<UserState> => {
     },
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Drive download failed: ${err}`);
-  }
+  await handleResponse(response, 'Drive download failed');
 
   return await response.json();
 };
@@ -144,10 +203,7 @@ export const createBackupFile = async (data: UserState): Promise<string> => {
     }
   );
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Drive upload failed: ${err}`);
-  }
+  await handleResponse(response, 'Drive upload failed');
 
   const result = await response.json();
   return result.id;
@@ -171,8 +227,5 @@ export const updateBackupFile = async (fileId: string, data: UserState): Promise
     }
   );
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Drive sync failed: ${err}`);
-  }
+  await handleResponse(response, 'Drive sync failed');
 };

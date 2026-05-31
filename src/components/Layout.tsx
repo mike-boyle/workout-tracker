@@ -8,6 +8,7 @@ import {
   downloadBackup,
   createBackupFile,
   updateBackupFile,
+  getAccessToken,
 } from '../services/gdrive';
 import { GOOGLE_CLIENT_ID } from '../config';
 
@@ -97,6 +98,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   useEffect(() => {
     const fileId = localStorage.getItem('workout_tracker_gdrive_file_id');
     if (state.gdriveLinked && fileId) {
+      if (!getAccessToken()) {
+        setSyncStatus('error');
+        setErrorMsg('Session expired. Please reconnect Google Drive.');
+        return;
+      }
       setSyncStatus('syncing');
       updateBackupFile(fileId, {
         version: state.version,
@@ -107,10 +113,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         gdriveLinked: true,
       })
         .then(() => setSyncStatus('synced'))
-        .catch((err) => {
+        .catch((err: any) => {
           console.error('Auto sync failed:', err);
           setSyncStatus('error');
-          setErrorMsg('Auto-sync failed');
+          setErrorMsg(err.message || 'Auto-sync failed');
         });
     }
   }, [state.logs, state.currentCycle, state.currentWeek, state.currentDay, state.gdriveLinked]);
