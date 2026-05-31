@@ -1,6 +1,6 @@
 # Workout Tracker
 
-A premium, client-side React web application designed to track P90X workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using versioned LocalStorage and syncs securely to Google Drive via OAuth for cloud backup.
+A premium, client-side React web application designed to track workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using versioned LocalStorage and syncs securely to Google Drive via OAuth for cloud backup.
 
 ---
 
