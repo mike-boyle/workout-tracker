@@ -20,17 +20,6 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
   const { state, linkGoogleDrive, syncGoogleDriveData, resetDatabase } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
-  const [clientId, setClientId] = useState(() => {
-    const saved = localStorage.getItem('workout_tracker_gdrive_client_id');
-    if (saved) return saved;
-    if (
-      GOOGLE_CLIENT_ID &&
-      GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
-    ) {
-      return GOOGLE_CLIENT_ID;
-    }
-    return '';
-  });
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
     'idle'
@@ -49,16 +38,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   }, []);
 
   const handleGdriveConnect = () => {
-    if (!clientId.trim()) {
-      alert('Please enter a Google OAuth Client ID first.');
+    if (
+      !GOOGLE_CLIENT_ID ||
+      GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
+    ) {
+      alert('Please configure a valid GOOGLE_CLIENT_ID in src/config.ts first.');
       return;
     }
 
     setSyncStatus('linking');
-    localStorage.setItem('workout_tracker_gdrive_client_id', clientId.trim());
 
     try {
-      initTokenClient(clientId.trim(), async (_accessToken) => {
+      initTokenClient(GOOGLE_CLIENT_ID, async (_accessToken) => {
         setSyncStatus('syncing');
         try {
           const fileId = await findBackupFile();
@@ -180,21 +171,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             Configure client-side backup to keep your data safe. Since your progress is stored in
             LocalStorage, linking Google Drive avoids data loss.
           </p>
-
-          <div className="input-group" style={{ marginBottom: '16px' }}>
-            <label className="input-label">Google OAuth Client ID</label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="e.g. 123456-abcdef.apps.googleusercontent.com"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-            />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              Get yours in the Google Cloud Console (requires Drive API & OAuth redirect URI
-              matching this host).
-            </span>
-          </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
