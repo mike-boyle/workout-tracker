@@ -1,0 +1,340 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+/* --- Design Tokens --- */
+:root {
+  --font-sans:
+    'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* HSL Colors */
+  --hue-base: 224;
+
+  --color-bg-base: hsl(var(--hue-base), 40%, 6%);
+  --color-bg-surface: hsla(var(--hue-base), 25%, 12%, 0.7);
+  --color-bg-surface-hover: hsla(var(--hue-base), 25%, 16%, 0.8);
+  --color-bg-modal: hsla(var(--hue-base), 30%, 8%, 0.95);
+
+  --color-border: hsla(var(--hue-base), 15%, 25%, 0.5);
+  --color-border-hover: hsla(var(--hue-base), 15%, 35%, 0.7);
+  --color-border-focus: hsla(184, 100%, 50%, 0.6);
+
+  --color-text-primary: hsl(0, 0%, 96%);
+  --color-text-secondary: hsl(var(--hue-base), 15%, 70%);
+  --color-text-muted: hsl(var(--hue-base), 15%, 50%);
+
+  /* Accents */
+  --color-cyan: hsl(184, 100%, 50%);
+  --color-cyan-glow: hsla(184, 100%, 50%, 0.15);
+  --color-purple: hsl(266, 100%, 64%);
+  --color-purple-glow: hsla(266, 100%, 64%, 0.15);
+  --color-green: hsl(142, 72%, 46%);
+  --color-green-glow: hsla(142, 72%, 46%, 0.15);
+  --color-yellow: hsl(48, 96%, 53%);
+  --color-yellow-glow: hsla(48, 96%, 53%, 0.15);
+  --color-red: hsl(350, 89%, 60%);
+
+  --gradient-primary: linear-gradient(135deg, var(--color-cyan) 0%, var(--color-purple) 100%);
+  --gradient-surface: linear-gradient(
+    180deg,
+    hsla(var(--hue-base), 25%, 15%, 0.5) 0%,
+    hsla(var(--hue-base), 25%, 10%, 0.5) 100%
+  );
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px hsla(0, 0%, 0%, 0.4);
+  --shadow-md: 0 8px 32px hsla(var(--hue-base), 40%, 4%, 0.6);
+  --shadow-lg: 0 16px 48px hsla(var(--hue-base), 40%, 2%, 0.8);
+  --shadow-glow-cyan: 0 0 15px hsla(184, 100%, 50%, 0.35);
+  --shadow-glow-purple: 0 0 15px hsla(266, 100%, 64%, 0.35);
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  --glass-blur: blur(12px) saturate(140%);
+}
+
+/* --- Base Resets --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background Gradients Glows */
+body::before {
+  content: '';
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, hsla(266, 100%, 64%, 0.08) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, hsla(184, 100%, 50%, 0.06) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Typography Custom Elements */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* --- Glassmorphic UI Containers --- */
+.glass-panel {
+  background: var(--color-bg-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color var(--transition-normal),
+    background-color var(--transition-normal);
+}
+
+.glass-panel-hover:hover {
+  background: var(--color-bg-surface-hover);
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+/* --- Forms & Inputs --- */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.input-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.input-field {
+  background: hsla(var(--hue-base), 25%, 8%, 0.5);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  transition: all var(--transition-normal);
+  width: 100%;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-cyan);
+  box-shadow:
+    0 0 0 1px var(--color-cyan-glow),
+    var(--shadow-sm);
+}
+
+.input-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: #000;
+  font-weight: 600;
+  box-shadow: var(--shadow-glow-cyan);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow:
+    0 0 20px hsla(184, 100%, 50%, 0.5),
+    var(--shadow-glow-purple);
+}
+
+.btn-secondary {
+  background: hsla(var(--hue-base), 25%, 18%, 0.7);
+  backdrop-filter: var(--glass-blur);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.btn-secondary:hover {
+  background: hsla(var(--hue-base), 25%, 22%, 0.9);
+  border-color: var(--color-border-hover);
+}
+
+.btn-danger {
+  background: hsla(350, 89%, 60%, 0.15);
+  border-color: hsla(350, 89%, 60%, 0.3);
+  color: var(--color-red);
+}
+
+.btn-danger:hover {
+  background: hsla(350, 89%, 60%, 0.25);
+  border-color: var(--color-red);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* --- Utility Badges --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-cyan {
+  background: hsla(184, 100%, 50%, 0.1);
+  color: var(--color-cyan);
+  border: 1px solid hsla(184, 100%, 50%, 0.2);
+}
+
+.badge-purple {
+  background: hsla(266, 100%, 64%, 0.1);
+  color: var(--color-purple);
+  border: 1px solid hsla(266, 100%, 64%, 0.2);
+}
+
+.badge-green {
+  background: hsla(142, 72%, 46%, 0.1);
+  color: var(--color-green);
+  border: 1px solid hsla(142, 72%, 46%, 0.2);
+}
+
+.badge-yellow {
+  background: hsla(48, 96%, 53%, 0.1);
+  color: var(--color-yellow);
+  border: 1px solid hsla(48, 96%, 53%, 0.2);
+}
+
+.badge-red {
+  background: hsla(350, 89%, 60%, 0.1);
+  color: var(--color-red);
+  border: 1px solid hsla(350, 89%, 60%, 0.2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+/* Grid Layout Shell */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+main {
+  flex-grow: 1;
+  padding: 32px 0 64px 0;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+  main {
+    padding: 16px 0 48px 0;
+  }
+  header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+}

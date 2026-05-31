@@ -1,0 +1,280 @@
+import React, { useState, useMemo } from 'react';
+import { useWorkout } from '../contexts/WorkoutContext';
+import { workouts, exercises as allExercises } from '../data/schedule';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  type ChartOptions,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+
+export const HistoryCharts: React.FC = () => {
+  const { state } = useWorkout();
+
+  // Filter only resistance workouts
+  const resistanceWorkouts = useMemo(() => {
+    return workouts.filter((w) => w.type === 'resistance');
+  }, []);
+
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string>(
+    resistanceWorkouts[0]?.id || ''
+  );
+
+  const selectedWorkout = useMemo(() => {
+    return resistanceWorkouts.find((w) => w.id === selectedWorkoutId);
+  }, [selectedWorkoutId, resistanceWorkouts]);
+
+  // List of exercises in the selected workout
+  const exerciseOptions = useMemo(() => {
+    if (!selectedWorkout) return [];
+    return selectedWorkout.exercises
+      .map((exId) => {
+        return allExercises.find((e) => e.id === exId);
+      })
+      .filter((e): e is (typeof allExercises)[0] => !!e);
+  }, [selectedWorkout]);
+
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>('');
+
+  // Auto-select first exercise when workout changes
+  React.useEffect(() => {
+    if (exerciseOptions.length > 0) {
+      setSelectedExerciseId(exerciseOptions[0].id);
+    } else {
+      setSelectedExerciseId('');
+    }
+  }, [exerciseOptions]);
+
+  const selectedExercise = useMemo(() => {
+    return allExercises.find((e) => e.id === selectedExerciseId);
+  }, [selectedExerciseId]);
+
+  const [chartMetric, setChartMetric] = useState<'reps' | 'weight'>('reps');
+
+  // Extract logging data for the selected exercise across all cycles
+  const chartDataPoints = useMemo(() => {
+    if (!selectedExerciseId) return [];
+
+    // Filter logs that have records for this exercise
+    return [...state.logs]
+      .filter((log) => !log.skipped && log.exercises[selectedExerciseId])
+      .sort((a, b) => {
+        // Sort chronologically
+        const progressA = a.cycle * 1000 + a.week * 10 + a.day;
+        const progressB = b.cycle * 1000 + b.week * 10 + b.day;
+        return progressA - progressB;
+      });
+  }, [state.logs, selectedExerciseId]);
+
+  const hasData = chartDataPoints.length > 0;
+
+  // Set up chart data
+  const data = useMemo(() => {
+    if (!hasData || !selectedExercise) {
+      return { labels: [], datasets: [] };
+    }
+
+    const labels = chartDataPoints.map((log) => `C${log.cycle} W${log.week} D${log.day}`);
+
+    const isWeighted = selectedExercise.type === 'weighted';
+    const metricLabel = chartMetric === 'weight' && isWeighted ? 'Weight (lbs)' : 'Reps';
+
+    const dataset1 = chartDataPoints.map((log) => {
+      const set = log.exercises[selectedExerciseId][0];
+      return set ? (chartMetric === 'weight' ? set.weight : set.reps) : 0;
+    });
+
+    const datasets: any[] = [
+      {
+        label: selectedExercise.setCount > 1 ? `${metricLabel} (Set 1)` : metricLabel,
+        data: dataset1,
+        borderColor: 'hsl(184, 100%, 50%)',
+        backgroundColor: 'hsla(184, 100%, 50%, 0.15)',
+        tension: 0.15,
+        pointBackgroundColor: 'hsl(184, 100%, 50%)',
+        pointHoverRadius: 7,
+      },
+    ];
+
+    if (selectedExercise.setCount > 1) {
+      const dataset2 = chartDataPoints.map((log) => {
+        const set = log.exercises[selectedExerciseId][1];
+        return set ? (chartMetric === 'weight' ? set.weight : set.reps) : 0;
+      });
+
+      datasets.push({
+        label: `${metricLabel} (Set 2)`,
+        data: dataset2,
+        borderColor: 'hsl(266, 100%, 64%)',
+        backgroundColor: 'hsla(266, 100%, 64%, 0.15)',
+        tension: 0.15,
+        pointBackgroundColor: 'hsl(266, 100%, 64%)',
+        pointHoverRadius: 7,
+      });
+    }
+
+    return { labels, datasets };
+  }, [chartDataPoints, selectedExercise, selectedExerciseId, chartMetric, hasData]);
+
+  // Chart configuration
+  const options: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          color: 'hsl(0, 0%, 96%)',
+          font: {
+            family: 'Outfit, sans-serif',
+            size: 12,
+          },
+        },
+      },
+      tooltip: {
+        backgroundColor: 'hsla(224, 30%, 8%, 0.95)',
+        titleColor: 'hsl(0, 0%, 96%)',
+        bodyColor: 'hsl(0, 0%, 96%)',
+        borderColor: 'hsla(224, 15%, 25%, 0.5)',
+        borderWidth: 1,
+        titleFont: { family: 'Outfit, sans-serif', weight: 'bold' },
+        bodyFont: { family: 'Outfit, sans-serif' },
+        callbacks: {
+          afterBody: (context: any) => {
+            // Include user comments in tooltip
+            const dataIndex = context[0].dataIndex;
+            const log = chartDataPoints[dataIndex];
+            return log && log.comments ? `\nNotes: ${log.comments}` : '';
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'hsla(224, 15%, 25%, 0.15)',
+        },
+        ticks: {
+          color: 'hsl(224, 15%, 70%)',
+          font: { family: 'Outfit, sans-serif' },
+        },
+      },
+      y: {
+        grid: {
+          color: 'hsla(224, 15%, 25%, 0.15)',
+        },
+        ticks: {
+          color: 'hsl(224, 15%, 70%)',
+          font: { family: 'Outfit, sans-serif' },
+        },
+        suggestedMin: 0,
+      },
+    },
+  };
+
+  const isWeightedExercise = selectedExercise?.type === 'weighted';
+
+  return (
+    <div
+      className="glass-panel animate-fade-in"
+      style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}
+    >
+      <h2>Strength & Progression Analytics</h2>
+
+      {/* Dropdowns */}
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="input-group" style={{ flex: '1 1 200px' }}>
+          <label className="input-label">Select Workout Routine</label>
+          <select
+            className="input-field"
+            value={selectedWorkoutId}
+            onChange={(e) => setSelectedWorkoutId(e.target.value)}
+          >
+            {resistanceWorkouts.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="input-group" style={{ flex: '1 1 250px' }}>
+          <label className="input-label">Select Exercise</label>
+          <select
+            className="input-field"
+            value={selectedExerciseId}
+            onChange={(e) => setSelectedExerciseId(e.target.value)}
+            disabled={exerciseOptions.length === 0}
+          >
+            {exerciseOptions.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Metric Toggle for weighted exercise */}
+      {isWeightedExercise && hasData && (
+        <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-start' }}>
+          <button
+            className={`btn ${chartMetric === 'reps' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setChartMetric('reps')}
+            style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+          >
+            Reps Graph
+          </button>
+          <button
+            className={`btn ${chartMetric === 'weight' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setChartMetric('weight')}
+            style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+          >
+            Weight Graph
+          </button>
+        </div>
+      )}
+
+      {/* Line Chart Grid */}
+      <div style={{ height: '350px', position: 'relative', width: '100%' }}>
+        {hasData ? (
+          <Line data={data} options={options} />
+        ) : (
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-muted)',
+              border: '1px dashed var(--color-border)',
+              borderRadius: '12px',
+            }}
+          >
+            <span style={{ fontSize: '2.5rem', marginBottom: '8px' }}>📈</span>
+            <p style={{ fontWeight: '500' }}>No workout data logged yet</p>
+            <p
+              style={{
+                fontSize: '0.85rem',
+                maxWidth: '300px',
+                textAlign: 'center',
+                marginTop: '4px',
+              }}
+            >
+              Complete the "{selectedWorkout?.name}" routine on the Dashboard to generate charts.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

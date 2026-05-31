@@ -1,0 +1,158 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+export const RestTimer: React.FC = () => {
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const [isActive, setIsActive] = useState<boolean>(false);
+  const timerRef = useRef<any>(null);
+
+  // Play a simple synthesized beep using browser Web Audio API (no external file dependencies)
+  const triggerBuzzer = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      // Tone 1
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+
+      // Tone 2 (slightly delayed)
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1200, ctx.currentTime); // higher note
+        gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start();
+        osc2.stop(ctx.currentTime + 0.25);
+      }, 180);
+    } catch (e) {
+      console.warn('Web Audio beep blocked or unsupported:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isActive && secondsLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            setIsActive(false);
+            triggerBuzzer();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (!isActive && timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isActive, secondsLeft]);
+
+  const addTime = (secs: number) => {
+    setSecondsLeft((prev) => prev + secs);
+    setIsActive(true);
+  };
+
+  const toggleTimer = () => {
+    if (secondsLeft > 0) {
+      setIsActive(!isActive);
+    }
+  };
+
+  const resetTimer = () => {
+    setSecondsLeft(0);
+    setIsActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const formatTime = (totalSecs: number) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  return (
+    <div
+      className="glass-panel"
+      style={{
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        border:
+          secondsLeft > 0 && isActive
+            ? '1px solid var(--color-cyan)'
+            : '1px solid var(--color-border)',
+        boxShadow: secondsLeft > 0 && isActive ? 'var(--shadow-glow-cyan)' : 'var(--shadow-sm)',
+        transition: 'all var(--transition-normal)',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <span
+          style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: '500' }}
+        >
+          ⏱️ Rest Timer
+        </span>
+        <span
+          style={{
+            fontSize: '1.6rem',
+            fontWeight: '700',
+            fontFamily: 'monospace',
+            color: secondsLeft > 0 ? 'var(--color-cyan)' : 'var(--color-text-muted)',
+          }}
+        >
+          {formatTime(secondsLeft)}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button
+          className="btn btn-secondary"
+          onClick={() => addTime(30)}
+          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+        >
+          +30s
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => addTime(60)}
+          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+        >
+          +60s
+        </button>
+
+        {secondsLeft > 0 && (
+          <>
+            <button
+              className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'}`}
+              onClick={toggleTimer}
+              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+            >
+              {isActive ? 'Pause' : 'Start'}
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={resetTimer}
+              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+            >
+              Reset
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
