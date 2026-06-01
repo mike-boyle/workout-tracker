@@ -17,7 +17,34 @@ import { Line } from 'react-chartjs-2';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export const HistoryCharts: React.FC = () => {
-  const { state } = useWorkout();
+  const { state, loadCycleLogs } = useWorkout();
+
+  // Load all historical cycles in the background when visiting Analytics
+  React.useEffect(() => {
+    const loadAllCycles = async () => {
+      for (let c = 1; c <= state.currentCycle; c++) {
+        if (state.loadedCycles[c] === undefined && !state.loadingCycles[c]) {
+          await loadCycleLogs(c);
+        }
+      }
+    };
+    loadAllCycles();
+  }, [state.currentCycle, state.loadedCycles, state.loadingCycles, loadCycleLogs]);
+
+  // Combine logs from all loaded cycles
+  const allLogs = useMemo(() => {
+    return Object.values(state.loadedCycles).flat();
+  }, [state.loadedCycles]);
+
+  // Check if historical data is still loading
+  const isHistoryLoading = useMemo(() => {
+    for (let c = 1; c <= state.currentCycle; c++) {
+      if (state.loadedCycles[c] === undefined) {
+        return true;
+      }
+    }
+    return false;
+  }, [state.currentCycle, state.loadedCycles]);
 
   // Filter only resistance workouts
   const resistanceWorkouts = useMemo(() => {
@@ -64,7 +91,7 @@ export const HistoryCharts: React.FC = () => {
     if (!selectedExerciseId) return [];
 
     // Filter logs that have records for this exercise
-    return [...state.logs]
+    return [...allLogs]
       .filter((log) => !log.skipped && log.exercises[selectedExerciseId])
       .sort((a, b) => {
         // Sort chronologically
@@ -72,7 +99,7 @@ export const HistoryCharts: React.FC = () => {
         const progressB = b.cycle * 1000 + b.week * 10 + b.day;
         return progressA - progressB;
       });
-  }, [state.logs, selectedExerciseId]);
+  }, [allLogs, selectedExerciseId]);
 
   const hasData = chartDataPoints.length > 0;
 
@@ -245,7 +272,37 @@ export const HistoryCharts: React.FC = () => {
 
       {/* Line Chart Grid */}
       <div style={{ height: '350px', position: 'relative', width: '100%' }}>
-        {hasData ? (
+        {isHistoryLoading ? (
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+            <div
+              style={{
+                border: '3px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
+                borderTop: '3px solid var(--color-cyan)',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                animation: 'spin 1.2s linear infinite',
+                margin: '0 auto 12px auto'
+              }}
+            />
+            <p style={{ fontWeight: '500' }}>Loading progression analytics...</p>
+          </div>
+        ) : hasData ? (
           <Line data={data} options={options} />
         ) : (
           <div

@@ -1,4 +1,4 @@
-import type { UserState } from '../types';
+import type { UserMetadata, WorkoutLog } from '../types';
 
 let tokenClient: any = null;
 
@@ -136,14 +136,14 @@ const handleResponse = async (response: Response, errorPrefix: string) => {
 };
 
 /**
- * Search for the backup file in the user's Drive appDataFolder.
+ * Search for the metadata file in the user's Drive appDataFolder.
  * Returns the file ID if found, otherwise null.
  */
-export const findBackupFile = async (): Promise<string | null> => {
+export const findMetadataFile = async (): Promise<string | null> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='workout-tracker-data.json'+and+'appDataFolder'+in+parents&spaces=appDataFolder&fields=files(id)`,
+    `https://www.googleapis.com/drive/v3/files?q=name='workout-tracker-metadata.json'+and+'appDataFolder'+in+parents&spaces=appDataFolder&fields=files(id)`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -161,9 +161,9 @@ export const findBackupFile = async (): Promise<string | null> => {
 };
 
 /**
- * Download the user state file content from Google Drive
+ * Download the user metadata content from Google Drive
  */
-export const downloadBackup = async (fileId: string): Promise<UserState> => {
+export const downloadMetadata = async (fileId: string): Promise<UserMetadata> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
@@ -178,13 +178,13 @@ export const downloadBackup = async (fileId: string): Promise<UserState> => {
 };
 
 /**
- * Create a new backup file in Google Drive AppData folder
+ * Create a new metadata file in Google Drive AppData folder
  */
-export const createBackupFile = async (data: UserState): Promise<string> => {
+export const createMetadataFile = async (data: UserMetadata): Promise<string> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const metadata = {
-    name: 'workout-tracker-data.json',
+    name: 'workout-tracker-metadata.json',
     parents: ['appDataFolder'],
   };
 
@@ -210,9 +210,9 @@ export const createBackupFile = async (data: UserState): Promise<string> => {
 };
 
 /**
- * Update an existing backup file in Google Drive
+ * Update the metadata file in Google Drive
  */
-export const updateBackupFile = async (fileId: string, data: UserState): Promise<void> => {
+export const updateMetadataFile = async (fileId: string, data: UserMetadata): Promise<void> => {
   if (!accessToken) throw new Error('Not authenticated with Google');
 
   const response = await fetch(
@@ -224,6 +224,77 @@ export const updateBackupFile = async (fileId: string, data: UserState): Promise
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+    }
+  );
+
+  await handleResponse(response, 'Drive sync failed');
+};
+
+/**
+ * Download cycle logs content from Google Drive
+ */
+export const downloadCycleLogs = async (fileId: string): Promise<WorkoutLog[]> => {
+  if (!accessToken) throw new Error('Not authenticated with Google');
+
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  await handleResponse(response, 'Drive download failed');
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data.logs || []);
+};
+
+/**
+ * Create a new cycle log file in Google Drive AppData folder
+ */
+export const createCycleFile = async (cycleNum: number, logs: WorkoutLog[]): Promise<string> => {
+  if (!accessToken) throw new Error('Not authenticated with Google');
+
+  const metadata = {
+    name: `workout-tracker-cycle-${cycleNum}.json`,
+    parents: ['appDataFolder'],
+  };
+
+  const formData = new FormData();
+  formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  formData.append('file', new Blob([JSON.stringify(logs)], { type: 'application/json' }));
+
+  const response = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    }
+  );
+
+  await handleResponse(response, 'Drive upload failed');
+
+  const result = await response.json();
+  return result.id;
+};
+
+/**
+ * Update an existing cycle log file in Google Drive
+ */
+export const updateCycleFile = async (fileId: string, logs: WorkoutLog[]): Promise<void> => {
+  if (!accessToken) throw new Error('Not authenticated with Google');
+
+  const response = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(logs),
     }
   );
 

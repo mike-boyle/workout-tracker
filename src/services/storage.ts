@@ -1,88 +1,257 @@
-import type { UserState } from '../types';
+import type { UserMetadata, WorkoutLog, CycleStats } from '../types';
 
-const STORAGE_KEY = 'workout_tracker_state';
 const CURRENT_VERSION = 1;
 
-export const INITIAL_STATE: UserState = {
+export const INITIAL_METADATA: UserMetadata = {
   version: CURRENT_VERSION,
   currentCycle: 1,
   currentWeek: 1,
   currentDay: 1,
-  logs: [],
   gdriveLinked: false,
+  metadataFileId: undefined,
+  cycleFileIds: {},
+  cycleTimestamps: {},
+  cycleStats: {},
 };
 
-/**
- * Perform storage schema migrations if needed
- */
-export function migrateState(state: any): UserState {
-  if (!state) {
-    return { ...INITIAL_STATE };
+class WorkoutTrackerDB {
+  private dbName = 'WorkoutTrackerDB';
+  private version = 1;
+
+  private openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('keyValueStore')) {
+          db.createObjectStore('keyValueStore');
+        }
+      };
+    });
   }
 
-  // If no version exists, treat it as pre-versioned data or initial state
-  const version = typeof state.version === 'number' ? state.version : 0;
-
-  if (version === CURRENT_VERSION) {
-    return state as UserState;
-  }
-
-  let migrated = { ...INITIAL_STATE, ...state };
-
-  // Future migrations can be implemented here sequentially:
-  // if (version < 2) { migrated = migrateToV2(migrated); }
-
-  migrated.version = CURRENT_VERSION;
-  return migrated as UserState;
-}
-
-/**
- * Load state from localStorage. Auto-migrates and falls back to INITIAL_STATE on errors.
- */
-export function loadState(): UserState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return { ...INITIAL_STATE };
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const db = await this.openDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction('keyValueStore', 'readonly');
+        const store = transaction.objectStore('keyValueStore');
+        const request = store.get(key);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve((request.result as T) || null);
+      });
+    } catch (e) {
+      console.error('IndexedDB get error:', e);
+      return null;
     }
-    const parsed = JSON.parse(raw);
-    return migrateState(parsed);
-  } catch (error) {
-    console.error('Failed to load state from localStorage:', error);
-    return { ...INITIAL_STATE };
+  }
+
+  async set<T>(key: string, value: T): Promise<void> {
+    try {
+      const db = await this.openDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction('keyValueStore', 'readwrite');
+        const store = transaction.objectStore('keyValueStore');
+        const request = store.put(value, key);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
+    } catch (e) {
+      console.error('IndexedDB set error:', e);
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    try {
+      const db = await this.openDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction('keyValueStore', 'readwrite');
+        const store = transaction.objectStore('keyValueStore');
+        const request = store.delete(key);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
+    } catch (e) {
+      console.error('IndexedDB delete error:', e);
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      const db = await this.openDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction('keyValueStore', 'readwrite');
+        const store = transaction.objectStore('keyValueStore');
+        const request = store.clear();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+      });
+    } catch (e) {
+      console.error('IndexedDB clear error:', e);
+    }
   }
 }
 
+export const db = new WorkoutTrackerDB();
+
 /**
- * Save state to localStorage
+ * Migrates old localStorage data to the new segmented IndexedDB format.
  */
-export function saveState(state: UserState): void {
+export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const raw = localStorage.getItem('workout_tracker_state');
+    if (!raw) return false;
+
+    const state = JSON.parse(raw);
+    if (!state || typeof state !== 'object') return false;
+
+    // Migrate metadata
+    const metadata: UserMetadata = {
+      version: typeof state.version === 'number' ? state.version : CURRENT_VERSION,
+      currentCycle: typeof state.currentCycle === 'number' ? state.currentCycle : 1,
+      currentWeek: typeof state.currentWeek === 'number' ? state.currentWeek : 1,
+      currentDay: typeof state.currentDay === 'number' ? state.currentDay : 1,
+      gdriveLinked: !!state.gdriveLinked,
+      metadataFileId: localStorage.getItem('workout_tracker_gdrive_file_id') || undefined,
+      cycleFileIds: {},
+      cycleTimestamps: {},
+      cycleStats: {},
+    };
+
+    // Clean up GDrive old file ID from localStorage
+    localStorage.removeItem('workout_tracker_gdrive_file_id');
+
+    // Group logs by cycle
+    const logs = Array.isArray(state.logs) ? state.logs : [];
+    const logsByCycle: { [cycle: number]: WorkoutLog[] } = {};
+
+    logs.forEach((log: any) => {
+      const cycle = typeof log.cycle === 'number' ? log.cycle : 1;
+      if (!logsByCycle[cycle]) {
+        logsByCycle[cycle] = [];
+      }
+      logsByCycle[cycle].push(log);
+    });
+
+    // Save cycle logs to IndexedDB and compute stats
+    const statsMap: { [cycle: number]: CycleStats } = {};
+    for (const cycleStr of Object.keys(logsByCycle)) {
+      const cycleNum = parseInt(cycleStr, 10);
+      const cycleLogs = logsByCycle[cycleNum];
+      
+      // Save logs
+      await db.set(`cycle_${cycleNum}_logs`, cycleLogs);
+
+      // Compute stats
+      const completedCount = cycleLogs.filter((l) => !l.skipped).length;
+      const skippedCount = cycleLogs.filter((l) => l.skipped).length;
+      statsMap[cycleNum] = {
+        completedCount,
+        skippedCount,
+        totalDays: 91,
+      };
+
+      // Set timestamp
+      if (!metadata.cycleTimestamps) metadata.cycleTimestamps = {};
+      metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
+    }
+
+    metadata.cycleStats = statsMap;
+
+    // Save metadata to IndexedDB
+    await db.set('metadata', metadata);
+
+    // Delete old localStorage key
+    localStorage.removeItem('workout_tracker_state');
+    console.log('Successfully migrated localStorage state to IndexedDB.');
+    return true;
   } catch (error) {
-    console.error('Failed to save state to localStorage:', error);
+    console.error('Failed to migrate localStorage to IndexedDB:', error);
+    return false;
   }
 }
 
 /**
- * Clear all data from localStorage
+ * Loads metadata and active/specified cycle logs.
+ * Performs localStorage migration if necessary.
  */
-export function clearState(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear state from localStorage:', error);
+export async function loadLocalState(selectedCycle?: number): Promise<{
+  metadata: UserMetadata;
+  logs: WorkoutLog[];
+}> {
+  // Try migration first
+  await migrateLocalStorageToIndexedDB();
+
+  let metadata = await db.get<UserMetadata>('metadata');
+  if (!metadata) {
+    metadata = { ...INITIAL_METADATA };
+    await db.set('metadata', metadata);
   }
+
+  const cycleToLoad = selectedCycle || metadata.currentCycle;
+  const logs = await db.get<WorkoutLog[]>(`cycle_${cycleToLoad}_logs`) || [];
+
+  return { metadata, logs };
 }
 
 /**
- * Validate imported JSON schema to verify it is a valid backup
+ * Loads a specific cycle's logs from IndexedDB.
  */
-export function validateBackup(data: any): data is UserState {
+export async function loadLocalCycleLogs(cycleNum: number): Promise<WorkoutLog[]> {
+  return await db.get<WorkoutLog[]>(`cycle_${cycleNum}_logs`) || [];
+}
+
+/**
+ * Saves local state: metadata and logs for a specific cycle.
+ */
+export async function saveLocalState(
+  metadata: UserMetadata,
+  cycleNum: number,
+  cycleLogs: WorkoutLog[]
+): Promise<void> {
+  const completedCount = cycleLogs.filter((l) => !l.skipped).length;
+  const skippedCount = cycleLogs.filter((l) => l.skipped).length;
+
+  if (!metadata.cycleStats) metadata.cycleStats = {};
+  metadata.cycleStats[cycleNum] = {
+    completedCount,
+    skippedCount,
+    totalDays: 91,
+  };
+
+  if (!metadata.cycleTimestamps) metadata.cycleTimestamps = {};
+  metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
+
+  // Save logs and metadata to IndexedDB
+  await db.set(`cycle_${cycleNum}_logs`, cycleLogs);
+  await db.set('metadata', metadata);
+}
+
+/**
+ * Save metadata only (for pointer shifts, settings sync, etc.)
+ */
+export async function saveLocalMetadata(metadata: UserMetadata): Promise<void> {
+  await db.set('metadata', metadata);
+}
+
+/**
+ * Clear all data from local database
+ */
+export async function clearLocalState(): Promise<void> {
+  await db.clear();
+  localStorage.removeItem('workout_tracker_state');
+  localStorage.removeItem('workout_tracker_gdrive_file_id');
+}
+
+/**
+ * Validate imported backup (adapted for new UserMetadata structure)
+ */
+export function validateBackup(data: any): data is UserMetadata {
   if (!data || typeof data !== 'object') return false;
   if (typeof data.currentCycle !== 'number') return false;
   if (typeof data.currentWeek !== 'number') return false;
   if (typeof data.currentDay !== 'number') return false;
-  if (!Array.isArray(data.logs)) return false;
   return true;
 }

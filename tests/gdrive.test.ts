@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   setAccessToken,
-  findBackupFile,
-  downloadBackup,
-  createBackupFile,
-  updateBackupFile,
+  findMetadataFile,
+  downloadMetadata,
+  createMetadataFile,
+  updateMetadataFile,
+  downloadCycleLogs,
+  createCycleFile,
+  updateCycleFile,
 } from '../src/services/gdrive';
-import { UserState } from '../src/types';
+import type { UserMetadata, WorkoutLog } from '../src/types';
 
 describe('Google Drive Sync Service', () => {
   beforeEach(() => {
@@ -15,14 +18,14 @@ describe('Google Drive Sync Service', () => {
   });
 
   it('should throw an error if executing operations without access token', async () => {
-    await expect(findBackupFile()).rejects.toThrow('Not authenticated with Google');
+    await expect(findMetadataFile()).rejects.toThrow('Not authenticated with Google');
   });
 
-  it('should find a backup file and return its ID', async () => {
+  it('should find the metadata file and return its ID', async () => {
     setAccessToken('mock_access_token');
 
     const mockResponse = {
-      files: [{ id: 'file_id_123' }],
+      files: [{ id: 'metadata_file_id_123' }],
     };
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
@@ -32,17 +35,17 @@ describe('Google Drive Sync Service', () => {
       } as Response)
     );
 
-    const fileId = await findBackupFile();
-    expect(fileId).toBe('file_id_123');
+    const fileId = await findMetadataFile();
+    expect(fileId).toBe('metadata_file_id_123');
     expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining('spaces=appDataFolder'),
+      expect.stringContaining("name='workout-tracker-metadata.json'"),
       expect.objectContaining({
         headers: { Authorization: 'Bearer mock_access_token' },
       })
     );
   });
 
-  it('should return null if search result is empty', async () => {
+  it('should return null if metadata search result is empty', async () => {
     setAccessToken('mock_access_token');
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
@@ -52,65 +55,63 @@ describe('Google Drive Sync Service', () => {
       } as Response)
     );
 
-    const fileId = await findBackupFile();
+    const fileId = await findMetadataFile();
     expect(fileId).toBeNull();
   });
 
-  it('should download backup file contents', async () => {
+  it('should download metadata contents', async () => {
     setAccessToken('mock_access_token');
 
-    const mockBackup: UserState = {
+    const mockMetadata: UserMetadata = {
       version: 1,
       currentCycle: 2,
       currentWeek: 2,
       currentDay: 2,
-      logs: [],
+      gdriveLinked: true,
+      cycleFileIds: { 1: 'file_1', 2: 'file_2' },
+    };
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockMetadata),
+      } as Response)
+    );
+
+    const metadata = await downloadMetadata('metadata_file_id_123');
+    expect(metadata).toEqual(mockMetadata);
+  });
+
+  it('should upload new metadata file and return file ID', async () => {
+    setAccessToken('mock_access_token');
+
+    const mockMetadata: UserMetadata = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
       gdriveLinked: true,
     };
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(mockBackup),
+        json: () => Promise.resolve({ id: 'metadata_file_id_456' }),
       } as Response)
     );
 
-    const state = await downloadBackup('file_id_123');
-    expect(state).toEqual(mockBackup);
+    const id = await createMetadataFile(mockMetadata);
+    expect(id).toBe('metadata_file_id_456');
   });
 
-  it('should upload a new backup file and return file ID', async () => {
+  it('should update metadata file', async () => {
     setAccessToken('mock_access_token');
 
-    const mockBackup: UserState = {
+    const mockMetadata: UserMetadata = {
       version: 1,
       currentCycle: 1,
       currentWeek: 1,
       currentDay: 1,
-      logs: [],
-      gdriveLinked: true,
-    };
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ id: 'new_file_id_456' }),
-      } as Response)
-    );
-
-    const id = await createBackupFile(mockBackup);
-    expect(id).toBe('new_file_id_456');
-  });
-
-  it('should update an existing backup file', async () => {
-    setAccessToken('mock_access_token');
-
-    const mockBackup: UserState = {
-      version: 1,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      logs: [],
       gdriveLinked: true,
     };
 
@@ -120,12 +121,78 @@ describe('Google Drive Sync Service', () => {
       } as Response)
     );
 
-    await updateBackupFile('file_id_123', mockBackup);
+    await updateMetadataFile('metadata_file_id_123', mockMetadata);
     expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining('file_id_123'),
+      expect.stringContaining('metadata_file_id_123'),
       expect.objectContaining({
         method: 'PATCH',
-        body: JSON.stringify(mockBackup),
+        body: JSON.stringify(mockMetadata),
+      })
+    );
+  });
+
+  it('should download cycle logs', async () => {
+    setAccessToken('mock_access_token');
+
+    const mockLogs: WorkoutLog[] = [
+      {
+        id: 'test_log_1',
+        cycle: 1,
+        week: 1,
+        day: 1,
+        workoutId: 'chest_and_back',
+        dateCompleted: '2026-06-01T12:00:00Z',
+        skipped: false,
+        exercises: {},
+        abRipperCompleted: false,
+        comments: '',
+      },
+    ];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockLogs),
+      } as Response)
+    );
+
+    const logs = await downloadCycleLogs('cycle_file_id_123');
+    expect(logs).toEqual(mockLogs);
+  });
+
+  it('should create cycle logs file and return file ID', async () => {
+    setAccessToken('mock_access_token');
+
+    const mockLogs: WorkoutLog[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: 'cycle_file_id_456' }),
+      } as Response)
+    );
+
+    const id = await createCycleFile(1, mockLogs);
+    expect(id).toBe('cycle_file_id_456');
+  });
+
+  it('should update cycle logs file', async () => {
+    setAccessToken('mock_access_token');
+
+    const mockLogs: WorkoutLog[] = [];
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+      } as Response)
+    );
+
+    await updateCycleFile('cycle_file_id_123', mockLogs);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('cycle_file_id_123'),
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify(mockLogs),
       })
     );
   });

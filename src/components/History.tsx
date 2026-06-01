@@ -4,7 +4,7 @@ import { p90xClassicSchedule, workouts } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 
 export const History: React.FC = () => {
-  const { state, startNewCycle } = useWorkout();
+  const { state, startNewCycle, loadCycleLogs } = useWorkout();
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
 
   // Group schedule days by Phase
@@ -15,18 +15,18 @@ export const History: React.FC = () => {
   };
 
   const getCycleStats = (cycleNum: number) => {
-    const cycleLogs = state.logs.filter((log) => log.cycle === cycleNum);
-    const completedCount = cycleLogs.filter((log) => !log.skipped).length;
-    const skippedCount = cycleLogs.filter((log) => log.skipped).length;
+    const stats = state.cycleStats?.[cycleNum];
+    const completedCount = stats ? stats.completedCount : 0;
+    const skippedCount = stats ? stats.skippedCount : 0;
     const totalDays = 91;
-    const progressPercent = Math.round((cycleLogs.length / totalDays) * 100);
-    const isCompleted =
-      cycleLogs.some((log) => log.week === 13 && log.day === 7) || cycleNum < state.currentCycle;
+    const loggedCount = completedCount + skippedCount;
+    const progressPercent = stats ? Math.round((loggedCount / totalDays) * 100) : 0;
+    const isCompleted = cycleNum < state.currentCycle;
 
     return {
       completedCount,
       skippedCount,
-      remainingCount: totalDays - cycleLogs.length,
+      remainingCount: totalDays - loggedCount,
       progressPercent,
       isCompleted,
     };
@@ -93,7 +93,13 @@ export const History: React.FC = () => {
                   gap: '16px',
                   cursor: 'pointer',
                 }}
-                onClick={() => setExpandedCycle(isExpanded ? null : cNum)}
+                onClick={() => {
+                  const nextExpanded = isExpanded ? null : cNum;
+                  setExpandedCycle(nextExpanded);
+                  if (nextExpanded !== null) {
+                    loadCycleLogs(cNum);
+                  }
+                }}
               >
                 <div style={{ flex: '1 1 200px' }}>
                   <div
@@ -206,18 +212,58 @@ export const History: React.FC = () => {
               </div>
 
               {/* Detailed Schedule Breakdown (Expanded View) */}
-              {isExpanded && (
-                <div
-                  className="animate-fade-in"
-                  style={{
-                    marginTop: '24px',
-                    paddingTop: '24px',
-                    borderTop: '1px solid var(--color-border)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '24px',
-                  }}
-                >
+              {isExpanded && (() => {
+                const isCycleLoading = state.loadingCycles[cNum];
+                const cycleLogs = state.loadedCycles[cNum] || [];
+
+                if (isCycleLoading) {
+                  const spinnerStyle = `
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `;
+                  return (
+                    <div
+                      className="animate-fade-in"
+                      style={{
+                        marginTop: '24px',
+                        paddingTop: '40px',
+                        paddingBottom: '40px',
+                        borderTop: '1px solid var(--color-border)',
+                        textAlign: 'center',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
+                      <style>{spinnerStyle}</style>
+                      <div
+                        style={{
+                          border: '3px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
+                          borderTop: '3px solid var(--color-cyan)',
+                          borderRadius: '50%',
+                          width: '32px',
+                          height: '32px',
+                          animation: 'spin 1.2s linear infinite',
+                          margin: '0 auto 12px auto'
+                        }}
+                      />
+                      <p style={{ fontSize: '0.9rem' }}>Loading cycle history...</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    className="animate-fade-in"
+                    style={{
+                      marginTop: '24px',
+                      paddingTop: '24px',
+                      borderTop: '1px solid var(--color-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '24px',
+                    }}
+                  >
                   {[1, 2, 3].map((phaseNum) => (
                     <div key={phaseNum}>
                       <h4
@@ -275,7 +321,7 @@ export const History: React.FC = () => {
                                 }}
                               >
                                 {weekDays.map((dayInfo) => {
-                                  const log = state.logs.find(
+                                  const log = cycleLogs.find(
                                     (l) =>
                                       l.cycle === cNum &&
                                       l.week === dayInfo.weekNumber &&
@@ -416,8 +462,9 @@ export const History: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}

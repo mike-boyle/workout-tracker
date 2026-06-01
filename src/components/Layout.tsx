@@ -4,12 +4,16 @@ import {
   loadGsiScript,
   initTokenClient,
   signInGdrive,
-  findBackupFile,
-  downloadBackup,
-  createBackupFile,
-  updateBackupFile,
+  findMetadataFile,
+  downloadMetadata,
+  createMetadataFile,
+  updateMetadataFile,
+  downloadCycleLogs,
+  createCycleFile,
+  updateCycleFile,
   getAccessToken,
 } from '../services/gdrive';
+import type { UserMetadata, WorkoutLog } from '../types';
 import { GOOGLE_CLIENT_ID } from '../config';
 
 interface LayoutProps {
@@ -19,7 +23,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
-  const { state, linkGoogleDrive, syncGoogleDriveData, resetDatabase } = useWorkout();
+  const { state, syncGoogleDriveData, resetDatabase } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
@@ -53,30 +57,42 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       initTokenClient(GOOGLE_CLIENT_ID, async (_accessToken) => {
         setSyncStatus('syncing');
         try {
-          const fileId = await findBackupFile();
-          if (fileId) {
-            // Found existing file, download and merge
-            localStorage.setItem('workout_tracker_gdrive_file_id', fileId);
-            const remoteData = await downloadBackup(fileId);
-            syncGoogleDriveData(
-              remoteData.logs,
-              remoteData.currentCycle,
-              remoteData.currentWeek,
-              remoteData.currentDay
-            );
+          const metadataFileId = await findMetadataFile();
+          if (metadataFileId) {
+            const remoteMetadata = await downloadMetadata(metadataFileId);
+            remoteMetadata.metadataFileId = metadataFileId;
+
+            // Load remote active cycle logs
+            const activeCycleNum = remoteMetadata.currentCycle;
+            const activeCycleFileId = remoteMetadata.cycleFileIds?.[activeCycleNum];
+            let activeLogs: WorkoutLog[] = [];
+            if (activeCycleFileId) {
+              activeLogs = await downloadCycleLogs(activeCycleFileId);
+            }
+
+            syncGoogleDriveData(remoteMetadata, activeLogs);
             setSyncStatus('synced');
           } else {
-            // Create a new backup file
-            const newFileId = await createBackupFile({
+            // Create active cycle logs file on GDrive
+            const activeCycleLogs = state.loadedCycles[state.currentCycle] || [];
+            const cycleFileId = await createCycleFile(state.currentCycle, activeCycleLogs);
+
+            // Create metadata file
+            const newMetadata: UserMetadata = {
               version: state.version,
               currentCycle: state.currentCycle,
               currentWeek: state.currentWeek,
               currentDay: state.currentDay,
-              logs: state.logs,
               gdriveLinked: true,
-            });
-            localStorage.setItem('workout_tracker_gdrive_file_id', newFileId);
-            linkGoogleDrive(true);
+              cycleFileIds: { [state.currentCycle]: cycleFileId },
+              cycleTimestamps: { [state.currentCycle]: new Date().toISOString() },
+              cycleStats: state.cycleStats || {},
+            };
+
+            const newMetadataFileId = await createMetadataFile(newMetadata);
+            newMetadata.metadataFileId = newMetadataFileId;
+
+            syncGoogleDriveData(newMetadata, activeCycleLogs);
             setSyncStatus('synced');
           }
           setShowSettings(false);
@@ -94,32 +110,119 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     }
   };
 
-  // Perform auto-sync on workout log modifications if connected
+  // Perform auto-sync on workout log or metadata modifications if connected
   useEffect(() => {
-    const fileId = localStorage.getItem('workout_tracker_gdrive_file_id');
-    if (state.gdriveLinked && fileId) {
+    if (state.loading) return;
+
+    const syncWithDrive = async () => {
+      const metadataFileId = state.metadataFileId;
+      if (!state.gdriveLinked || !metadataFileId) return;
+
       if (!getAccessToken()) {
         setSyncStatus('error');
         setErrorMsg('Session expired. Please reconnect Google Drive.');
         return;
       }
+
       setSyncStatus('syncing');
-      updateBackupFile(fileId, {
-        version: state.version,
-        currentCycle: state.currentCycle,
-        currentWeek: state.currentWeek,
-        currentDay: state.currentDay,
-        logs: state.logs,
-        gdriveLinked: true,
-      })
-        .then(() => setSyncStatus('synced'))
-        .catch((err: any) => {
-          console.error('Auto sync failed:', err);
-          setSyncStatus('error');
-          setErrorMsg(err.message || 'Auto-sync failed');
-        });
-    }
-  }, [state.logs, state.currentCycle, state.currentWeek, state.currentDay, state.gdriveLinked]);
+      try {
+        const activeCycleNum = state.currentCycle;
+        const activeLogs = state.loadedCycles[activeCycleNum] || [];
+        let activeCycleFileId = state.cycleFileIds?.[activeCycleNum];
+
+        // 1. Sync active cycle logs
+        if (!activeCycleFileId) {
+          activeCycleFileId = await createCycleFile(activeCycleNum, activeLogs);
+        } else {
+          await updateCycleFile(activeCycleFileId, activeLogs);
+        }
+
+        // 2. Build metadata
+        const updatedMetadata: UserMetadata = {
+          version: state.version,
+          currentCycle: state.currentCycle,
+          currentWeek: state.currentWeek,
+          currentDay: state.currentDay,
+          gdriveLinked: true,
+          metadataFileId: metadataFileId,
+          cycleFileIds: {
+            ...state.cycleFileIds,
+            [activeCycleNum]: activeCycleFileId,
+          },
+          cycleTimestamps: {
+            ...state.cycleTimestamps,
+            [activeCycleNum]: new Date().toISOString(),
+          },
+          cycleStats: state.cycleStats || {},
+        };
+
+        // 3. Sync metadata
+        await updateMetadataFile(metadataFileId, updatedMetadata);
+
+        // Update context local variables
+        state.cycleFileIds = updatedMetadata.cycleFileIds;
+        state.cycleTimestamps = updatedMetadata.cycleTimestamps;
+
+        setSyncStatus('synced');
+      } catch (err: any) {
+        console.error('Auto sync failed:', err);
+        setSyncStatus('error');
+        setErrorMsg(err.message || 'Auto-sync failed');
+      }
+    };
+
+    // Run syncing
+    syncWithDrive();
+  }, [
+    state.currentCycle,
+    state.currentWeek,
+    state.currentDay,
+    state.gdriveLinked,
+    state.metadataFileId,
+    state.cycleStats,
+    state.loadedCycles[state.currentCycle],
+    state.loading,
+  ]);
+
+  if (state.loading) {
+    const spinnerStyle = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          background: 'var(--color-bg)',
+          color: 'var(--color-text-primary)',
+          fontFamily: 'Outfit, sans-serif',
+        }}
+      >
+        <style>{spinnerStyle}</style>
+        <div
+          style={{
+            border: '4px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
+            borderTop: '4px solid var(--color-cyan)',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            animation: 'spin 1.2s linear infinite',
+            marginBottom: '16px'
+          }}
+        />
+        <h3>Loading Workout Tracker...</h3>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+          Preparing database storage
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">

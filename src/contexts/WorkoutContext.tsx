@@ -1,15 +1,35 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { UserState, WorkoutLog, SetLog } from '../types';
-import { loadState, saveState, INITIAL_STATE } from '../services/storage';
+import type { UserMetadata, WorkoutLog, SetLog, CycleStats } from '../types';
+import {
+  loadLocalState,
+  saveLocalState,
+  saveLocalMetadata,
+  loadLocalCycleLogs,
+  clearLocalState,
+  INITIAL_METADATA,
+} from '../services/storage';
 import { p90xClassicSchedule } from '../data/schedule';
 
-interface ExtendedState extends UserState {
+export interface ExtendedState extends UserMetadata {
   selectedCycle: number;
   selectedWeek: number;
   selectedDay: number;
+  loading: boolean;
+  logs: WorkoutLog[]; // Logs of the selected cycle (for backward compatibility)
+  loadedCycles: { [cycle: number]: WorkoutLog[] };
+  loadingCycles: { [cycle: number]: boolean };
 }
 
 type WorkoutAction =
+  | {
+      type: 'INITIALIZE_STATE';
+      payload: {
+        metadata: UserMetadata;
+        logs: WorkoutLog[];
+      };
+    }
+  | { type: 'START_LOAD_CYCLE'; payload: number }
+  | { type: 'LOAD_CYCLE_SUCCESS'; payload: { cycleNum: number; logs: WorkoutLog[] } }
   | {
       type: 'COMPLETE_WORKOUT';
       payload: {
@@ -26,10 +46,8 @@ type WorkoutAction =
   | {
       type: 'SYNC_GDRIVE_DATA';
       payload: {
-        logs: WorkoutLog[];
-        currentCycle: number;
-        currentWeek: number;
-        currentDay: number;
+        metadata: UserMetadata;
+        activeCycleLogs: WorkoutLog[];
       };
     }
   | { type: 'RESET_DATABASE' };
@@ -46,18 +64,81 @@ interface WorkoutContextType {
   startNewCycle: () => void;
   linkGoogleDrive: (linked: boolean) => void;
   syncGoogleDriveData: (
-    logs: WorkoutLog[],
-    currentCycle: number,
-    currentWeek: number,
-    currentDay: number
+    metadata: UserMetadata,
+    activeCycleLogs: WorkoutLog[]
   ) => void;
   resetDatabase: () => void;
+  loadCycleLogs: (cycleNum: number) => Promise<void>;
 }
+
+const INITIAL_STATE: ExtendedState = {
+  version: 1,
+  currentCycle: 1,
+  currentWeek: 1,
+  currentDay: 1,
+  gdriveLinked: false,
+  metadataFileId: undefined,
+  cycleFileIds: {},
+  cycleTimestamps: {},
+  cycleStats: {},
+  selectedCycle: 1,
+  selectedWeek: 1,
+  selectedDay: 1,
+  loading: true,
+  logs: [],
+  loadedCycles: {},
+  loadingCycles: {},
+};
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedState {
   switch (action.type) {
+    case 'INITIALIZE_STATE': {
+      const { metadata, logs } = action.payload;
+      return {
+        ...state,
+        ...metadata,
+        selectedCycle: metadata.currentCycle,
+        selectedWeek: metadata.currentWeek,
+        selectedDay: metadata.currentDay,
+        loading: false,
+        logs: logs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [metadata.currentCycle]: logs,
+        },
+      };
+    }
+
+    case 'START_LOAD_CYCLE': {
+      const cycleNum = action.payload;
+      return {
+        ...state,
+        loadingCycles: {
+          ...state.loadingCycles,
+          [cycleNum]: true,
+        },
+      };
+    }
+
+    case 'LOAD_CYCLE_SUCCESS': {
+      const { cycleNum, logs } = action.payload;
+      const isSelected = cycleNum === state.selectedCycle;
+      return {
+        ...state,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [cycleNum]: logs,
+        },
+        loadingCycles: {
+          ...state.loadingCycles,
+          [cycleNum]: false,
+        },
+        logs: isSelected ? logs : state.logs,
+      };
+    }
+
     case 'COMPLETE_WORKOUT': {
       const { workoutId, exercises, abRipperCompleted, comments } = action.payload;
       const logId = `cycle_${state.selectedCycle}_week_${state.selectedWeek}_day_${state.selectedDay}`;
@@ -75,8 +156,8 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         comments,
       };
 
-      // Filter out any existing log for this exact day in this cycle to allow editing
-      const filteredLogs = state.logs.filter(
+      const currentCycleLogs = state.loadedCycles[state.selectedCycle] || [];
+      const filteredLogs = currentCycleLogs.filter(
         (log) =>
           !(
             log.cycle === state.selectedCycle &&
@@ -87,7 +168,6 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
       const nextLogs = [...filteredLogs, newLog];
 
-      // Advance active pointer ONLY if completing the current active day
       const isCompletingActiveDay =
         state.selectedCycle === state.currentCycle &&
         state.selectedWeek === state.currentWeek &&
@@ -104,16 +184,20 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
           nextDay = 1;
           nextWeek += 1;
         }
-        // Cap program pointer at Week 13 Day 7 (Day 91)
         if (nextWeek > 13) {
           nextWeek = 13;
           nextDay = 7;
         } else {
-          // If we advanced, synchronize selected day to the new active day
           nextSelWeek = nextWeek;
           nextSelDay = nextDay;
         }
       }
+
+      const nextStats: CycleStats = {
+        completedCount: nextLogs.filter((l) => !l.skipped).length,
+        skippedCount: nextLogs.filter((l) => l.skipped).length,
+        totalDays: 91,
+      };
 
       return {
         ...state,
@@ -122,6 +206,14 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedWeek: nextSelWeek,
         selectedDay: nextSelDay,
         logs: nextLogs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [state.selectedCycle]: nextLogs,
+        },
+        cycleStats: {
+          ...state.cycleStats,
+          [state.selectedCycle]: nextStats,
+        },
       };
     }
 
@@ -142,7 +234,8 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         comments: 'Skipped',
       };
 
-      const filteredLogs = state.logs.filter(
+      const currentCycleLogs = state.loadedCycles[state.selectedCycle] || [];
+      const filteredLogs = currentCycleLogs.filter(
         (log) =>
           !(
             log.cycle === state.selectedCycle &&
@@ -178,6 +271,12 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         }
       }
 
+      const nextStats: CycleStats = {
+        completedCount: nextLogs.filter((l) => !l.skipped).length,
+        skippedCount: nextLogs.filter((l) => l.skipped).length,
+        totalDays: 91,
+      };
+
       return {
         ...state,
         currentWeek: nextWeek,
@@ -185,21 +284,39 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedWeek: nextSelWeek,
         selectedDay: nextSelDay,
         logs: nextLogs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [state.selectedCycle]: nextLogs,
+        },
+        cycleStats: {
+          ...state.cycleStats,
+          [state.selectedCycle]: nextStats,
+        },
       };
     }
 
     case 'SET_SELECTED_DAY': {
       const { week, day, cycle } = action.payload;
+      const targetCycle = cycle !== undefined ? cycle : state.selectedCycle;
+      const hasChangedCycle = targetCycle !== state.selectedCycle;
+      const targetLogs = hasChangedCycle ? (state.loadedCycles[targetCycle] || []) : state.logs;
+
       return {
         ...state,
         selectedWeek: week,
         selectedDay: day,
-        selectedCycle: cycle !== undefined ? cycle : state.selectedCycle,
+        selectedCycle: targetCycle,
+        logs: targetLogs,
       };
     }
 
     case 'START_NEW_CYCLE': {
       const nextCycle = state.currentCycle + 1;
+      const nextStats: CycleStats = {
+        completedCount: 0,
+        skippedCount: 0,
+        totalDays: 91,
+      };
       return {
         ...state,
         currentCycle: nextCycle,
@@ -208,6 +325,15 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedCycle: nextCycle,
         selectedWeek: 1,
         selectedDay: 1,
+        logs: [],
+        loadedCycles: {
+          ...state.loadedCycles,
+          [nextCycle]: [],
+        },
+        cycleStats: {
+          ...state.cycleStats,
+          [nextCycle]: nextStats,
+        },
       };
     }
 
@@ -219,34 +345,19 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
     }
 
     case 'SYNC_GDRIVE_DATA': {
-      const { logs, currentCycle, currentWeek, currentDay } = action.payload;
-
-      // Merge remote logs with local logs, deduplicating by ID
-      const logMap = new Map<string, WorkoutLog>();
-      state.logs.forEach((log) => logMap.set(log.id, log));
-      logs.forEach((log) => logMap.set(log.id, log));
-
-      const mergedLogs = Array.from(logMap.values());
-
-      // Advance program pointer to whichever is furthest: local or remote
-      const localProgress = state.currentCycle * 1000 + state.currentWeek * 10 + state.currentDay;
-      const remoteProgress = currentCycle * 1000 + currentWeek * 10 + currentDay;
-      const isRemoteFurthest = remoteProgress > localProgress;
-
-      const nextCycle = isRemoteFurthest ? currentCycle : state.currentCycle;
-      const nextWeek = isRemoteFurthest ? currentWeek : state.currentWeek;
-      const nextDay = isRemoteFurthest ? currentDay : state.currentDay;
-
+      const { metadata, activeCycleLogs } = action.payload;
       return {
         ...state,
-        currentCycle: nextCycle,
-        currentWeek: nextWeek,
-        currentDay: nextDay,
-        selectedCycle: nextCycle,
-        selectedWeek: nextWeek,
-        selectedDay: nextDay,
-        logs: mergedLogs,
-        gdriveLinked: true,
+        ...metadata,
+        selectedCycle: metadata.currentCycle,
+        selectedWeek: metadata.currentWeek,
+        selectedDay: metadata.currentDay,
+        logs: activeCycleLogs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [metadata.currentCycle]: activeCycleLogs,
+        },
+        loading: false,
       };
     }
 
@@ -256,6 +367,7 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedCycle: 1,
         selectedWeek: 1,
         selectedDay: 1,
+        loading: false,
       };
     }
 
@@ -265,21 +377,99 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 }
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE, () => {
-    const local = loadState();
-    return {
-      ...local,
-      selectedCycle: local.currentCycle,
-      selectedWeek: local.currentWeek,
-      selectedDay: local.currentDay,
-    };
-  });
+  const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
 
-  // Automatically save state to localStorage whenever it changes
+  // Load initial local state on mount
   useEffect(() => {
-    const { selectedCycle, selectedWeek, selectedDay, ...persistedState } = state;
-    saveState(persistedState);
-  }, [state]);
+    loadLocalState()
+      .then(({ metadata, logs }) => {
+        dispatch({ type: 'INITIALIZE_STATE', payload: { metadata, logs } });
+      })
+      .catch((err) => {
+        console.error('Failed to load initial local state:', err);
+        dispatch({
+          type: 'INITIALIZE_STATE',
+          payload: { metadata: INITIAL_METADATA, logs: [] },
+        });
+      });
+  }, []);
+
+  // Save changes to local database (metadata + selected cycle logs)
+  useEffect(() => {
+    if (state.loading) return;
+
+    const {
+      selectedCycle,
+      selectedWeek,
+      selectedDay,
+      loading,
+      logs,
+      loadedCycles,
+      loadingCycles,
+      ...metadataToPersist
+    } = state;
+
+    saveLocalMetadata(metadataToPersist).catch((err) =>
+      console.error('Failed to save metadata:', err)
+    );
+
+    const selectedCycleLogs = loadedCycles[state.selectedCycle];
+    if (selectedCycleLogs) {
+      saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs).catch((err) =>
+        console.error(`Failed to save cycle ${state.selectedCycle} logs:`, err)
+      );
+    }
+  }, [
+    state.currentCycle,
+    state.currentWeek,
+    state.currentDay,
+    state.gdriveLinked,
+    state.metadataFileId,
+    state.cycleFileIds,
+    state.cycleTimestamps,
+    state.cycleStats,
+    state.selectedCycle,
+    state.loadedCycles,
+    state.loading,
+  ]);
+
+  const loadCycleLogs = async (cycleNum: number) => {
+    // If already loaded or currently loading, skip
+    if (state.loadedCycles[cycleNum] !== undefined || state.loadingCycles[cycleNum]) {
+      return;
+    }
+
+    dispatch({ type: 'START_LOAD_CYCLE', payload: cycleNum });
+
+    try {
+      // 1. Try local IndexedDB
+      let cycleLogs = await loadLocalCycleLogs(cycleNum);
+
+      // 2. If GDrive is linked and we don't have it locally, fetch from GDrive
+      const fileId = state.cycleFileIds?.[cycleNum];
+      if (cycleLogs.length === 0 && state.gdriveLinked && fileId) {
+        const { downloadCycleLogs } = await import('../services/gdrive');
+        cycleLogs = await downloadCycleLogs(fileId);
+        // Save locally for future runs
+        const {
+          selectedCycle,
+          selectedWeek,
+          selectedDay,
+          loading,
+          logs,
+          loadedCycles,
+          loadingCycles,
+          ...metadataToPersist
+        } = state;
+        await saveLocalState(metadataToPersist, cycleNum, cycleLogs);
+      }
+
+      dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: cycleLogs } });
+    } catch (error) {
+      console.error(`Failed to load logs for cycle ${cycleNum}:`, error);
+      dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: [] } });
+    }
+  };
 
   const completeWorkout = (
     exercises: { [exerciseId: string]: SetLog[] },
@@ -314,19 +504,24 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const syncGoogleDriveData = (
-    logs: WorkoutLog[],
-    currentCycle: number,
-    currentWeek: number,
-    currentDay: number
+    metadata: UserMetadata,
+    activeCycleLogs: WorkoutLog[]
   ) => {
     dispatch({
       type: 'SYNC_GDRIVE_DATA',
-      payload: { logs, currentCycle, currentWeek, currentDay },
+      payload: { metadata, activeCycleLogs },
     });
   };
 
   const resetDatabase = () => {
-    dispatch({ type: 'RESET_DATABASE' });
+    clearLocalState()
+      .then(() => {
+        dispatch({ type: 'RESET_DATABASE' });
+      })
+      .catch((err) => {
+        console.error('Failed to clear database:', err);
+        dispatch({ type: 'RESET_DATABASE' });
+      });
   };
 
   return (
@@ -340,6 +535,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         linkGoogleDrive,
         syncGoogleDriveData,
         resetDatabase,
+        loadCycleLogs,
       }}
     >
       {children}

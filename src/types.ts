@@ -42,6 +42,24 @@ export interface WorkoutLog {
   comments: string;
 }
 
+export interface CycleStats {
+  completedCount: number;
+  skippedCount: number;
+  totalDays: number;
+}
+
+export interface UserMetadata {
+  version: number;
+  currentCycle: number;
+  currentWeek: number; // 1-13
+  currentDay: number; // 1-7
+  gdriveLinked: boolean;
+  metadataFileId?: string;
+  cycleFileIds?: { [cycle: number]: string };
+  cycleTimestamps?: { [cycle: number]: string };
+  cycleStats?: { [cycle: number]: CycleStats };
+}
+
 export interface UserState {
   version: number;
   currentCycle: number;
@@ -50,3 +68,4 @@ export interface UserState {
   logs: WorkoutLog[];
   gdriveLinked: boolean;
 }
+
