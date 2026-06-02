@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import { clearLocalState, db } from '../src/services/storage';
-import { generateWizardSteps } from '../src/components/WorkoutSession';
+import { generateWizardSteps } from '../src/utils/wizard';
 
 // Test consumer component to interact with the context
 const TestConsumer: React.FC = () => {
