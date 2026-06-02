@@ -32,11 +32,16 @@ export const WorkoutSession: React.FC = () => {
 
   const workoutDef = workouts.find((w) => w.id === (dayInfo ? dayInfo.workoutId : 'rest'));
 
+  const isActiveDay =
+    state.currentCycle === state.selectedCycle &&
+    state.currentWeek === state.selectedWeek &&
+    state.currentDay === state.selectedDay;
+
   // Local state for inputs
   const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
   const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(true);
   const [comments, setComments] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>('sheet');
+  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>(isActiveDay ? 'wizard' : 'sheet');
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
   const [tempComments, setTempComments] = useState<string>('');
@@ -75,6 +80,7 @@ export const WorkoutSession: React.FC = () => {
       setComments('');
     }
     setCurrentStepIndex(0);
+    setViewMode(isActiveDay ? 'wizard' : 'sheet');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- We only want to reload form data when the active week, day, or workout layout definitions change, not on log updates which would overwrite unsaved user inputs
   }, [state.selectedWeek, state.selectedDay, workoutDef]);
 

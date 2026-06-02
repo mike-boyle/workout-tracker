@@ -1,7 +1,10 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { RestTimer } from '../src/components/RestTimer';
+import { WorkoutSession } from '../src/components/WorkoutSession';
+import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
+import { db, clearLocalState } from '../src/services/storage';
 
 describe('RestTimer Component', () => {
   it('should render initial rest timer as 0:00', () => {
@@ -48,5 +51,64 @@ describe('RestTimer Component', () => {
     });
 
     expect(screen.getByText('0:00')).toBeInTheDocument();
+  });
+});
+
+
+describe('WorkoutSession Component View Mode Defaults', () => {
+  let store: Record<string, unknown> = {};
+
+  beforeEach(async () => {
+    store = {};
+    localStorage.clear();
+    vi.restoreAllMocks();
+
+    vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
+    vi.spyOn(db, 'set').mockImplementation(async (key: string, val: unknown) => {
+      store[key] = val;
+    });
+    vi.spyOn(db, 'delete').mockImplementation(async (key: string) => {
+      delete store[key];
+    });
+    vi.spyOn(db, 'clear').mockImplementation(async () => {
+      store = {};
+    });
+
+    await clearLocalState();
+  });
+
+  // Helper component to navigate to other days in tests
+  const NavigationTrigger: React.FC = () => {
+    const { setSelectedDay } = useWorkout();
+    return (
+      <button data-testid="nav-btn" onClick={() => setSelectedDay(1, 5)}>
+        Go to Week 1 Day 5
+      </button>
+    );
+  };
+
+  it('should default to wizard view for the active day, and sheet view for inactive/future days', async () => {
+    render(
+      <WorkoutProvider>
+        <WorkoutSession />
+        <NavigationTrigger />
+      </WorkoutProvider>
+    );
+
+    // Week 1 Day 1 (Chest & Back) is the default active day.
+    // It should default to wizard mode, displaying the "Switch to Full Sheet View" button.
+    expect(await screen.findByText('Chest & Back')).toBeInTheDocument();
+    expect(screen.getByText('Switch to Full Sheet View')).toBeInTheDocument();
+
+    // Now click the navigation button to go to Week 1 Day 5 (Legs & Back), which is inactive/future.
+    const navBtn = screen.getByTestId('nav-btn');
+    await act(async () => {
+      navBtn.click();
+    });
+
+    // We should now be on Legs & Back, which is an inactive day, so it defaults to sheet mode
+    // (displaying the "Switch to Wizard View" button).
+    expect(await screen.findByText('Legs & Back')).toBeInTheDocument();
+    expect(screen.getByText('Switch to Wizard View')).toBeInTheDocument();
   });
 });
