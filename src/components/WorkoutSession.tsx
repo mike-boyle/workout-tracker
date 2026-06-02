@@ -5,7 +5,23 @@ import { RestTimer } from './RestTimer';
 import type { SetLog } from '../types';
 
 export const WorkoutSession: React.FC = () => {
-  const { state, completeWorkout, skipDay } = useWorkout();
+  const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
+
+  const isFutureDay =
+    state.selectedCycle > state.currentCycle ||
+    (state.selectedCycle === state.currentCycle &&
+      (state.selectedWeek - 1) * 7 + state.selectedDay > (state.currentWeek - 1) * 7 + state.currentDay);
+
+  const handleSkipToThisDay = () => {
+    if (
+      confirm(
+        `Are you sure you want to skip all workouts up to Week ${state.selectedWeek} Day ${state.selectedDay}?`
+      )
+    ) {
+      fastForwardToDay(state.selectedWeek, state.selectedDay);
+      window.location.hash = '#/dashboard';
+    }
+  };
 
   // Find scheduled workout for selected day
   const dayInfo = p90xClassicSchedule.find(
@@ -198,6 +214,11 @@ export const WorkoutSession: React.FC = () => {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
+            {isFutureDay && (
+              <button className="btn btn-warning" onClick={handleSkipToThisDay}>
+                Skip to this Day
+              </button>
+            )}
             <button className="btn btn-danger" onClick={handleSkip}>
               Skip Day
             </button>
