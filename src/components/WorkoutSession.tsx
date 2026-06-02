@@ -34,6 +34,8 @@ export const WorkoutSession: React.FC = () => {
   const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
   const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(true);
   const [comments, setComments] = useState<string>('');
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
+  const [tempComments, setTempComments] = useState<string>('');
 
   // Load existing log if the user is editing a day they already completed
   useEffect(() => {
@@ -166,54 +168,70 @@ export const WorkoutSession: React.FC = () => {
   const isResistance = workoutDef.type === 'resistance';
 
   return (
-    <div
+        <div
       className="animate-fade-in"
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
-      {/* Header Info */}
+      {/* Sticky Header Container */}
       <div
         style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '16px 0',
+          background: 'var(--color-bg-base)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
+          flexDirection: 'column',
+          gap: '12px',
         }}
       >
-        <div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              window.location.hash = '#/dashboard';
-            }}
-            style={{ padding: '6px 12px', fontSize: '0.85rem', marginBottom: '8px' }}
-          >
-            ← Back
-          </button>
-          <h2>{workoutDef.name}</h2>
-          <p style={{ color: 'var(--color-text-secondary)' }}>
-            Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
-            ROUTINE
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {isFutureDay && (
-            <button className="btn btn-warning" onClick={handleSkipToThisDay}>
-              Skip to this Day
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                window.location.hash = '#/dashboard';
+              }}
+              style={{ padding: '6px 12px', fontSize: '0.85rem', marginBottom: '8px' }}
+            >
+              ← Back
             </button>
-          )}
-          <button className="btn btn-danger" onClick={handleSkip}>
-            Skip Day
-          </button>
+            <h2>{workoutDef.name}</h2>
+            <p style={{ color: 'var(--color-text-secondary)' }}>
+              Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
+              ROUTINE
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isFutureDay && (
+              <button className="btn btn-warning" onClick={handleSkipToThisDay}>
+                Skip to this Day
+              </button>
+            )}
+            <button className="btn btn-danger" onClick={handleSkip}>
+              Skip Day
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Embedded Rest Timer for lifting */}
-      {isResistance && (
-        <div style={{ position: 'sticky', top: '16px', zIndex: 10 }}>
-          <RestTimer />
-        </div>
-      )}
+        {/* Embedded Rest Timer for lifting inside the sticky header */}
+        {isResistance && (
+          <div>
+            <RestTimer />
+          </div>
+        )}
+      </div>
 
       {/* Non-resistance Workout Details */}
       {!isResistance && (
@@ -419,7 +437,7 @@ export const WorkoutSession: React.FC = () => {
         </div>
       )}
 
-      {/* General Comments and Ab Ripper */}
+            {/* General Comments and Ab Ripper */}
       <div
         className="glass-panel"
         style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
@@ -439,19 +457,61 @@ export const WorkoutSession: React.FC = () => {
           </div>
         )}
 
-        <div className="input-group">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
           <label className="input-label">Workout Comments / Notes</label>
-          <textarea
-            className="input-field"
-            rows={3}
-            placeholder="e.g. standard pushups felt easier today, increased curl weight..."
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            style={{ resize: 'vertical' }}
-          />
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setTempComments(comments);
+                setIsCommentModalOpen(true);
+              }}
+              style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+            >
+              Add/Edit Comments
+            </button>
+            {comments && (
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-green)', fontWeight: '500' }}>
+                ✓ Comment added
+              </span>
+            )}
+          </div>
+          {comments && (
+            <div
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--color-text-secondary)',
+                background: 'hsla(var(--hue-base), 25%, 8%, 0.2)',
+                border: '1px dashed var(--color-border)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                width: '100%',
+                maxWidth: '500px',
+                whiteSpace: 'pre-wrap',
+                marginTop: '4px',
+              }}
+            >
+              <strong>Preview:</strong> {comments}
+            </div>
+          )}
         </div>
+      </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+      {/* Sticky Footer Container */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 100,
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          borderTop: '1px solid var(--color-border)',
+          padding: '16px 0',
+          background: 'var(--color-bg-base)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
             Save Workout Data
           </button>
@@ -466,6 +526,88 @@ export const WorkoutSession: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Comments Modal Overlay */}
+      {isCommentModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '16px',
+            animation: 'fadeIn 0.2s ease-out forwards',
+          }}
+          onClick={() => setIsCommentModalOpen(false)}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              background: 'var(--color-bg-modal)',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              boxShadow: 'var(--shadow-lg)',
+              animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Workout Comments / Notes
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                Add details about how the workout felt, changes in weight/reps, or general notes.
+              </p>
+            </div>
+
+            <div className="input-group">
+              <textarea
+                className="input-field"
+                rows={5}
+                placeholder="e.g. standard pushups felt easier today, increased curl weight..."
+                value={tempComments}
+                onChange={(e) => setTempComments(e.target.value)}
+                style={{ resize: 'vertical' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setIsCommentModalOpen(false);
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setComments(tempComments);
+                  setIsCommentModalOpen(false);
+                }}
+              >
+                Save Comment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
