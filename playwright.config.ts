@@ -1,4 +1,29 @@
 import { defineConfig, devices } from '@playwright/test';
+import { execFileSync } from 'child_process';
+
+function getFreePort(): number {
+  try {
+    const stdout = execFileSync(
+      'node',
+      [
+        '-e',
+        'const net = require("net"); const server = net.createServer(); server.listen(0, () => { console.log(server.address().port); process.exit(0); });',
+      ],
+      { encoding: 'utf-8' }
+    );
+    const port = parseInt(stdout.trim(), 10);
+    if (!isNaN(port) && port > 0) {
+      return port;
+    }
+  } catch (err) {
+    // Ignore error and fall back
+  }
+  return 5173;
+}
+
+const port = process.env.PORT || String(getFreePort());
+process.env.PORT = port;
+const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -8,7 +33,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
     headless: true,
   },
@@ -20,7 +45,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 10000,
   },
