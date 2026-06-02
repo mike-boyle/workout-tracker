@@ -4,6 +4,76 @@ import { p90xClassicSchedule, workouts, exercises as allExercises } from '../dat
 import { RestTimer } from './RestTimer';
 import type { SetLog } from '../types';
 
+export interface WizardStep {
+  exerciseId: string;
+  setIndex: number;
+}
+
+export function generateWizardSteps(workoutId: string, exercises: string[]): WizardStep[] {
+  const steps: WizardStep[] = [];
+
+  if (workoutId === 'chest_and_back') {
+    // Set 1: Step through all 12 exercises in the default order.
+    for (let i = 0; i < exercises.length; i++) {
+      steps.push({ exerciseId: exercises[i], setIndex: 0 });
+    }
+
+    // Set 2: Repeat the 12 exercises, but swap exercises in each group of 4 (first/second swapped, third/fourth swapped)
+    for (let g = 0; g < 3; g++) {
+      const baseIdx = g * 4;
+      const idx0 = baseIdx + 0;
+      const idx1 = baseIdx + 1;
+      const idx2 = baseIdx + 2;
+      const idx3 = baseIdx + 3;
+
+      if (idx1 < exercises.length) {
+        steps.push({ exerciseId: exercises[idx1], setIndex: 1 });
+      }
+      if (idx0 < exercises.length) {
+        steps.push({ exerciseId: exercises[idx0], setIndex: 1 });
+      }
+      if (idx3 < exercises.length) {
+        steps.push({ exerciseId: exercises[idx3], setIndex: 1 });
+      }
+      if (idx2 < exercises.length) {
+        steps.push({ exerciseId: exercises[idx2], setIndex: 1 });
+      }
+    }
+  } else if (workoutId === 'shoulders_and_arms') {
+    // Group by rounds of 3. There are 15 exercises (5 rounds total).
+    // For round r (0 to 4):
+    // First, do Set 1 for the 3 exercises in that round: 3*r, 3*r+1, 3*r+2.
+    // Then, do Set 2 for the same 3 exercises: 3*r, 3*r+1, 3*r+2.
+    for (let r = 0; r < 5; r++) {
+      const baseIdx = r * 3;
+
+      // Set 1 for the 3 exercises
+      for (let offset = 0; offset < 3; offset++) {
+        const idx = baseIdx + offset;
+        if (idx < exercises.length) {
+          steps.push({ exerciseId: exercises[idx], setIndex: 0 });
+        }
+      }
+
+      // Set 2 for the same 3 exercises
+      for (let offset = 0; offset < 3; offset++) {
+        const idx = baseIdx + offset;
+        if (idx < exercises.length) {
+          steps.push({ exerciseId: exercises[idx], setIndex: 1 });
+        }
+      }
+    }
+  } else {
+    // Other resistance workouts:
+    // Just step through Set 1 in order (all setCount is 1)
+    for (let i = 0; i < exercises.length; i++) {
+      steps.push({ exerciseId: exercises[i], setIndex: 0 });
+    }
+  }
+
+  return steps;
+}
+
 export const WorkoutSession: React.FC = () => {
   const { state, completeWorkout, skipDay } = useWorkout();
 
@@ -18,6 +88,8 @@ export const WorkoutSession: React.FC = () => {
   const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
   const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(true);
   const [comments, setComments] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>('sheet');
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
 
   // Load existing log if the user is editing a day they already completed
   useEffect(() => {
@@ -51,6 +123,7 @@ export const WorkoutSession: React.FC = () => {
       setAbRipperCompleted(workoutDef ? workoutDef.abRipper : false);
       setComments('');
     }
+    setCurrentStepIndex(0);
   }, [state.selectedWeek, state.selectedDay, workoutDef]);
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
@@ -180,7 +253,15 @@ export const WorkoutSession: React.FC = () => {
             ROUTINE
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isResistance && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setViewMode((prev) => (prev === 'sheet' ? 'wizard' : 'sheet'))}
+            >
+              {viewMode === 'sheet' ? 'Switch to Wizard View' : 'Switch to Full Sheet View'}
+            </button>
+          )}
           <button className="btn btn-danger" onClick={handleSkip}>
             Skip Day
           </button>
@@ -242,160 +323,378 @@ export const WorkoutSession: React.FC = () => {
 
       {/* Resistance Exercise Cards */}
       {isResistance && formData && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {workoutDef.exercises.map((exId, idx) => {
-            const exInfo = allExercises.find((e) => e.id === exId);
+        viewMode === 'sheet' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {workoutDef.exercises.map((exId, idx) => {
+              const exInfo = allExercises.find((e) => e.id === exId);
+              if (!exInfo) return null;
+
+              const sets = formData[exId] || [];
+
+              return (
+                <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
+                        {idx + 1}. {exInfo.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-muted)',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {exInfo.type}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      gap: '16px',
+                    }}
+                  >
+                    {sets.map((set, setIdx) => {
+                      const prevLog = getPreviousLog(exId, setIdx);
+
+                      return (
+                        <div
+                          key={setIdx}
+                          style={{
+                            background: 'hsla(var(--hue-base), 25%, 8%, 0.3)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '10px',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                color: 'var(--color-text-secondary)',
+                              }}
+                            >
+                              {exInfo.setCount > 1 ? `Set ${setIdx + 1}` : 'Single Set'}
+                            </span>
+
+                            {/* Previous value compare badge */}
+                            {prevLog && (
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--color-cyan)',
+                                  fontWeight: '500',
+                                }}
+                              >
+                                Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
+                                {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            {exInfo.type === 'weighted' && (
+                              <div className="input-group">
+                                <label className="input-label">Weight (lbs)</label>
+                                <input
+                                  type="number"
+                                  className="input-field"
+                                  value={set.weight || ''}
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    handleInputChange(exId, setIdx, 'weight', e.target.value)
+                                  }
+                                />
+                              </div>
+                            )}
+
+                            <div className="input-group">
+                              <label className="input-label">Reps</label>
+                              <input
+                                type="number"
+                                className="input-field"
+                                value={set.reps || ''}
+                                placeholder="0"
+                                onChange={(e) =>
+                                  handleInputChange(exId, setIdx, 'reps', e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                alignSelf: 'flex-end',
+                                paddingBottom: '6px',
+                              }}
+                            >
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={set.assisted}
+                                  onChange={(e) =>
+                                    handleInputChange(exId, setIdx, 'assisted', e.target.checked)
+                                  }
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Wizard View Card */
+          (() => {
+            const steps = generateWizardSteps(workoutDef.id, workoutDef.exercises);
+            const totalSteps = steps.length;
+            if (totalSteps === 0) return null;
+
+            // Make sure currentStepIndex is within bounds
+            const stepIndex = Math.min(currentStepIndex, totalSteps - 1);
+            const currentStep = steps[stepIndex];
+            if (!currentStep) return null;
+
+            const exInfo = allExercises.find((e) => e.id === currentStep.exerciseId);
             if (!exInfo) return null;
 
-            const sets = formData[exId] || [];
+            const set = formData[currentStep.exerciseId]?.[currentStep.setIndex] || {
+              reps: 0,
+              weight: 0,
+              assisted: false,
+            };
+            const prevLog = getPreviousLog(currentStep.exerciseId, currentStep.setIndex);
+            const progressPercent = ((stepIndex + 1) / totalSteps) * 100;
 
             return (
-              <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
+              <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
+                {/* Progress Indicator */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '16px',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                    flexWrap: 'wrap',
+                    gap: '8px',
                   }}
                 >
-                  <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
-                      {idx + 1}. {exInfo.name}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--color-text-muted)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {exInfo.type}
+                  <span
+                    style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--color-text-secondary)',
+                      fontWeight: '600',
+                    }}
+                  >
+                    Step {stepIndex + 1} of {totalSteps}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span className="badge badge-purple">
+                      {exInfo.setCount > 1 ? `Set ${currentStep.setIndex + 1}` : 'Single Set'}
                     </span>
+                    {prevLog && (
+                      <span className="badge badge-cyan">
+                        Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
+                        {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '16px',
+                    background: 'var(--color-border)',
+                    borderRadius: '4px',
+                    height: '8px',
+                    overflow: 'hidden',
+                    width: '100%',
+                    marginBottom: '24px',
                   }}
                 >
-                  {sets.map((set, setIdx) => {
-                    const prevLog = getPreviousLog(exId, setIdx);
+                  <div
+                    style={{
+                      background: 'var(--gradient-primary)',
+                      width: `${progressPercent}%`,
+                      height: '100%',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
 
-                    return (
-                      <div
-                        key={setIdx}
-                        style={{
-                          background: 'hsla(var(--hue-base), 25%, 8%, 0.3)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '8px',
-                          padding: '12px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '10px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              color: 'var(--color-text-secondary)',
-                            }}
-                          >
-                            {exInfo.setCount > 1 ? `Set ${setIdx + 1}` : 'Single Set'}
-                          </span>
+                {/* Exercise Info */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    {exInfo.name}
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--color-text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {exInfo.type}
+                  </span>
+                </div>
 
-                          {/* Previous value compare badge */}
-                          {prevLog && (
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                color: 'var(--color-cyan)',
-                                fontWeight: '500',
-                              }}
-                            >
-                              Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
-                              {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
-                            </span>
-                          )}
-                        </div>
+                {/* Input Fields */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: '24px',
+                  }}
+                >
+                  {exInfo.type === 'weighted' && (
+                    <div className="input-group" style={{ flex: '1 1 200px' }}>
+                      <label className="input-label">Weight (lbs)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={set.weight || ''}
+                        placeholder="0"
+                        onChange={(e) =>
+                          handleInputChange(
+                            currentStep.exerciseId,
+                            currentStep.setIndex,
+                            'weight',
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          {exInfo.type === 'weighted' && (
-                            <div className="input-group">
-                              <label className="input-label">Weight (lbs)</label>
-                              <input
-                                type="number"
-                                className="input-field"
-                                value={set.weight || ''}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'weight', e.target.value)
-                                }
-                              />
-                            </div>
-                          )}
+                  <div className="input-group" style={{ flex: '1 1 200px' }}>
+                    <label className="input-label">Reps</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={set.reps || ''}
+                      placeholder="0"
+                      onChange={(e) =>
+                        handleInputChange(
+                          currentStep.exerciseId,
+                          currentStep.setIndex,
+                          'reps',
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
 
-                          <div className="input-group">
-                            <label className="input-label">Reps</label>
-                            <input
-                              type="number"
-                              className="input-field"
-                              value={set.reps || ''}
-                              placeholder="0"
-                              onChange={(e) =>
-                                handleInputChange(exId, setIdx, 'reps', e.target.value)
-                              }
-                            />
-                          </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      alignSelf: 'flex-end',
+                      paddingBottom: '6px',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={set.assisted}
+                        onChange={(e) =>
+                          handleInputChange(
+                            currentStep.exerciseId,
+                            currentStep.setIndex,
+                            'assisted',
+                            e.target.checked
+                          )
+                        }
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+                    </label>
+                  </div>
+                </div>
 
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '4px',
-                              alignSelf: 'flex-end',
-                              paddingBottom: '6px',
-                            }}
-                          >
-                            <label
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={set.assisted}
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'assisted', e.target.checked)
-                                }
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Navigation Controls */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginTop: '32px',
+                  }}
+                >
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
+                    disabled={stepIndex === 0}
+                    style={{ flex: 1 }}
+                  >
+                    ← Previous
+                  </button>
+                  {stepIndex < totalSteps - 1 ? (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() =>
+                        setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))
+                      }
+                      style={{ flex: 1 }}
+                    >
+                      Next →
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
+                      Finish ✓
+                    </button>
+                  )}
                 </div>
               </div>
             );
-          })}
-        </div>
+          })()
+        )
       )}
 
       {/* General Comments and Ab Ripper */}
