@@ -307,6 +307,7 @@ export const WorkoutSession: React.FC = () => {
               if (!exInfo) return null;
 
               const sets = formData[exId] || [];
+              const isWeighted = exInfo.type === 'weighted';
 
               return (
                 <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
@@ -315,7 +316,7 @@ export const WorkoutSession: React.FC = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
-                      marginBottom: '16px',
+                      marginBottom: '12px',
                     }}
                   >
                     <div>
@@ -334,118 +335,102 @@ export const WorkoutSession: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Header Row */}
                   <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                      gap: '16px',
-                    }}
+                    className={`compact-set-row ${isWeighted ? 'weighted' : 'bodyweight'}`}
+                    style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '4px', marginBottom: '4px' }}
                   >
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Set</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Previous</span>
+                    {isWeighted && (
+                      <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Weight</span>
+                    )}
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Reps</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Style</span>
+                  </div>
+
+                  {/* Set Rows */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {sets.map((set, setIdx) => {
                       const prevLog = getPreviousLog(exId, setIdx);
 
                       return (
                         <div
                           key={setIdx}
-                          style={{
-                            background: 'hsla(var(--hue-base), 25%, 8%, 0.3)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '8px',
-                            padding: '12px',
-                          }}
+                          className={`compact-set-row ${isWeighted ? 'weighted' : 'bodyweight'}`}
                         >
-                          <div
+                          <span
                             style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: '10px',
+                              fontSize: '0.9rem',
+                              fontWeight: '500',
+                              color: 'var(--color-text-secondary)',
                             }}
                           >
-                            <span
-                              style={{
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                color: 'var(--color-text-secondary)',
-                              }}
-                            >
-                              {exInfo.setCount > 1 ? `Set ${setIdx + 1}` : 'Single Set'}
-                            </span>
+                            {setIdx + 1}
+                          </span>
 
-                            {/* Previous value compare badge */}
-                            {prevLog && (
-                              <span
-                                style={{
-                                  fontSize: '0.75rem',
-                                  color: 'var(--color-cyan)',
-                                  fontWeight: '500',
-                                }}
-                              >
-                                Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
-                                {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
-                              </span>
+                          <span
+                            style={{
+                              fontSize: '0.85rem',
+                              color: 'var(--color-text-muted)',
+                            }}
+                          >
+                            {prevLog ? (
+                              <>
+                                {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
+                                {prevLog.reps} reps
+                                {prevLog.assisted ? (isWeighted ? ' (Wtd)' : ' (Asst)') : ''}
+                              </>
+                            ) : (
+                              '--'
                             )}
-                          </div>
+                          </span>
 
-                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            {exInfo.type === 'weighted' && (
-                              <div className="input-group">
-                                <label className="input-label">Weight (lbs)</label>
-                                <input
-                                  type="number"
-                                  className="input-field"
-                                  value={set.weight || ''}
-                                  placeholder="0"
-                                  onChange={(e) =>
-                                    handleInputChange(exId, setIdx, 'weight', e.target.value)
-                                  }
-                                />
-                              </div>
-                            )}
+                          {isWeighted && (
+                            <input
+                              type="number"
+                              className="input-field-compact"
+                              value={set.weight || ''}
+                              placeholder="0"
+                              onChange={(e) =>
+                                handleInputChange(exId, setIdx, 'weight', e.target.value)
+                              }
+                            />
+                          )}
 
-                            <div className="input-group">
-                              <label className="input-label">Reps</label>
-                              <input
-                                type="number"
-                                className="input-field"
-                                value={set.reps || ''}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'reps', e.target.value)
-                                }
-                              />
-                            </div>
+                          <input
+                            type="number"
+                            className="input-field-compact"
+                            value={set.reps || ''}
+                            placeholder="0"
+                            onChange={(e) =>
+                              handleInputChange(exId, setIdx, 'reps', e.target.value)
+                            }
+                          />
 
-                            <div
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <label
                               style={{
                                 display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px',
-                                alignSelf: 'flex-end',
-                                paddingBottom: '6px',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                userSelect: 'none',
                               }}
                             >
-                              <label
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '0.8rem',
-                                  cursor: 'pointer',
-                                  userSelect: 'none',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={set.assisted}
-                                  onChange={(e) =>
-                                    handleInputChange(exId, setIdx, 'assisted', e.target.checked)
-                                  }
-                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                />
-                                {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
-                              </label>
-                            </div>
+                              <input
+                                type="checkbox"
+                                checked={set.assisted}
+                                onChange={(e) =>
+                                  handleInputChange(exId, setIdx, 'assisted', e.target.checked)
+                                }
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                {isWeighted ? 'Weighted' : 'Assisted'}
+                              </span>
+                            </label>
                           </div>
                         </div>
                       );
@@ -674,7 +659,7 @@ export const WorkoutSession: React.FC = () => {
         )
       )}
 
-            {/* General Comments and Ab Ripper */}
+      {/* General Comments and Ab Ripper */}
       <div
         className="glass-panel"
         style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
