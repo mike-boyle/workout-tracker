@@ -349,3 +349,69 @@ main {
     align-items: flex-start;
   }
 }
+
+/* --- Compact Sheet Layout --- */
+.input-field-compact {
+  background: hsla(var(--hue-base), 25%, 8%, 0.5);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  transition: all var(--transition-normal);
+  width: 100%;
+}
+
+.input-field-compact:focus {
+  outline: none;
+  border-color: var(--color-cyan);
+  box-shadow:
+    0 0 0 1px var(--color-cyan-glow),
+    var(--shadow-sm);
+}
+
+.input-field-compact::placeholder {
+  color: var(--color-text-muted);
+}
+
+.compact-set-row {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compact-set-row.weighted {
+  grid-template-columns: 60px 1fr 100px 100px 110px;
+}
+
+.compact-set-row.bodyweight {
+  grid-template-columns: 60px 1fr 100px 110px;
+}
+
+.compact-set-row:last-child {
+  border-bottom: none;
+}
+
+/* Responsive columns for mobile viewports */
+@media (max-width: 640px) {
+  .compact-set-row {
+    gap: 8px;
+    padding: 4px 0;
+  }
+  
+  .compact-set-row.weighted {
+    grid-template-columns: 45px 1fr 70px 70px 80px;
+  }
+  
+  .compact-set-row.bodyweight {
+    grid-template-columns: 45px 1fr 70px 80px;
+  }
+  
+  .input-field-compact {
+    padding: 4px 6px;
+    font-size: 0.85rem;
+  }
+}
