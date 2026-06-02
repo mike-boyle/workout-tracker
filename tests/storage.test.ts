@@ -11,16 +11,16 @@ import {
 import type { UserMetadata, WorkoutLog } from '../src/types';
 
 describe('Storage Service (IndexedDB & segmented)', () => {
-  let store: { [key: string]: any } = {};
-
+  let store: Record<string, unknown> = {};
+ 
   beforeEach(() => {
     store = {};
     localStorage.clear();
     vi.restoreAllMocks();
-
+ 
     // Mock the db calls using our in-memory store
     vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
-    vi.spyOn(db, 'set').mockImplementation(async (key: string, val: any) => {
+    vi.spyOn(db, 'set').mockImplementation(async (key: string, val: unknown) => {
       store[key] = val;
     });
     vi.spyOn(db, 'delete').mockImplementation(async (key: string) => {

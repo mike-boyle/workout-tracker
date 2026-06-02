@@ -136,7 +136,7 @@ export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
     const logs = Array.isArray(state.logs) ? state.logs : [];
     const logsByCycle: { [cycle: number]: WorkoutLog[] } = {};
 
-    logs.forEach((log: any) => {
+    logs.forEach((log: WorkoutLog) => {
       const cycle = typeof log.cycle === 'number' ? log.cycle : 1;
       if (!logsByCycle[cycle]) {
         logsByCycle[cycle] = [];
@@ -326,10 +326,11 @@ export async function clearLocalState(): Promise<void> {
 /**
  * Validate imported backup (adapted for new UserMetadata structure)
  */
-export function validateBackup(data: any): data is UserMetadata {
+export function validateBackup(data: unknown): data is UserMetadata {
   if (!data || typeof data !== 'object') return false;
-  if (typeof data.currentCycle !== 'number') return false;
-  if (typeof data.currentWeek !== 'number') return false;
-  if (typeof data.currentDay !== 'number') return false;
+  const d = data as Record<string, unknown>;
+  if (typeof d.currentCycle !== 'number') return false;
+  if (typeof d.currentWeek !== 'number') return false;
+  if (typeof d.currentDay !== 'number') return false;
   return true;
 }

@@ -51,6 +51,7 @@ export const WorkoutSession: React.FC = () => {
     );
 
     if (existingLog && !existingLog.skipped) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronously loading database log values into local form state when entering a completed session day
       setFormData(existingLog.exercises);
       setAbRipperCompleted(existingLog.abRipperCompleted);
       setComments(existingLog.comments);
@@ -74,6 +75,7 @@ export const WorkoutSession: React.FC = () => {
       setComments('');
     }
     setCurrentStepIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- We only want to reload form data when the active week, day, or workout layout definitions change, not on log updates which would overwrite unsaved user inputs
   }, [state.selectedWeek, state.selectedDay, workoutDef]);
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
@@ -112,7 +114,7 @@ export const WorkoutSession: React.FC = () => {
     exerciseId: string,
     setIndex: number,
     field: keyof SetLog,
-    value: any
+    value: string | number | boolean
   ) => {
     setFormData((prev) => {
       const exerciseSets = prev[exerciseId] ? [...prev[exerciseId]] : [];

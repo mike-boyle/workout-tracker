@@ -114,16 +114,16 @@ const renderWithProvider = () => {
 };
 
 describe('Workout Context & Reducer', () => {
-  let store: { [key: string]: any } = {};
-
+  let store: Record<string, unknown> = {};
+ 
   beforeEach(async () => {
     store = {};
     localStorage.clear();
     vi.restoreAllMocks();
-
+ 
     // Mock IndexedDB database calls to run in-memory during tests
     vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
-    vi.spyOn(db, 'set').mockImplementation(async (key: string, val: any) => {
+    vi.spyOn(db, 'set').mockImplementation(async (key: string, val: unknown) => {
       store[key] = val;
     });
     vi.spyOn(db, 'delete').mockImplementation(async (key: string) => {

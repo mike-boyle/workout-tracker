@@ -15,7 +15,7 @@ function getFreePort(): number {
     if (!isNaN(port) && port > 0) {
       return port;
     }
-  } catch (err) {
+  } catch {
     // Ignore error and fall back
   }
   return 5173;

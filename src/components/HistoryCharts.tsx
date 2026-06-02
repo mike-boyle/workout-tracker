@@ -11,6 +11,8 @@ import {
   Tooltip,
   Legend,
   type ChartOptions,
+  type ChartDataset,
+  type TooltipItem,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -74,6 +76,7 @@ export const HistoryCharts: React.FC = () => {
   // Auto-select first exercise when workout changes
   React.useEffect(() => {
     if (exerciseOptions.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronously initializing default exercise selection to avoid displaying empty charts upon routine switch
       setSelectedExerciseId(exerciseOptions[0].id);
     } else {
       setSelectedExerciseId('');
@@ -119,7 +122,7 @@ export const HistoryCharts: React.FC = () => {
       return set ? (chartMetric === 'weight' ? set.weight : set.reps) : 0;
     });
 
-    const datasets: any[] = [
+    const datasets: ChartDataset<'line'>[] = [
       {
         label: selectedExercise.setCount > 1 ? `${metricLabel} (Set 1)` : metricLabel,
         data: dataset1,
@@ -175,7 +178,7 @@ export const HistoryCharts: React.FC = () => {
         titleFont: { family: 'Outfit, sans-serif', weight: 'bold' },
         bodyFont: { family: 'Outfit, sans-serif' },
         callbacks: {
-          afterBody: (context: any) => {
+          afterBody: (context: TooltipItem<'line'>[]) => {
             // Include user comments in tooltip
             const dataIndex = context[0].dataIndex;
             const log = chartDataPoints[dataIndex];

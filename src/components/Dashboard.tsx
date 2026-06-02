@@ -34,6 +34,7 @@ export const Dashboard: React.FC = () => {
   const progressPercent = Math.round((selectedCycleLogs.length / totalDays) * 100);
 
   const handleDayClick = (dayInfo: ScheduleDay) => {
+    // eslint-disable-next-line react-hooks/immutability -- Mutating window.location.hash directly is our lightweight SPA client-side routing mechanism, which is outside React's lifecycle and cannot be done through standard state hooks.
     window.location.hash = '#/session/cycle/' + state.selectedCycle + '/week/' + dayInfo.weekNumber + '/day/' + dayInfo.dayOfWeek;
   };
 
@@ -331,7 +332,7 @@ export const Dashboard: React.FC = () => {
                               (dayInfo.weekNumber === state.currentWeek &&
                                 dayInfo.dayOfWeek > state.currentDay))));
 
-                      let cardStyle: React.CSSProperties = {
+                      const cardStyle: React.CSSProperties = {
                         padding: '12px',
                         borderRadius: '8px',
                         cursor: 'pointer',

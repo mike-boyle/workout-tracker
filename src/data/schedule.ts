@@ -493,9 +493,7 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
             workoutId = 'plyometrics';
             break;
           case 3:
-            isPhase1StyleWeek
-              ? (workoutId = 'shoulders_and_arms')
-              : (workoutId = 'back_and_biceps');
+            workoutId = isPhase1StyleWeek ? 'shoulders_and_arms' : 'back_and_biceps';
             break;
           case 4:
             workoutId = 'yoga_x';

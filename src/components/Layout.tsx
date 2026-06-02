@@ -55,7 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     setSyncStatus('linking');
 
     try {
-      initTokenClient(GOOGLE_CLIENT_ID, async (_accessToken) => {
+      initTokenClient(GOOGLE_CLIENT_ID, async () => {
         setSyncStatus('syncing');
         try {
           const metadataFileId = await findMetadataFile();
@@ -97,25 +97,30 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             setSyncStatus('synced');
           }
           setShowSettings(false);
-        } catch (err: any) {
-          console.error('Google Drive Sync error:', err);
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error('Google Drive Sync error:', error);
           setSyncStatus('error');
-          setErrorMsg(err.message || 'Sync failed');
+          setErrorMsg(error.message);
         }
       });
       signInGdrive();
-    } catch (err: any) {
-      console.error('Gauth initialization error:', err);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error('Gauth initialization error:', error);
       setSyncStatus('error');
-      setErrorMsg(err.message || 'Initialization failed');
+      setErrorMsg(error.message);
     }
   };
 
+  const activeCycleLogs = state.loadedCycles[state.currentCycle];
+ 
   // Perform auto-sync on workout log or metadata modifications if connected
   useEffect(() => {
     if (state.loading) return;
 
     const syncWithDrive = async () => {
+      // eslint-disable-next-line react-hooks/immutability -- The state object returned by useWorkout() is mutated below to silently update Google Drive file/timestamp caches without dispatching context state updates, which would trigger infinite auto-sync effect loops. The rule flags the first access of state inside this hook.
       const metadataFileId = state.metadataFileId;
       if (!state.gdriveLinked || !metadataFileId) return;
 
@@ -128,7 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
       setSyncStatus('syncing');
       try {
         const activeCycleNum = state.currentCycle;
-        const activeLogs = state.loadedCycles[activeCycleNum] || [];
+        const activeLogs = activeCycleLogs || [];
         let activeCycleFileId = state.cycleFileIds?.[activeCycleNum];
 
         // 1. Sync active cycle logs
@@ -160,20 +165,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
         // 3. Sync metadata
         await updateMetadataFile(metadataFileId, updatedMetadata);
 
-        // Update context local variables
         state.cycleFileIds = updatedMetadata.cycleFileIds;
         state.cycleTimestamps = updatedMetadata.cycleTimestamps;
-
+ 
         setSyncStatus('synced');
-      } catch (err: any) {
-        console.error('Auto sync failed:', err);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error('Auto sync failed:', error);
         setSyncStatus('error');
-        setErrorMsg(err.message || 'Auto-sync failed');
+        setErrorMsg(error.message || 'Auto-sync failed');
       }
     };
 
     // Run syncing
     syncWithDrive();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Dependency array is granularly specified to target only value changes; including state reference triggers infinite loop.
   }, [
     state.currentCycle,
     state.currentWeek,
@@ -181,7 +187,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     state.gdriveLinked,
     state.metadataFileId,
     state.cycleStats,
-    state.loadedCycles[state.currentCycle],
+    activeCycleLogs,
     state.loading,
     state.activeProgramId,
     state.programs,

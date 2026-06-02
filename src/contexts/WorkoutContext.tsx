@@ -534,27 +534,31 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (state.loading) return;
 
-    const {
-      selectedCycle,
-      selectedWeek,
-      selectedDay,
-      loading,
-      logs,
-      loadedCycles,
-      loadingCycles,
-      ...metadataToPersist
-    } = state;
+    const metadataToPersist: UserMetadata = {
+      version: state.version,
+      currentCycle: state.currentCycle,
+      currentWeek: state.currentWeek,
+      currentDay: state.currentDay,
+      gdriveLinked: state.gdriveLinked,
+      metadataFileId: state.metadataFileId,
+      cycleFileIds: state.cycleFileIds,
+      cycleTimestamps: state.cycleTimestamps,
+      cycleStats: state.cycleStats,
+      activeProgramId: state.activeProgramId,
+      programs: state.programs,
+    };
 
     saveLocalMetadata(metadataToPersist).catch((err) =>
       console.error('Failed to save metadata:', err)
     );
 
-    const selectedCycleLogs = loadedCycles[state.selectedCycle];
+    const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
     if (selectedCycleLogs) {
       saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs, state.activeProgramId).catch((err) =>
         console.error('Failed to save cycle ' + state.selectedCycle + ' logs:', err)
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Separately tracking state fields to persist changes; full state object triggers infinite renders
   }, [
     state.currentCycle,
     state.currentWeek,
@@ -588,16 +592,19 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const { downloadCycleLogs } = await import('../services/gdrive');
         cycleLogs = await downloadCycleLogs(fileId);
         // Save locally for future runs
-        const {
-          selectedCycle,
-          selectedWeek,
-          selectedDay,
-          loading,
-          logs,
-          loadedCycles,
-          loadingCycles,
-          ...metadataToPersist
-        } = state;
+        const metadataToPersist: UserMetadata = {
+          version: state.version,
+          currentCycle: state.currentCycle,
+          currentWeek: state.currentWeek,
+          currentDay: state.currentDay,
+          gdriveLinked: state.gdriveLinked,
+          metadataFileId: state.metadataFileId,
+          cycleFileIds: state.cycleFileIds,
+          cycleTimestamps: state.cycleTimestamps,
+          cycleStats: state.cycleStats,
+          activeProgramId: state.activeProgramId,
+          programs: state.programs,
+        };
         await saveLocalState(metadataToPersist, cycleNum, cycleLogs, state.activeProgramId);
       }
 
@@ -747,6 +754,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- Exporting hook next to provider is standard React context pattern
 export const useWorkout = () => {
   const context = useContext(WorkoutContext);
   if (context === undefined) {

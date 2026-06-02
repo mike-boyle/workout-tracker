@@ -1,14 +1,51 @@
 import type { UserMetadata, WorkoutLog } from '../types';
+import { validateBackup } from './storage';
+ 
+interface GsiTokenClient {
+  requestAccessToken: (options?: { prompt?: string }) => void;
+}
 
-let tokenClient: any = null;
+interface OAuthResponse {
+  access_token: string;
+  expires_in: number;
+  error?: unknown;
+}
 
+interface GoogleDriveSearchResponse {
+  files?: Array<{
+    id: string;
+  }>;
+}
+
+interface GoogleDriveUploadResponse {
+  id: string;
+}
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (options: {
+            client_id: string;
+            scope: string;
+            callback: (response: OAuthResponse) => void;
+          }) => GsiTokenClient;
+        };
+      };
+    };
+  }
+}
+
+let tokenClient: GsiTokenClient | null = null;
+ 
 const getStoredToken = (): string | null => {
   if (typeof window === 'undefined' || !window.localStorage) return null;
   try {
     const token = localStorage.getItem('workout_tracker_gdrive_access_token');
     const expiresAtStr = localStorage.getItem('workout_tracker_gdrive_token_expires_at');
     if (!token || !expiresAtStr) return null;
-
+ 
     const expiresAt = parseInt(expiresAtStr, 10);
     if (Date.now() >= expiresAt) {
       localStorage.removeItem('workout_tracker_gdrive_access_token');
@@ -21,7 +58,7 @@ const getStoredToken = (): string | null => {
     return null;
   }
 };
-
+ 
 const saveToken = (token: string, expiresInSeconds: number) => {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -32,7 +69,7 @@ const saveToken = (token: string, expiresInSeconds: number) => {
     console.error('Failed to save to localStorage:', e);
   }
 };
-
+ 
 const clearStoredToken = () => {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -42,13 +79,13 @@ const clearStoredToken = () => {
     console.error('Failed to clear localStorage:', e);
   }
 };
-
+ 
 let accessToken: string | null = getStoredToken();
-
+ 
 // Dynamically load the Google Identity Services SDK script
 export const loadGsiScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if ((window as any).google?.accounts?.oauth2) {
+    if (window.google?.accounts?.oauth2) {
       resolve();
       return;
     }
@@ -57,7 +94,7 @@ export const loadGsiScript = (): Promise<void> => {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      if ((window as any).google?.accounts?.oauth2) {
+      if (window.google?.accounts?.oauth2) {
         resolve();
       } else {
         reject(new Error('Google Identity Services SDK failed to load.'));
@@ -67,19 +104,19 @@ export const loadGsiScript = (): Promise<void> => {
     document.head.appendChild(script);
   });
 };
-
+ 
 /**
  * Initializes the OAuth token client
  */
 export const initTokenClient = (clientId: string, onTokenReceived: (token: string) => void) => {
-  if (!(window as any).google?.accounts?.oauth2) {
+  if (!window.google?.accounts?.oauth2) {
     throw new Error('Google Identity Services SDK is not loaded.');
   }
-
-  tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+ 
+  tokenClient = window.google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: 'https://www.googleapis.com/auth/drive.appdata',
-    callback: (response: any) => {
+    callback: (response: OAuthResponse) => {
       if (response.error) {
         console.error('OAuth error:', response.error);
         return;
@@ -153,7 +190,7 @@ export const findMetadataFile = async (): Promise<string | null> => {
 
   await handleResponse(response, 'Drive search failed');
 
-  const result = await response.json();
+  const result = (await response.json()) as GoogleDriveSearchResponse;
   if (result.files && result.files.length > 0) {
     return result.files[0].id;
   }
@@ -174,7 +211,11 @@ export const downloadMetadata = async (fileId: string): Promise<UserMetadata> =>
 
   await handleResponse(response, 'Drive download failed');
 
-  return await response.json();
+  const data = await response.json();
+  if (!validateBackup(data)) {
+    throw new Error('Downloaded metadata is invalid or corrupted');
+  }
+  return data;
 };
 
 /**
@@ -205,7 +246,7 @@ export const createMetadataFile = async (data: UserMetadata): Promise<string> =>
 
   await handleResponse(response, 'Drive upload failed');
 
-  const result = await response.json();
+  const result = (await response.json()) as GoogleDriveUploadResponse;
   return result.id;
 };
 
@@ -231,6 +272,23 @@ export const updateMetadataFile = async (fileId: string, data: UserMetadata): Pr
 };
 
 /**
+ * Type predicate to check if data is an array of WorkoutLog items
+ */
+export function isWorkoutLogArray(data: unknown): data is WorkoutLog[] {
+  if (!Array.isArray(data)) return false;
+  if (data.length === 0) return true;
+  const first = data[0];
+  if (!first || typeof first !== 'object') return false;
+  const f = first as Record<string, unknown>;
+  return (
+    typeof f.id === 'string' &&
+    typeof f.cycle === 'number' &&
+    typeof f.week === 'number' &&
+    typeof f.day === 'number'
+  );
+}
+
+/**
  * Download cycle logs content from Google Drive
  */
 export const downloadCycleLogs = async (fileId: string): Promise<WorkoutLog[]> => {
@@ -245,7 +303,16 @@ export const downloadCycleLogs = async (fileId: string): Promise<WorkoutLog[]> =
   await handleResponse(response, 'Drive download failed');
 
   const data = await response.json();
-  return Array.isArray(data) ? data : (data.logs || []);
+  if (isWorkoutLogArray(data)) {
+    return data;
+  }
+  if (data && typeof data === 'object' && 'logs' in data) {
+    const logs = (data as { logs: unknown }).logs;
+    if (isWorkoutLogArray(logs)) {
+      return logs;
+    }
+  }
+  return [];
 };
 
 /**
@@ -276,7 +343,7 @@ export const createCycleFile = async (cycleNum: number, logs: WorkoutLog[]): Pro
 
   await handleResponse(response, 'Drive upload failed');
 
-  const result = await response.json();
+  const result = (await response.json()) as GoogleDriveUploadResponse;
   return result.id;
 };
 

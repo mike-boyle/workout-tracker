@@ -37,6 +37,7 @@ export const History: React.FC = () => {
   };
 
   const handleDayClick = (cycleNum: number, dayInfo: ScheduleDay) => {
+    // eslint-disable-next-line react-hooks/immutability -- Mutating window.location.hash directly is our lightweight SPA client-side routing mechanism, which is outside React's lifecycle and cannot be done through standard state hooks.
     window.location.hash = `#/session/cycle/${cycleNum}/week/${dayInfo.weekNumber}/day/${dayInfo.dayOfWeek}`;
   };
 

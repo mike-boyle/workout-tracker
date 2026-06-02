@@ -3,12 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 export const RestTimer: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
   const [isActive, setIsActive] = useState<boolean>(false);
-  const timerRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Play a simple synthesized beep using browser Web Audio API (no external file dependencies)
   const triggerBuzzer = () => {
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
 
