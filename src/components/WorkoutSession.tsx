@@ -75,7 +75,23 @@ export function generateWizardSteps(workoutId: string, exercises: string[]): Wiz
 }
 
 export const WorkoutSession: React.FC = () => {
-  const { state, completeWorkout, skipDay } = useWorkout();
+  const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
+
+  const isFutureDay =
+    state.selectedCycle > state.currentCycle ||
+    (state.selectedCycle === state.currentCycle &&
+      (state.selectedWeek - 1) * 7 + state.selectedDay > (state.currentWeek - 1) * 7 + state.currentDay);
+
+  const handleSkipToThisDay = () => {
+    if (
+      confirm(
+        `Are you sure you want to skip all workouts up to Week ${state.selectedWeek} Day ${state.selectedDay}?`
+      )
+    ) {
+      fastForwardToDay(state.selectedWeek, state.selectedDay);
+      window.location.hash = '#/dashboard';
+    }
+  };
 
   // Find scheduled workout for selected day
   const dayInfo = p90xClassicSchedule.find(
@@ -277,6 +293,11 @@ export const WorkoutSession: React.FC = () => {
                 onClick={() => setViewMode((prev) => (prev === 'sheet' ? 'wizard' : 'sheet'))}
               >
                 {viewMode === 'sheet' ? 'Switch to Wizard View' : 'Switch to Full Sheet View'}
+              </button>
+            )}
+            {isFutureDay && (
+              <button className="btn btn-warning" onClick={handleSkipToThisDay}>
+                Skip to this Day
               </button>
             )}
             <button className="btn btn-danger" onClick={handleSkip}>

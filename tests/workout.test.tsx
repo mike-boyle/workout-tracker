@@ -15,6 +15,7 @@ const TestConsumer: React.FC = () => {
     startNewCycle,
     resetDatabase,
     syncGoogleDriveData,
+    fastForwardToDay,
   } = useWorkout();
 
   if (state.loading) {
@@ -58,6 +59,13 @@ const TestConsumer: React.FC = () => {
 
       <button data-testid="btn-reset" onClick={resetDatabase}>
         Reset
+      </button>
+
+      <button
+        data-testid="btn-fast-forward"
+        onClick={() => fastForwardToDay(1, 4)}
+      >
+        Fast Forward
       </button>
 
       <button
@@ -269,6 +277,26 @@ describe('Workout Context & Reducer', () => {
     // Wait for reset state to render
     expect(await screen.findByTestId('logs-count')).toHaveTextContent('0');
     expect(screen.getByTestId('cycle').textContent).toBe('1');
+  });
+
+  it('should fast-forward progress to a future day and create intermediate skip logs', async () => {
+    renderWithProvider();
+    expect(await screen.findByTestId('cycle')).toHaveTextContent('1');
+    expect(screen.getByTestId('week').textContent).toBe('1');
+    expect(screen.getByTestId('day').textContent).toBe('1');
+    expect(screen.getByTestId('logs-count').textContent).toBe('0');
+
+    const btnFastForward = screen.getByTestId('btn-fast-forward');
+    await act(async () => {
+      btnFastForward.click();
+    });
+
+    expect(screen.getByTestId('week').textContent).toBe('1');
+    expect(screen.getByTestId('day').textContent).toBe('4');
+    expect(screen.getByTestId('sel-week').textContent).toBe('1');
+    expect(screen.getByTestId('sel-day').textContent).toBe('4');
+    expect(screen.getByTestId('logs-count').textContent).toBe('3');
+    expect(screen.getByTestId('cycle-1-logs-count').textContent).toBe('3');
   });
 
   it('should sync remote data and advance pointer if remote is further ahead', async () => {

@@ -50,7 +50,11 @@ type WorkoutAction =
         activeCycleLogs: WorkoutLog[];
       };
     }
-  | { type: 'RESET_DATABASE' };
+  | { type: 'RESET_DATABASE' }
+  | {
+      type: 'FAST_FORWARD_TO_DAY';
+      payload: { week: number; day: number };
+    };
 
 interface WorkoutContextType {
   state: ExtendedState;
@@ -69,6 +73,7 @@ interface WorkoutContextType {
   ) => void;
   resetDatabase: () => void;
   loadCycleLogs: (cycleNum: number) => Promise<void>;
+  fastForwardToDay: (week: number, day: number) => void;
 }
 
 const INITIAL_STATE: ExtendedState = {
@@ -371,6 +376,78 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       };
     }
 
+    case 'FAST_FORWARD_TO_DAY': {
+      const { week, day } = action.payload;
+      const currentCycleLogs = state.loadedCycles[state.currentCycle] || [];
+
+      const intermediateDays: { week: number; day: number }[] = [];
+      let w = state.currentWeek;
+      let d = state.currentDay;
+
+      while (w < week || (w === week && d < day)) {
+        intermediateDays.push({ week: w, day: d });
+        d++;
+        if (d > 7) {
+          d = 1;
+          w++;
+        }
+      }
+
+      const newSkipLogs: WorkoutLog[] = [];
+      for (const item of intermediateDays) {
+        const hasLog = currentCycleLogs.some(
+          (log) => log.week === item.week && log.day === item.day
+        );
+        if (!hasLog) {
+          const dayInfo = p90xClassicSchedule.find(
+            (sd) => sd.weekNumber === item.week && sd.dayOfWeek === item.day
+          );
+          const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
+          const logId = `cycle_${state.currentCycle}_week_${item.week}_day_${item.day}`;
+
+          newSkipLogs.push({
+            id: logId,
+            cycle: state.currentCycle,
+            week: item.week,
+            day: item.day,
+            workoutId,
+            dateCompleted: new Date().toISOString(),
+            skipped: true,
+            exercises: {},
+            abRipperCompleted: false,
+            comments: 'Fast-forward skipped',
+          });
+        }
+      } 
+
+      const nextLogs = [...currentCycleLogs, ...newSkipLogs];
+
+      const nextStats: CycleStats = {
+        completedCount: nextLogs.filter((l) => !l.skipped).length,
+        skippedCount: nextLogs.filter((l) => l.skipped).length,
+        totalDays: 91,
+      };
+
+      const isSelectedActiveCycle = state.selectedCycle === state.currentCycle;
+
+      return {
+        ...state,
+        currentWeek: week,
+        currentDay: day,
+        selectedWeek: week,
+        selectedDay: day,
+        logs: isSelectedActiveCycle ? nextLogs : state.logs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [state.currentCycle]: nextLogs,
+        },
+        cycleStats: {
+          ...state.cycleStats,
+          [state.currentCycle]: nextStats,
+        },
+      };
+    }
+
     default:
       return state;
   }
@@ -524,6 +601,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
   };
 
+  const fastForwardToDay = (week: number, day: number) => {
+    dispatch({ type: 'FAST_FORWARD_TO_DAY', payload: { week, day } });
+  };
+
   return (
     <WorkoutContext.Provider
       value={{
@@ -536,6 +617,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         syncGoogleDriveData,
         resetDatabase,
         loadCycleLogs,
+        fastForwardToDay,
       }}
     >
       {children}
