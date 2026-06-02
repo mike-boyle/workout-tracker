@@ -526,3 +526,77 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
 };
 
 export const p90xClassicSchedule = generateClassicSchedule();
+
+
+// --- TEST WORKOUT SPLIT PROGRAM ---
+export const testExercises: ExerciseInfo[] = [
+  { id: 'test_push_up', name: 'Test Push Ups', type: 'bodyweight', setCount: 1 },
+  { id: 'test_pull_up', name: 'Test Pull Ups', type: 'bodyweight', setCount: 1 },
+  { id: 'test_squat', name: 'Test Squats', type: 'weighted', setCount: 1 },
+  { id: 'test_shoulder_press', name: 'Test Shoulder Presses', type: 'weighted', setCount: 1 },
+  { id: 'test_bicep_curl', name: 'Test Bicep Curls', type: 'weighted', setCount: 1 },
+];
+
+export const testWorkouts: WorkoutInfo[] = [
+  {
+    id: 'test_push',
+    name: 'Test Push Day',
+    type: 'resistance',
+    exercises: ['test_push_up', 'test_shoulder_press'],
+    abRipper: false,
+  },
+  {
+    id: 'test_pull',
+    name: 'Test Pull Day',
+    type: 'resistance',
+    exercises: ['test_pull_up', 'test_bicep_curl'],
+    abRipper: false,
+  },
+  {
+    id: 'test_legs',
+    name: 'Test Legs Day',
+    type: 'resistance',
+    exercises: ['test_squat'],
+    abRipper: false,
+  },
+];
+
+export const testWorkoutSchedule: ScheduleDay[] = [
+  { dayNumber: 1, weekNumber: 1, dayOfWeek: 1, workoutId: 'test_push' },
+  { dayNumber: 2, weekNumber: 1, dayOfWeek: 2, workoutId: 'rest' },
+  { dayNumber: 3, weekNumber: 1, dayOfWeek: 3, workoutId: 'test_pull' },
+  { dayNumber: 4, weekNumber: 1, dayOfWeek: 4, workoutId: 'rest' },
+  { dayNumber: 5, weekNumber: 1, dayOfWeek: 5, workoutId: 'test_legs' },
+  { dayNumber: 6, weekNumber: 1, dayOfWeek: 6, workoutId: 'rest' },
+  { dayNumber: 7, weekNumber: 1, dayOfWeek: 7, workoutId: 'rest' },
+];
+
+// Include them in the main exports
+exercises.push(...testExercises);
+workouts.push(...testWorkouts);
+
+export interface ProgramConfig {
+  id: string;
+  name: string;
+  totalDays: number;
+}
+
+export const PROGRAMS: { [programId: string]: ProgramConfig } = {
+  p90x: {
+    id: 'p90x',
+    name: 'P90X Classic',
+    totalDays: 91,
+  },
+  test_workout: {
+    id: 'test_workout',
+    name: 'Test Workout Split',
+    totalDays: 7,
+  },
+};
+
+export const getScheduleForProgram = (programId: string): ScheduleDay[] => {
+  if (programId === 'test_workout') {
+    return testWorkoutSchedule;
+  }
+  return p90xClassicSchedule;
+};

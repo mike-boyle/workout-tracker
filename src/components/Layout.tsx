@@ -14,6 +14,7 @@ import {
   getAccessToken,
 } from '../services/gdrive';
 import type { UserMetadata, WorkoutLog } from '../types';
+import { PROGRAMS } from '../data/schedule';
 import { GOOGLE_CLIENT_ID } from '../config';
 
 interface LayoutProps {
@@ -23,7 +24,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
-  const { state, syncGoogleDriveData, resetDatabase } = useWorkout();
+  const { state, syncGoogleDriveData, resetDatabase, switchProgram } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
@@ -145,15 +146,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           currentDay: state.currentDay,
           gdriveLinked: true,
           metadataFileId: metadataFileId,
-          cycleFileIds: {
-            ...state.cycleFileIds,
+          cycleFileIds: Object.assign({}, state.cycleFileIds, {
             [activeCycleNum]: activeCycleFileId,
-          },
-          cycleTimestamps: {
-            ...state.cycleTimestamps,
+          }),
+          cycleTimestamps: Object.assign({}, state.cycleTimestamps, {
             [activeCycleNum]: new Date().toISOString(),
-          },
+          }),
           cycleStats: state.cycleStats || {},
+          activeProgramId: state.activeProgramId || 'p90x',
+          programs: state.programs || {},
         };
 
         // 3. Sync metadata
@@ -182,6 +183,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
     state.cycleStats,
     state.loadedCycles[state.currentCycle],
     state.loading,
+    state.activeProgramId,
+    state.programs,
   ]);
 
   if (state.loading) {
@@ -281,7 +284,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             LocalStorage, linking Google Drive avoids data loss.
           </p>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
             <button
               className="btn btn-primary"
               onClick={handleGdriveConnect}
@@ -300,6 +303,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               <span className="badge badge-green">✓ Connected & Cloud Synced</span>
             )}
             {syncStatus === 'error' && <span className="badge badge-red">⚠️ {errorMsg}</span>}
+          </div>
+
+          {/* Workout Program Selector */}
+          <div style={{ marginBottom: '20px' }}>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '8px' }}>Select Workout Program</h4>
+            <select
+              id="program-select"
+              className="input-field"
+              value={state.activeProgramId || 'p90x'}
+              onChange={(e) => switchProgram(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: 'var(--color-bg-surface)',
+                borderColor: 'var(--color-border)',
+                borderRadius: '6px',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {Object.values(PROGRAMS).map((prog) => (
+                <option key={prog.id} value={prog.id}>
+                  {prog.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <hr

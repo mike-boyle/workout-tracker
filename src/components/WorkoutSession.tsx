@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import { p90xClassicSchedule, workouts, exercises as allExercises } from '../data/schedule';
+import { workouts, exercises as allExercises, getScheduleForProgram } from '../data/schedule';
 import { RestTimer } from './RestTimer';
 import type { SetLog } from '../types';
 
@@ -26,7 +26,7 @@ export const WorkoutSession: React.FC = () => {
   };
 
   // Find scheduled workout for selected day
-  const dayInfo = p90xClassicSchedule.find(
+  const dayInfo = getScheduleForProgram(state.activeProgramId || 'p90x').find(
     (d) => d.weekNumber === state.selectedWeek && d.dayOfWeek === state.selectedDay
   );
 

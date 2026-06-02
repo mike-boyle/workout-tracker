@@ -8,7 +8,7 @@ import {
   clearLocalState,
   INITIAL_METADATA,
 } from '../services/storage';
-import { p90xClassicSchedule } from '../data/schedule';
+import { getScheduleForProgram } from '../data/schedule';
 
 export interface ExtendedState extends UserMetadata {
   selectedCycle: number;
@@ -73,6 +73,7 @@ interface WorkoutContextType {
   ) => void;
   resetDatabase: () => void;
   loadCycleLogs: (cycleNum: number) => Promise<void>;
+  switchProgram: (programId: string) => Promise<void>;
   fastForwardToDay: (week: number, day: number) => void;
 }
 
@@ -86,6 +87,15 @@ const INITIAL_STATE: ExtendedState = {
   cycleFileIds: {},
   cycleTimestamps: {},
   cycleStats: {},
+  activeProgramId: 'p90x',
+  programs: {
+    p90x: {
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleStats: {},
+    },
+  },
   selectedCycle: 1,
   selectedWeek: 1,
   selectedDay: 1,
@@ -101,17 +111,28 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
   switch (action.type) {
     case 'INITIALIZE_STATE': {
       const { metadata, logs } = action.payload;
+      const activeProg = metadata.activeProgramId || 'p90x';
+      const progState = (metadata.programs && metadata.programs[activeProg]) || {
+        currentCycle: metadata.currentCycle || 1,
+        currentWeek: metadata.currentWeek || 1,
+        currentDay: metadata.currentDay || 1,
+        cycleStats: metadata.cycleStats || {},
+      };
       return {
         ...state,
         ...metadata,
-        selectedCycle: metadata.currentCycle,
-        selectedWeek: metadata.currentWeek,
-        selectedDay: metadata.currentDay,
+        activeProgramId: activeProg,
+        currentCycle: progState.currentCycle,
+        currentWeek: progState.currentWeek,
+        currentDay: progState.currentDay,
+        cycleStats: progState.cycleStats || {},
+        selectedCycle: progState.currentCycle,
+        selectedWeek: progState.currentWeek,
+        selectedDay: progState.currentDay,
         loading: false,
         logs: logs,
         loadedCycles: {
-          ...state.loadedCycles,
-          [metadata.currentCycle]: logs,
+          [progState.currentCycle]: logs,
         },
       };
     }
@@ -146,7 +167,7 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
     case 'COMPLETE_WORKOUT': {
       const { workoutId, exercises, abRipperCompleted, comments } = action.payload;
-      const logId = `cycle_${state.selectedCycle}_week_${state.selectedWeek}_day_${state.selectedDay}`;
+      const logId = 'cycle_' + state.selectedCycle + '_week_' + state.selectedWeek + '_day_' + state.selectedDay;
 
       const newLog: WorkoutLog = {
         id: logId,
@@ -183,14 +204,15 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
+      const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
       if (isCompletingActiveDay) {
         nextDay = state.currentDay + 1;
         if (nextDay > 7) {
           nextDay = 1;
           nextWeek += 1;
         }
-        if (nextWeek > 13) {
-          nextWeek = 13;
+        if (nextWeek > maxWeeks) {
+          nextWeek = maxWeeks;
           nextDay = 7;
         } else {
           nextSelWeek = nextWeek;
@@ -198,11 +220,24 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         }
       }
 
+      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
       const nextStats: CycleStats = {
         completedCount: nextLogs.filter((l) => !l.skipped).length,
         skippedCount: nextLogs.filter((l) => l.skipped).length,
-        totalDays: 91,
+        totalDays,
       };
+
+      const activeProg = state.activeProgramId || 'p90x';
+      const updatedPrograms = Object.assign({}, state.programs, {
+        [activeProg]: {
+          currentCycle: state.currentCycle,
+          currentWeek: nextWeek,
+          currentDay: nextDay,
+          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
+            [state.selectedCycle]: nextStats
+          })
+        }
+      });
 
       return {
         ...state,
@@ -211,20 +246,19 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedWeek: nextSelWeek,
         selectedDay: nextSelDay,
         logs: nextLogs,
-        loadedCycles: {
-          ...state.loadedCycles,
-          [state.selectedCycle]: nextLogs,
-        },
-        cycleStats: {
-          ...state.cycleStats,
-          [state.selectedCycle]: nextStats,
-        },
+        loadedCycles: Object.assign({}, state.loadedCycles, {
+          [state.selectedCycle]: nextLogs
+        }),
+        cycleStats: Object.assign({}, state.cycleStats, {
+          [state.selectedCycle]: nextStats
+        }),
+        programs: updatedPrograms,
       };
     }
 
     case 'SKIP_DAY': {
       const { workoutId } = action.payload;
-      const logId = `cycle_${state.selectedCycle}_week_${state.selectedWeek}_day_${state.selectedDay}`;
+      const logId = 'cycle_' + state.selectedCycle + '_week_' + state.selectedWeek + '_day_' + state.selectedDay;
 
       const skipLog: WorkoutLog = {
         id: logId,
@@ -261,14 +295,15 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
+      const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
       if (isCompletingActiveDay) {
         nextDay = state.currentDay + 1;
         if (nextDay > 7) {
           nextDay = 1;
           nextWeek += 1;
         }
-        if (nextWeek > 13) {
-          nextWeek = 13;
+        if (nextWeek > maxWeeks) {
+          nextWeek = maxWeeks;
           nextDay = 7;
         } else {
           nextSelWeek = nextWeek;
@@ -276,11 +311,24 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         }
       }
 
+      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
       const nextStats: CycleStats = {
         completedCount: nextLogs.filter((l) => !l.skipped).length,
         skippedCount: nextLogs.filter((l) => l.skipped).length,
-        totalDays: 91,
+        totalDays,
       };
+
+      const activeProg = state.activeProgramId || 'p90x';
+      const updatedPrograms = Object.assign({}, state.programs, {
+        [activeProg]: {
+          currentCycle: state.currentCycle,
+          currentWeek: nextWeek,
+          currentDay: nextDay,
+          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
+            [state.selectedCycle]: nextStats
+          })
+        }
+      });
 
       return {
         ...state,
@@ -289,14 +337,13 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedWeek: nextSelWeek,
         selectedDay: nextSelDay,
         logs: nextLogs,
-        loadedCycles: {
-          ...state.loadedCycles,
-          [state.selectedCycle]: nextLogs,
-        },
-        cycleStats: {
-          ...state.cycleStats,
-          [state.selectedCycle]: nextStats,
-        },
+        loadedCycles: Object.assign({}, state.loadedCycles, {
+          [state.selectedCycle]: nextLogs
+        }),
+        cycleStats: Object.assign({}, state.cycleStats, {
+          [state.selectedCycle]: nextStats
+        }),
+        programs: updatedPrograms,
       };
     }
 
@@ -317,11 +364,23 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
     case 'START_NEW_CYCLE': {
       const nextCycle = state.currentCycle + 1;
+      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
       const nextStats: CycleStats = {
         completedCount: 0,
         skippedCount: 0,
-        totalDays: 91,
+        totalDays,
       };
+      const activeProg = state.activeProgramId || 'p90x';
+      const updatedPrograms = Object.assign({}, state.programs, {
+        [activeProg]: {
+          currentCycle: nextCycle,
+          currentWeek: 1,
+          currentDay: 1,
+          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
+            [nextCycle]: nextStats
+          })
+        }
+      });
       return {
         ...state,
         currentCycle: nextCycle,
@@ -331,14 +390,13 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedWeek: 1,
         selectedDay: 1,
         logs: [],
-        loadedCycles: {
-          ...state.loadedCycles,
-          [nextCycle]: [],
-        },
-        cycleStats: {
-          ...state.cycleStats,
-          [nextCycle]: nextStats,
-        },
+        loadedCycles: Object.assign({}, state.loadedCycles, {
+          [nextCycle]: []
+        }),
+        cycleStats: Object.assign({}, state.cycleStats, {
+          [nextCycle]: nextStats
+        }),
+        programs: updatedPrograms,
       };
     }
 
@@ -394,12 +452,13 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       }
 
       const newSkipLogs: WorkoutLog[] = [];
+      const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
       for (const item of intermediateDays) {
         const hasLog = currentCycleLogs.some(
           (log) => log.week === item.week && log.day === item.day
         );
         if (!hasLog) {
-          const dayInfo = p90xClassicSchedule.find(
+          const dayInfo = schedule.find(
             (sd) => sd.weekNumber === item.week && sd.dayOfWeek === item.day
           );
           const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
@@ -492,8 +551,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const selectedCycleLogs = loadedCycles[state.selectedCycle];
     if (selectedCycleLogs) {
-      saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs).catch((err) =>
-        console.error(`Failed to save cycle ${state.selectedCycle} logs:`, err)
+      saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs, state.activeProgramId).catch((err) =>
+        console.error('Failed to save cycle ' + state.selectedCycle + ' logs:', err)
       );
     }
   }, [
@@ -508,6 +567,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     state.selectedCycle,
     state.loadedCycles,
     state.loading,
+    state.activeProgramId,
   ]);
 
   const loadCycleLogs = async (cycleNum: number) => {
@@ -520,7 +580,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       // 1. Try local IndexedDB
-      let cycleLogs = await loadLocalCycleLogs(cycleNum);
+      let cycleLogs = await loadLocalCycleLogs(cycleNum, state.activeProgramId || 'p90x');
 
       // 2. If GDrive is linked and we don't have it locally, fetch from GDrive
       const fileId = state.cycleFileIds?.[cycleNum];
@@ -538,12 +598,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           loadingCycles,
           ...metadataToPersist
         } = state;
-        await saveLocalState(metadataToPersist, cycleNum, cycleLogs);
+        await saveLocalState(metadataToPersist, cycleNum, cycleLogs, state.activeProgramId);
       }
 
       dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: cycleLogs } });
     } catch (error) {
-      console.error(`Failed to load logs for cycle ${cycleNum}:`, error);
+      console.error('Failed to load logs for cycle ' + cycleNum + ':', error);
       dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: [] } });
     }
   };
@@ -553,7 +613,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     abRipperCompleted: boolean,
     comments: string
   ) => {
-    const dayInfo = p90xClassicSchedule.find(
+    const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
+    const dayInfo = schedule.find(
       (d) => d.weekNumber === state.selectedWeek && d.dayOfWeek === state.selectedDay
     );
     const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
@@ -561,6 +622,66 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     dispatch({
       type: 'COMPLETE_WORKOUT',
       payload: { workoutId, exercises, abRipperCompleted, comments },
+    });
+  };
+
+  const switchProgram = async (programId: string) => {
+    // 1. Save current active program state
+    const metadataToPersist: UserMetadata = {
+      version: state.version,
+      currentCycle: state.currentCycle,
+      currentWeek: state.currentWeek,
+      currentDay: state.currentDay,
+      gdriveLinked: state.gdriveLinked,
+      metadataFileId: state.metadataFileId,
+      cycleFileIds: state.cycleFileIds,
+      cycleTimestamps: state.cycleTimestamps,
+      cycleStats: state.cycleStats,
+      activeProgramId: state.activeProgramId,
+      programs: state.programs,
+    };
+
+    const currentActiveProg = state.activeProgramId || 'p90x';
+    const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
+    if (selectedCycleLogs) {
+      await saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs, currentActiveProg);
+    } else {
+      await saveLocalMetadata(metadataToPersist);
+    }
+
+    // 2. Load target program state from metadata or set defaults if not exists
+    const metadata = await loadLocalState().then(res => res.metadata);
+    metadata.activeProgramId = programId;
+    if (!metadata.programs) {
+      metadata.programs = {};
+    }
+    if (!metadata.programs[programId]) {
+      metadata.programs[programId] = {
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleStats: {},
+      };
+    }
+
+    const targetProgState = metadata.programs[programId];
+    metadata.currentCycle = targetProgState.currentCycle;
+    metadata.currentWeek = targetProgState.currentWeek;
+    metadata.currentDay = targetProgState.currentDay;
+    metadata.cycleStats = targetProgState.cycleStats || {};
+
+    await saveLocalMetadata(metadata);
+
+    // 3. Load logs for target program's cycle
+    const targetLogs = await loadLocalCycleLogs(targetProgState.currentCycle, programId);
+
+    // 4. Dispatch update to reducer to refresh state
+    dispatch({
+      type: 'INITIALIZE_STATE',
+      payload: {
+        metadata,
+        logs: targetLogs,
+      },
     });
   };
 
@@ -617,6 +738,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         syncGoogleDriveData,
         resetDatabase,
         loadCycleLogs,
+        switchProgram,
         fastForwardToDay,
       }}
     >

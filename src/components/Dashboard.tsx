@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import { p90xClassicSchedule, workouts } from '../data/schedule';
+import { workouts, getScheduleForProgram } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -13,26 +13,33 @@ export const Dashboard: React.FC = () => {
     );
   };
 
-  // Group schedule days by Phase
-  const getPhaseWeeks = (phase: number) => {
-    if (phase === 1) return [1, 2, 3, 4];
-    if (phase === 2) return [5, 6, 7, 8];
-    return [9, 10, 11, 12, 13];
+  const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
+
+  const getPhases = () => {
+    if (state.activeProgramId === 'test_workout') {
+      return [{ num: 1, name: 'Testing', weeks: [1] }];
+    }
+    return [
+      { num: 1, name: 'Foundation', weeks: [1, 2, 3, 4] },
+      { num: 2, name: 'Max Strength', weeks: [5, 6, 7, 8] },
+      { num: 3, name: 'The Final Stretch', weeks: [9, 10, 11, 12, 13] },
+    ];
   };
 
   // Calculate statistics for the selected cycle
   const selectedCycleLogs = state.logs.filter((log) => log.cycle === state.selectedCycle);
   const completedCount = selectedCycleLogs.filter((log) => !log.skipped).length;
   const skippedCount = selectedCycleLogs.filter((log) => log.skipped).length;
-  const totalDays = 91;
+  const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
   const progressPercent = Math.round((selectedCycleLogs.length / totalDays) * 100);
 
   const handleDayClick = (dayInfo: ScheduleDay) => {
-    window.location.hash = `#/session/cycle/${state.selectedCycle}/week/${dayInfo.weekNumber}/day/${dayInfo.dayOfWeek}`;
+    window.location.hash = '#/session/cycle/' + state.selectedCycle + '/week/' + dayInfo.weekNumber + '/day/' + dayInfo.dayOfWeek;
   };
 
+  const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
   const isCycleCompleted =
-    state.currentWeek === 13 && state.currentDay === 7 && getLogForDay(13, 7) !== undefined;
+    state.currentWeek === maxWeeks && state.currentDay === 7 && getLogForDay(maxWeeks, 7) !== undefined;
 
   const showStartNextCyclePrompt = isCycleCompleted && state.selectedCycle === state.currentCycle;
 
@@ -258,8 +265,8 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* Calendar Phases */}
-      {[1, 2, 3].map((phaseNum) => (
-        <div key={phaseNum} className="phase-section">
+      {getPhases().map((phase) => (
+        <div key={phase.num} className="phase-section">
           <h2
             style={{
               fontSize: '1.4rem',
@@ -269,18 +276,13 @@ export const Dashboard: React.FC = () => {
               color: 'var(--color-text-primary)',
             }}
           >
-            Phase {phaseNum}{' '}
-            {phaseNum === 3
-              ? '(The Final Stretch)'
-              : phaseNum === 2
-                ? '(Max Strength)'
-                : '(Foundation)'}
+            Phase {phase.num} ({phase.name})
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {getPhaseWeeks(phaseNum).map((weekNum) => {
+            {phase.weeks.map((weekNum) => {
               // Filter days in schedule matching this week
-              const weekDays = p90xClassicSchedule.filter((d) => d.weekNumber === weekNum);
+              const weekDays = schedule.filter((d) => d.weekNumber === weekNum);
               const isRecoveryWeek = weekNum === 4 || weekNum === 8 || weekNum === 13;
 
               return (

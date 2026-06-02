@@ -1,24 +1,17 @@
 import React, { useState } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import { p90xClassicSchedule, workouts } from '../data/schedule';
+import { workouts, getScheduleForProgram } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 
 export const History: React.FC = () => {
   const { state, startNewCycle, loadCycleLogs } = useWorkout();
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
 
-  // Group schedule days by Phase
-  const getPhaseWeeks = (phase: number) => {
-    if (phase === 1) return [1, 2, 3, 4];
-    if (phase === 2) return [5, 6, 7, 8];
-    return [9, 10, 11, 12, 13];
-  };
-
   const getCycleStats = (cycleNum: number) => {
     const stats = state.cycleStats?.[cycleNum];
     const completedCount = stats ? stats.completedCount : 0;
     const skippedCount = stats ? stats.skippedCount : 0;
-    const totalDays = 91;
+    const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
     const loggedCount = completedCount + skippedCount;
     const progressPercent = stats ? Math.round((loggedCount / totalDays) * 100) : 0;
     const isCompleted = cycleNum < state.currentCycle;
@@ -30,6 +23,17 @@ export const History: React.FC = () => {
       progressPercent,
       isCompleted,
     };
+  };
+
+  const getPhases = () => {
+    if (state.activeProgramId === 'test_workout') {
+      return [{ num: 1, name: 'Testing', weeks: [1] }];
+    }
+    return [
+      { num: 1, name: 'Foundation', weeks: [1, 2, 3, 4] },
+      { num: 2, name: 'Max Strength', weeks: [5, 6, 7, 8] },
+      { num: 3, name: 'The Final Stretch', weeks: [9, 10, 11, 12, 13] },
+    ];
   };
 
   const handleDayClick = (cycleNum: number, dayInfo: ScheduleDay) => {
@@ -264,8 +268,8 @@ export const History: React.FC = () => {
                       gap: '24px',
                     }}
                   >
-                  {[1, 2, 3].map((phaseNum) => (
-                    <div key={phaseNum}>
+                  {getPhases().map((phase) => (
+                    <div key={phase.num}>
                       <h4
                         style={{
                           fontSize: '1.1rem',
@@ -275,17 +279,12 @@ export const History: React.FC = () => {
                           color: 'var(--color-text-primary)',
                         }}
                       >
-                        Phase {phaseNum}{' '}
-                        {phaseNum === 1
-                          ? '(Foundation)'
-                          : phaseNum === 2
-                            ? '(Max Strength)'
-                            : '(The Final Stretch)'}
+                        Phase {phase.num} ({phase.name})
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {getPhaseWeeks(phaseNum).map((weekNum) => {
-                          const weekDays = p90xClassicSchedule.filter(
+                        {phase.weeks.map((weekNum) => {
+                          const weekDays = getScheduleForProgram(state.activeProgramId || 'p90x').filter(
                             (d) => d.weekNumber === weekNum
                           );
                           const isRecoveryWeek = weekNum === 4 || weekNum === 8 || weekNum === 13;
