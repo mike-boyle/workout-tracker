@@ -175,8 +175,7 @@ export const WorkoutSession: React.FC = () => {
   const isResistance = workoutDef.type === 'resistance';
 
   return (
-        <div
-      className="animate-fade-in"
+    <div
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
       {/* Sticky Header Container */}
@@ -248,7 +247,12 @@ export const WorkoutSession: React.FC = () => {
         )}
       </div>
 
-      {/* Non-resistance Workout Details */}
+      {/* Inner Non-Sticky Contents */}
+      <div
+        className="animate-fade-in"
+        style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
+      >
+        {/* Non-resistance Workout Details */}
       {!isResistance && (
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
           <span className="badge badge-purple" style={{ marginBottom: '12px' }}>
@@ -729,6 +733,7 @@ export const WorkoutSession: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* Sticky Footer Container */}
