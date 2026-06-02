@@ -12,6 +12,15 @@ export const INITIAL_METADATA: UserMetadata = {
   cycleFileIds: {},
   cycleTimestamps: {},
   cycleStats: {},
+  activeProgramId: 'p90x',
+  programs: {
+    p90x: {
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleStats: {},
+    },
+  },
 };
 
 class WorkoutTrackerDB {
@@ -190,8 +199,44 @@ export async function loadLocalState(selectedCycle?: number): Promise<{
     await db.set('metadata', metadata);
   }
 
-  const cycleToLoad = selectedCycle || metadata.currentCycle;
-  const logs = await db.get<WorkoutLog[]>(`cycle_${cycleToLoad}_logs`) || [];
+  // Ensure activeProgramId and programs are present
+  if (!metadata.activeProgramId) {
+    metadata.activeProgramId = 'p90x';
+  }
+  if (!metadata.programs) {
+    metadata.programs = {
+      p90x: {
+        currentCycle: metadata.currentCycle || 1,
+        currentWeek: metadata.currentWeek || 1,
+        currentDay: metadata.currentDay || 1,
+        cycleStats: metadata.cycleStats || {},
+      },
+    };
+    await db.set('metadata', metadata);
+  }
+
+  const progId = metadata.activeProgramId || 'p90x';
+  const progState = metadata.programs[progId] || {
+    currentCycle: metadata.currentCycle || 1,
+    currentWeek: metadata.currentWeek || 1,
+    currentDay: metadata.currentDay || 1,
+    cycleStats: metadata.cycleStats || {},
+  };
+  const cycleToLoad = selectedCycle || progState.currentCycle;
+
+  // Load logs: program-prefixed key with legacy fallback
+  const newKey = progId + '_cycle_' + cycleToLoad + '_logs';
+  let logs = await db.get<WorkoutLog[]>(newKey);
+  if (!logs) {
+    const legacyKey = 'cycle_' + cycleToLoad + '_logs';
+    const legacyLogs = await db.get<WorkoutLog[]>(legacyKey);
+    if (legacyLogs) {
+      logs = legacyLogs;
+      await db.set(newKey, logs);
+    } else {
+      logs = [];
+    }
+  }
 
   return { metadata, logs };
 }
@@ -199,8 +244,20 @@ export async function loadLocalState(selectedCycle?: number): Promise<{
 /**
  * Loads a specific cycle's logs from IndexedDB.
  */
-export async function loadLocalCycleLogs(cycleNum: number): Promise<WorkoutLog[]> {
-  return await db.get<WorkoutLog[]>(`cycle_${cycleNum}_logs`) || [];
+export async function loadLocalCycleLogs(cycleNum: number, activeProgramId: string = 'p90x'): Promise<WorkoutLog[]> {
+  const newKey = activeProgramId + '_cycle_' + cycleNum + '_logs';
+  let logs = await db.get<WorkoutLog[]>(newKey);
+  if (!logs) {
+    const legacyKey = 'cycle_' + cycleNum + '_logs';
+    const legacyLogs = await db.get<WorkoutLog[]>(legacyKey);
+    if (legacyLogs) {
+      logs = legacyLogs;
+      await db.set(newKey, logs);
+    } else {
+      logs = [];
+    }
+  }
+  return logs;
 }
 
 /**
@@ -209,29 +266,50 @@ export async function loadLocalCycleLogs(cycleNum: number): Promise<WorkoutLog[]
 export async function saveLocalState(
   metadata: UserMetadata,
   cycleNum: number,
-  cycleLogs: WorkoutLog[]
+  cycleLogs: WorkoutLog[],
+  activeProgramId: string = 'p90x'
 ): Promise<void> {
   const completedCount = cycleLogs.filter((l) => !l.skipped).length;
   const skippedCount = cycleLogs.filter((l) => l.skipped).length;
+  const totalDays = activeProgramId === 'test_workout' ? 7 : 91;
+
+  if (!metadata.programs) {
+    metadata.programs = {};
+  }
+  if (!metadata.programs[activeProgramId]) {
+    metadata.programs[activeProgramId] = {
+      currentCycle: metadata.currentCycle || 1,
+      currentWeek: metadata.currentWeek || 1,
+      currentDay: metadata.currentDay || 1,
+      cycleStats: {},
+    };
+  }
+
+  if (!metadata.programs[activeProgramId].cycleStats) {
+    metadata.programs[activeProgramId].cycleStats = {};
+  }
+  metadata.programs[activeProgramId].cycleStats[cycleNum] = {
+    completedCount,
+    skippedCount,
+    totalDays,
+  };
 
   if (!metadata.cycleStats) metadata.cycleStats = {};
   metadata.cycleStats[cycleNum] = {
     completedCount,
     skippedCount,
-    totalDays: 91,
+    totalDays,
   };
 
   if (!metadata.cycleTimestamps) metadata.cycleTimestamps = {};
   metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
 
   // Save logs and metadata to IndexedDB
-  await db.set(`cycle_${cycleNum}_logs`, cycleLogs);
+  const newKey = activeProgramId + '_cycle_' + cycleNum + '_logs';
+  await db.set(newKey, cycleLogs);
   await db.set('metadata', metadata);
 }
 
-/**
- * Save metadata only (for pointer shifts, settings sync, etc.)
- */
 export async function saveLocalMetadata(metadata: UserMetadata): Promise<void> {
   await db.set('metadata', metadata);
 }

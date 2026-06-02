@@ -58,6 +58,15 @@ export interface UserMetadata {
   cycleFileIds?: { [cycle: number]: string };
   cycleTimestamps?: { [cycle: number]: string };
   cycleStats?: { [cycle: number]: CycleStats };
+  activeProgramId?: string;
+  programs?: {
+    [programId: string]: {
+      currentCycle: number;
+      currentWeek: number;
+      currentDay: number;
+      cycleStats?: { [cycle: number]: CycleStats };
+    };
+  };
 }
 
 export interface UserState {
