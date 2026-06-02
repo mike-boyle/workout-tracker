@@ -4,8 +4,26 @@ import { workouts, exercises as allExercises, getScheduleForProgram } from '../d
 import { RestTimer } from './RestTimer';
 import type { SetLog } from '../types';
 
+import { generateWizardSteps } from '../utils/wizard';
+
 export const WorkoutSession: React.FC = () => {
-  const { state, completeWorkout, skipDay } = useWorkout();
+  const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
+
+  const isFutureDay =
+    state.selectedCycle > state.currentCycle ||
+    (state.selectedCycle === state.currentCycle &&
+      (state.selectedWeek - 1) * 7 + state.selectedDay > (state.currentWeek - 1) * 7 + state.currentDay);
+
+  const handleSkipToThisDay = () => {
+    if (
+      confirm(
+        `Are you sure you want to skip all workouts up to Week ${state.selectedWeek} Day ${state.selectedDay}?`
+      )
+    ) {
+      fastForwardToDay(state.selectedWeek, state.selectedDay);
+      window.location.hash = '#/dashboard';
+    }
+  };
 
   // Find scheduled workout for selected day
   const dayInfo = getScheduleForProgram(state.activeProgramId || 'p90x').find(
@@ -18,6 +36,10 @@ export const WorkoutSession: React.FC = () => {
   const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
   const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(true);
   const [comments, setComments] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>('sheet');
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
+  const [tempComments, setTempComments] = useState<string>('');
 
   // Load existing log if the user is editing a day they already completed
   useEffect(() => {
@@ -51,6 +73,7 @@ export const WorkoutSession: React.FC = () => {
       setAbRipperCompleted(workoutDef ? workoutDef.abRipper : false);
       setComments('');
     }
+    setCurrentStepIndex(0);
   }, [state.selectedWeek, state.selectedDay, workoutDef]);
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
@@ -150,49 +173,78 @@ export const WorkoutSession: React.FC = () => {
   const isResistance = workoutDef.type === 'resistance';
 
   return (
-    <div
+        <div
       className="animate-fade-in"
       style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
-      {/* Header Info */}
+      {/* Sticky Header Container */}
       <div
         style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '16px 0',
+          background: 'var(--color-bg-base)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
+          flexDirection: 'column',
+          gap: '12px',
         }}
       >
-        <div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              window.location.hash = '#/dashboard';
-            }}
-            style={{ padding: '6px 12px', fontSize: '0.85rem', marginBottom: '8px' }}
-          >
-            ← Back
-          </button>
-          <h2>{workoutDef.name}</h2>
-          <p style={{ color: 'var(--color-text-secondary)' }}>
-            Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
-            ROUTINE
-          </p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                window.location.hash = '#/dashboard';
+              }}
+              style={{ padding: '6px 12px', fontSize: '0.85rem', marginBottom: '8px' }}
+            >
+              ← Back
+            </button>
+            <h2>{workoutDef.name}</h2>
+            <p style={{ color: 'var(--color-text-secondary)' }}>
+              Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
+              ROUTINE
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {isResistance && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => setViewMode((prev) => (prev === 'sheet' ? 'wizard' : 'sheet'))}
+              >
+                {viewMode === 'sheet' ? 'Switch to Wizard View' : 'Switch to Full Sheet View'}
+              </button>
+            )}
+            {isFutureDay && (
+              <button className="btn btn-warning" onClick={handleSkipToThisDay}>
+                Skip to this Day
+              </button>
+            )}
+            <button className="btn btn-danger" onClick={handleSkip}>
+              Skip Day
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn btn-danger" onClick={handleSkip}>
-            Skip Day
-          </button>
-        </div>
-      </div>
 
-      {/* Embedded Rest Timer for lifting */}
-      {isResistance && (
-        <div style={{ position: 'sticky', top: '16px', zIndex: 10 }}>
-          <RestTimer />
-        </div>
-      )}
+        {/* Embedded Rest Timer for lifting inside the sticky header */}
+        {isResistance && (
+          <div>
+            <RestTimer />
+          </div>
+        )}
+      </div>
 
       {/* Non-resistance Workout Details */}
       {!isResistance && (
@@ -242,163 +294,381 @@ export const WorkoutSession: React.FC = () => {
 
       {/* Resistance Exercise Cards */}
       {isResistance && formData && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {workoutDef.exercises.map((exId, idx) => {
-            const exInfo = allExercises.find((e) => e.id === exId);
+        viewMode === 'sheet' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {workoutDef.exercises.map((exId, idx) => {
+              const exInfo = allExercises.find((e) => e.id === exId);
+              if (!exInfo) return null;
+
+              const sets = formData[exId] || [];
+
+              return (
+                <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
+                        {idx + 1}. {exInfo.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-muted)',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {exInfo.type}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      gap: '16px',
+                    }}
+                  >
+                    {sets.map((set, setIdx) => {
+                      const prevLog = getPreviousLog(exId, setIdx);
+
+                      return (
+                        <div
+                          key={setIdx}
+                          style={{
+                            background: 'hsla(var(--hue-base), 25%, 8%, 0.3)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            padding: '12px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '10px',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                color: 'var(--color-text-secondary)',
+                              }}
+                            >
+                              {exInfo.setCount > 1 ? `Set ${setIdx + 1}` : 'Single Set'}
+                            </span>
+
+                            {/* Previous value compare badge */}
+                            {prevLog && (
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--color-cyan)',
+                                  fontWeight: '500',
+                                }}
+                              >
+                                Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
+                                {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            {exInfo.type === 'weighted' && (
+                              <div className="input-group">
+                                <label className="input-label">Weight (lbs)</label>
+                                <input
+                                  type="number"
+                                  className="input-field"
+                                  value={set.weight || ''}
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    handleInputChange(exId, setIdx, 'weight', e.target.value)
+                                  }
+                                />
+                              </div>
+                            )}
+
+                            <div className="input-group">
+                              <label className="input-label">Reps</label>
+                              <input
+                                type="number"
+                                className="input-field"
+                                value={set.reps || ''}
+                                placeholder="0"
+                                onChange={(e) =>
+                                  handleInputChange(exId, setIdx, 'reps', e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                alignSelf: 'flex-end',
+                                paddingBottom: '6px',
+                              }}
+                            >
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={set.assisted}
+                                  onChange={(e) =>
+                                    handleInputChange(exId, setIdx, 'assisted', e.target.checked)
+                                  }
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Wizard View Card */
+          (() => {
+            const steps = generateWizardSteps(workoutDef.id, workoutDef.exercises);
+            const totalSteps = steps.length;
+            if (totalSteps === 0) return null;
+
+            // Make sure currentStepIndex is within bounds
+            const stepIndex = Math.min(currentStepIndex, totalSteps - 1);
+            const currentStep = steps[stepIndex];
+            if (!currentStep) return null;
+
+            const exInfo = allExercises.find((e) => e.id === currentStep.exerciseId);
             if (!exInfo) return null;
 
-            const sets = formData[exId] || [];
+            const set = formData[currentStep.exerciseId]?.[currentStep.setIndex] || {
+              reps: 0,
+              weight: 0,
+              assisted: false,
+            };
+            const prevLog = getPreviousLog(currentStep.exerciseId, currentStep.setIndex);
+            const progressPercent = ((stepIndex + 1) / totalSteps) * 100;
 
             return (
-              <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
+              <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
+                {/* Progress Indicator */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '16px',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                    flexWrap: 'wrap',
+                    gap: '8px',
                   }}
                 >
-                  <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
-                      {idx + 1}. {exInfo.name}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--color-text-muted)',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {exInfo.type}
+                  <span
+                    style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--color-text-secondary)',
+                      fontWeight: '600',
+                    }}
+                  >
+                    Step {stepIndex + 1} of {totalSteps}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span className="badge badge-purple">
+                      {exInfo.setCount > 1 ? `Set ${currentStep.setIndex + 1}` : 'Single Set'}
                     </span>
+                    {prevLog && (
+                      <span className="badge badge-cyan">
+                        Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
+                        {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '16px',
+                    background: 'var(--color-border)',
+                    borderRadius: '4px',
+                    height: '8px',
+                    overflow: 'hidden',
+                    width: '100%',
+                    marginBottom: '24px',
                   }}
                 >
-                  {sets.map((set, setIdx) => {
-                    const prevLog = getPreviousLog(exId, setIdx);
+                  <div
+                    style={{
+                      background: 'var(--gradient-primary)',
+                      width: `${progressPercent}%`,
+                      height: '100%',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
 
-                    return (
-                      <div
-                        key={setIdx}
-                        style={{
-                          background: 'hsla(var(--hue-base), 25%, 8%, 0.3)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: '8px',
-                          padding: '12px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '10px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              color: 'var(--color-text-secondary)',
-                            }}
-                          >
-                            {exInfo.setCount > 1 ? `Set ${setIdx + 1}` : 'Single Set'}
-                          </span>
+                {/* Exercise Info */}
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    {exInfo.name}
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--color-text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {exInfo.type}
+                  </span>
+                </div>
 
-                          {/* Previous value compare badge */}
-                          {prevLog && (
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                color: 'var(--color-cyan)',
-                                fontWeight: '500',
-                              }}
-                            >
-                              Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
-                              {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
-                            </span>
-                          )}
-                        </div>
+                {/* Input Fields */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: '24px',
+                  }}
+                >
+                  {exInfo.type === 'weighted' && (
+                    <div className="input-group" style={{ flex: '1 1 200px' }}>
+                      <label className="input-label">Weight (lbs)</label>
+                      <input
+                        type="number"
+                        className="input-field"
+                        value={set.weight || ''}
+                        placeholder="0"
+                        onChange={(e) =>
+                          handleInputChange(
+                            currentStep.exerciseId,
+                            currentStep.setIndex,
+                            'weight',
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  )}
 
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          {exInfo.type === 'weighted' && (
-                            <div className="input-group">
-                              <label className="input-label">Weight (lbs)</label>
-                              <input
-                                type="number"
-                                className="input-field"
-                                value={set.weight || ''}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'weight', e.target.value)
-                                }
-                              />
-                            </div>
-                          )}
+                  <div className="input-group" style={{ flex: '1 1 200px' }}>
+                    <label className="input-label">Reps</label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={set.reps || ''}
+                      placeholder="0"
+                      onChange={(e) =>
+                        handleInputChange(
+                          currentStep.exerciseId,
+                          currentStep.setIndex,
+                          'reps',
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
 
-                          <div className="input-group">
-                            <label className="input-label">Reps</label>
-                            <input
-                              type="number"
-                              className="input-field"
-                              value={set.reps || ''}
-                              placeholder="0"
-                              onChange={(e) =>
-                                handleInputChange(exId, setIdx, 'reps', e.target.value)
-                              }
-                            />
-                          </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      alignSelf: 'flex-end',
+                      paddingBottom: '6px',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={set.assisted}
+                        onChange={(e) =>
+                          handleInputChange(
+                            currentStep.exerciseId,
+                            currentStep.setIndex,
+                            'assisted',
+                            e.target.checked
+                          )
+                        }
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+                    </label>
+                  </div>
+                </div>
 
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '4px',
-                              alignSelf: 'flex-end',
-                              paddingBottom: '6px',
-                            }}
-                          >
-                            <label
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={set.assisted}
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'assisted', e.target.checked)
-                                }
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Navigation Controls */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginTop: '32px',
+                  }}
+                >
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
+                    disabled={stepIndex === 0}
+                    style={{ flex: 1 }}
+                  >
+                    ← Previous
+                  </button>
+                  {stepIndex < totalSteps - 1 ? (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() =>
+                        setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))
+                      }
+                      style={{ flex: 1 }}
+                    >
+                      Next →
+                    </button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
+                      Finish ✓
+                    </button>
+                  )}
                 </div>
               </div>
             );
-          })}
-        </div>
+          })()
+        )
       )}
 
-      {/* General Comments and Ab Ripper */}
+            {/* General Comments and Ab Ripper */}
       <div
         className="glass-panel"
         style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
@@ -418,19 +688,61 @@ export const WorkoutSession: React.FC = () => {
           </div>
         )}
 
-        <div className="input-group">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
           <label className="input-label">Workout Comments / Notes</label>
-          <textarea
-            className="input-field"
-            rows={3}
-            placeholder="e.g. standard pushups felt easier today, increased curl weight..."
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            style={{ resize: 'vertical' }}
-          />
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setTempComments(comments);
+                setIsCommentModalOpen(true);
+              }}
+              style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+            >
+              Add/Edit Comments
+            </button>
+            {comments && (
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-green)', fontWeight: '500' }}>
+                ✓ Comment added
+              </span>
+            )}
+          </div>
+          {comments && (
+            <div
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--color-text-secondary)',
+                background: 'hsla(var(--hue-base), 25%, 8%, 0.2)',
+                border: '1px dashed var(--color-border)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                width: '100%',
+                maxWidth: '500px',
+                whiteSpace: 'pre-wrap',
+                marginTop: '4px',
+              }}
+            >
+              <strong>Preview:</strong> {comments}
+            </div>
+          )}
         </div>
+      </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+      {/* Sticky Footer Container */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 100,
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          borderTop: '1px solid var(--color-border)',
+          padding: '16px 0',
+          background: 'var(--color-bg-base)',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
             Save Workout Data
           </button>
@@ -445,6 +757,88 @@ export const WorkoutSession: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Comments Modal Overlay */}
+      {isCommentModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '16px',
+            animation: 'fadeIn 0.2s ease-out forwards',
+          }}
+          onClick={() => setIsCommentModalOpen(false)}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              background: 'var(--color-bg-modal)',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              boxShadow: 'var(--shadow-lg)',
+              animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '6px', color: 'var(--color-text-primary)' }}>
+                Workout Comments / Notes
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                Add details about how the workout felt, changes in weight/reps, or general notes.
+              </p>
+            </div>
+
+            <div className="input-group">
+              <textarea
+                className="input-field"
+                rows={5}
+                placeholder="e.g. standard pushups felt easier today, increased curl weight..."
+                value={tempComments}
+                onChange={(e) => setTempComments(e.target.value)}
+                style={{ resize: 'vertical' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setIsCommentModalOpen(false);
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setComments(tempComments);
+                  setIsCommentModalOpen(false);
+                }}
+              >
+                Save Comment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

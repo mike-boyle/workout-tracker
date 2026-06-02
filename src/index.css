@@ -220,6 +220,17 @@ h4 {
   border-color: var(--color-red);
 }
 
+.btn-warning {
+  background: hsla(48, 96%, 53%, 0.15);
+  border-color: hsla(48, 96%, 53%, 0.3);
+  color: var(--color-yellow);
+}
+
+.btn-warning:hover {
+  background: hsla(48, 96%, 53%, 0.25);
+  border-color: var(--color-yellow);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
