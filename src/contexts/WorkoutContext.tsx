@@ -18,6 +18,7 @@ import {
   loadFirebaseMetadata,
   saveFirebaseCycle,
   loadFirebaseCycle,
+  logAnalyticsEvent,
 } from '../services/firebase';
 
 export interface ExtendedState extends UserMetadata {
@@ -644,6 +645,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const unsubscribe = listenForAuthChanges(async (user) => {
       setFirebaseUser(user);
       if (user) {
+        if (!wasLoggedInRef.current) {
+          logAnalyticsEvent('login', { method: 'google' });
+        }
         wasLoggedInRef.current = true;
         setSyncStatus('syncing');
         try {
@@ -695,6 +699,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } else {
         setSyncStatus('idle');
         if (wasLoggedInRef.current) {
+          logAnalyticsEvent('logout');
           wasLoggedInRef.current = false;
           resetDatabase();
         }
@@ -862,6 +867,16 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
     const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
 
+    logAnalyticsEvent('complete_workout', {
+      workout_id: workoutId,
+      week: state.selectedWeek,
+      day: state.selectedDay,
+      cycle: state.selectedCycle,
+      ab_ripper_completed: abRipperCompleted,
+      has_comments: comments.trim().length > 0,
+      program_id: state.activeProgramId || 'unknown',
+    });
+
     hasPendingChangesRef.current = true;
     dispatch({
       type: 'COMPLETE_WORKOUT',
@@ -870,6 +885,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const switchProgram = async (programId: string) => {
+    logAnalyticsEvent('switch_program', {
+      from_program: state.activeProgramId || 'unknown',
+      to_program: programId,
+    });
+
     hasPendingChangesRef.current = true;
     const metadataToPersist: UserMetadata = {
       version: state.version,
@@ -929,6 +949,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const skipDay = (workoutId: string) => {
+    logAnalyticsEvent('skip_day', {
+      workout_id: workoutId,
+      week: state.selectedWeek,
+      day: state.selectedDay,
+      cycle: state.selectedCycle,
+      program_id: state.activeProgramId || 'unknown',
+    });
+
     hasPendingChangesRef.current = true;
     dispatch({ type: 'SKIP_DAY', payload: { workoutId } });
   };
@@ -938,6 +966,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startNewCycle = () => {
+    logAnalyticsEvent('start_new_cycle', {
+      next_cycle: state.currentCycle + 1,
+      program_id: state.activeProgramId || 'unknown',
+    });
+
     hasPendingChangesRef.current = true;
     dispatch({ type: 'START_NEW_CYCLE' });
   };
@@ -955,6 +988,15 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const fastForwardToDay = (week: number, day: number) => {
+    logAnalyticsEvent('fast_forward_to_day', {
+      from_week: state.currentWeek,
+      from_day: state.currentDay,
+      to_week: week,
+      to_day: day,
+      cycle: state.currentCycle,
+      program_id: state.activeProgramId || 'unknown',
+    });
+
     hasPendingChangesRef.current = true;
     dispatch({ type: 'FAST_FORWARD_TO_DAY', payload: { week, day } });
   };

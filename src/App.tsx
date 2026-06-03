@@ -5,10 +5,32 @@ import { Dashboard } from './components/Dashboard';
 import { WorkoutSession } from './components/WorkoutSession';
 import { HistoryCharts } from './components/HistoryCharts';
 import { History } from './components/History';
+import { logAnalyticsEvent } from './services/firebase';
 
 function AppContent() {
   const { state, setSelectedDay } = useWorkout();
   const [currentHash, setCurrentHash] = useState(() => window.location.hash || '#/dashboard');
+
+  // Track screen views in Google Analytics when currentHash or selected day context changes
+  useEffect(() => {
+    let screenName = 'dashboard';
+    if (currentHash.startsWith('#/session')) {
+      screenName = 'workout_session';
+    } else if (currentHash === '#/analytics') {
+      screenName = 'analytics';
+    } else if (currentHash.startsWith('#/history')) {
+      screenName = 'history';
+    }
+
+    logAnalyticsEvent('screen_view', {
+      screen_name: screenName,
+      cycle: state.selectedCycle,
+      week: state.selectedWeek,
+      day: state.selectedDay,
+      program_id: state.activeProgramId || 'unknown',
+    });
+  }, [currentHash, state.selectedCycle, state.selectedWeek, state.selectedDay, state.activeProgramId]);
+
 
   useEffect(() => {
     const handleHashChange = () => {

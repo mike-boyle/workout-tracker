@@ -14,6 +14,7 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
+import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
 import { FIREBASE_CONFIG } from '../config';
 import type { UserMetadata, WorkoutLog } from '../types';
 
@@ -22,6 +23,35 @@ const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+
+// Initialize Analytics optionally (only in supported browser environments)
+let analytics: Analytics | null = null;
+isSupported()
+  .then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  })
+  .catch((err) => {
+    console.warn('Firebase Analytics not supported or failed to initialize:', err);
+  });
+
+/**
+ * Safely log an event to Firebase Analytics
+ */
+export const logAnalyticsEvent = (
+  eventName: string,
+  eventParams?: Record<string, unknown>
+): void => {
+  if (analytics) {
+    try {
+      logEvent(analytics, eventName, eventParams);
+    } catch (err) {
+      console.warn(`Failed to log analytics event "${eventName}":`, err);
+    }
+  }
+};
+
 
 /**
  * Triggers Google Sign-In popup

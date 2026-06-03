@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { logAnalyticsEvent } from '../services/firebase';
 
 export const RestTimer: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
@@ -49,6 +50,7 @@ export const RestTimer: React.FC = () => {
           if (prev <= 1) {
             setIsActive(false);
             triggerBuzzer();
+            logAnalyticsEvent('timer_complete');
             return 0;
           }
           return prev - 1;
@@ -64,17 +66,24 @@ export const RestTimer: React.FC = () => {
   }, [isActive, secondsLeft]);
 
   const addTime = (secs: number) => {
+    logAnalyticsEvent('timer_add_time', { seconds_added: secs });
     setSecondsLeft((prev) => prev + secs);
     setIsActive(true);
   };
 
   const toggleTimer = () => {
     if (secondsLeft > 0) {
+      if (isActive) {
+        logAnalyticsEvent('timer_pause');
+      } else {
+        logAnalyticsEvent('timer_start');
+      }
       setIsActive(!isActive);
     }
   };
 
   const resetTimer = () => {
+    logAnalyticsEvent('timer_reset');
     setSecondsLeft(0);
     setIsActive(false);
     if (timerRef.current) clearInterval(timerRef.current);
