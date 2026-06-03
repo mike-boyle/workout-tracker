@@ -163,8 +163,7 @@ export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
       };
 
       // Set timestamp
-      if (!metadata.cycleTimestamps) metadata.cycleTimestamps = {};
-      metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
+      metadata.cycleTimestamps![cycleNum] = new Date().toISOString();
     }
 
     metadata.cycleStats = statsMap;
@@ -215,7 +214,7 @@ export async function loadLocalState(selectedCycle?: number): Promise<{
     await db.set('metadata', metadata);
   }
 
-  const progId = metadata.activeProgramId || 'p90x';
+  const progId = metadata.activeProgramId;
   const progState = metadata.programs[progId] || {
     currentCycle: metadata.currentCycle || 1,
     currentWeek: metadata.currentWeek || 1,

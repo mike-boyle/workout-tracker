@@ -6,6 +6,12 @@ import { WorkoutSession } from '../src/components/WorkoutSession';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import { db, clearLocalState } from '../src/services/storage';
 
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 // Mock Web Audio API for RestTimer buzzer
 const mockOscillator = {
   connect: vi.fn(),
@@ -167,6 +173,57 @@ describe('RestTimer Component', () => {
     vi.useRealTimers();
     // Restore default AudioContext mock
     vi.stubGlobal('AudioContext', MockAudioContext);
+  });
+
+  it('should handle missing AudioContext gracefully', () => {
+    vi.stubGlobal('AudioContext', undefined);
+    const originalWebkit = window.webkitAudioContext;
+    window.webkitAudioContext = undefined;
+
+    vi.useFakeTimers();
+    render(<RestTimer />);
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    vi.stubGlobal('AudioContext', MockAudioContext);
+    window.webkitAudioContext = originalWebkit;
+    vi.useRealTimers();
+  });
+
+  it('should fallback to webkitAudioContext if AudioContext is undefined', () => {
+    vi.stubGlobal('AudioContext', undefined);
+    window.webkitAudioContext = MockAudioContext as unknown as typeof AudioContext;
+
+    vi.useFakeTimers();
+    render(<RestTimer />);
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    vi.stubGlobal('AudioContext', MockAudioContext);
+    window.webkitAudioContext = undefined;
+    vi.useRealTimers();
+  });
+
+  it('should reset timer when paused and ref is cleared', () => {
+    render(<RestTimer />);
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+    act(() => {
+      screen.getByText('Pause').click();
+    });
+    act(() => {
+      screen.getByText('Reset').click();
+    });
+    expect(screen.getByText('0:00')).toBeInTheDocument();
   });
 });
 

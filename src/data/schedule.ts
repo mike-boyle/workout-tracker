@@ -391,7 +391,6 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
 
   const phase1ResistanceWeeks = [1, 2, 3];
   const phase2ResistanceWeeks = [5, 6, 7];
-  const phase3ResistanceWeeks = [9, 10, 11, 12];
   const recoveryWeeks = [4, 8, 13];
 
   let dayNumber = 1;
@@ -400,7 +399,6 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
     const isRecovery = recoveryWeeks.includes(week);
     const isPhase1 = phase1ResistanceWeeks.includes(week);
     const isPhase2 = phase2ResistanceWeeks.includes(week);
-    const isPhase3 = phase3ResistanceWeeks.includes(week);
 
     for (let day = 1; day <= 7; day++) {
       let workoutId = 'rest';
@@ -480,7 +478,7 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
             workoutId = 'rest';
             break;
         }
-      } else if (isPhase3) {
+      } else {
         // Phase 3 (Weeks 9, 10, 11, 12)
         // Alternates Weeks 9/11 (Phase 1 style) and Weeks 10/12 (Phase 2 style) for Mon/Wed resistance
         const isPhase1StyleWeek = week === 9 || week === 11;

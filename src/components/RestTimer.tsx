@@ -56,12 +56,13 @@ export const RestTimer: React.FC = () => {
           return prev - 1;
         });
       }, 1000);
-    } else if (!isActive && timerRef.current) {
-      clearInterval(timerRef.current);
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [isActive, secondsLeft]);
 
@@ -72,21 +73,22 @@ export const RestTimer: React.FC = () => {
   };
 
   const toggleTimer = () => {
-    if (secondsLeft > 0) {
-      if (isActive) {
-        logAnalyticsEvent('timer_pause');
-      } else {
-        logAnalyticsEvent('timer_start');
-      }
-      setIsActive(!isActive);
+    if (isActive) {
+      logAnalyticsEvent('timer_pause');
+    } else {
+      logAnalyticsEvent('timer_start');
     }
+    setIsActive(!isActive);
   };
 
   const resetTimer = () => {
     logAnalyticsEvent('timer_reset');
     setSecondsLeft(0);
     setIsActive(false);
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   const formatTime = (totalSecs: number) => {
