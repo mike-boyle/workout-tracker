@@ -647,7 +647,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const cloudMetadata = await loadFirebaseMetadata(user.uid);
           if (cloudMetadata) {
-            const activeLogs = await loadFirebaseCycle(user.uid, cloudMetadata.currentCycle);
+            const activeLogs = await loadFirebaseCycle(
+              user.uid,
+              cloudMetadata.currentCycle,
+              cloudMetadata.activeProgramId || 'p90x'
+            );
             await saveLocalState(
               cloudMetadata,
               cloudMetadata.currentCycle,
@@ -673,7 +677,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             };
             await saveFirebaseMetadata(user.uid, currentMetadata);
             const activeCycleLogs = state.loadedCycles[state.currentCycle] || [];
-            await saveFirebaseCycle(user.uid, state.currentCycle, activeCycleLogs);
+            await saveFirebaseCycle(
+              user.uid,
+              state.currentCycle,
+              activeCycleLogs,
+              state.activeProgramId || 'p90x'
+            );
             setSyncStatus('synced');
           }
         } catch (err) {
@@ -756,7 +765,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await saveFirebaseMetadata(firebaseUser.uid, metadataToPersist);
         const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
         if (selectedCycleLogs) {
-          await saveFirebaseCycle(firebaseUser.uid, state.selectedCycle, selectedCycleLogs);
+          await saveFirebaseCycle(
+            firebaseUser.uid,
+            state.selectedCycle,
+            selectedCycleLogs,
+            state.activeProgramId || 'p90x'
+          );
         }
       } catch (err) {
         console.error('Firebase auto-sync failed:', err);
@@ -793,7 +807,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // 2. If Firebase is signed in and we don't have it locally, fetch from Firestore
       if (cycleLogs.length === 0 && firebaseUser) {
-        cycleLogs = await loadFirebaseCycle(firebaseUser.uid, cycleNum);
+        cycleLogs = await loadFirebaseCycle(
+          firebaseUser.uid,
+          cycleNum,
+          state.activeProgramId || 'p90x'
+        );
         
         // Save locally for future offline runs
         const metadataToPersist: UserMetadata = {

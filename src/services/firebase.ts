@@ -67,9 +67,10 @@ export const loadFirebaseMetadata = async (userId: string): Promise<UserMetadata
 export const saveFirebaseCycle = async (
   userId: string,
   cycleNum: number,
-  logs: WorkoutLog[]
+  logs: WorkoutLog[],
+  programId: string = 'p90x'
 ): Promise<void> => {
-  const docRef = doc(db, 'users', userId, 'cycles', cycleNum.toString());
+  const docRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
   await setDoc(docRef, { logs });
 };
 
@@ -78,9 +79,10 @@ export const saveFirebaseCycle = async (
  */
 export const loadFirebaseCycle = async (
   userId: string,
-  cycleNum: number
+  cycleNum: number,
+  programId: string = 'p90x'
 ): Promise<WorkoutLog[]> => {
-  const docRef = doc(db, 'users', userId, 'cycles', cycleNum.toString());
+  const docRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     const data = docSnap.data();
