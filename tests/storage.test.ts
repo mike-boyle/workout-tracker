@@ -102,6 +102,15 @@ describe('Storage Service (IndexedDB & segmented)', () => {
           exercises: {},
         },
         {
+          id: 'log_cycle_1_2',
+          cycle: 1,
+          week: 1,
+          day: 2,
+          workoutId: 'plyometrics',
+          skipped: false,
+          exercises: {},
+        },
+        {
           id: 'log_cycle_2',
           cycle: 2,
           week: 2,
@@ -129,7 +138,7 @@ describe('Storage Service (IndexedDB & segmented)', () => {
 
     // Check cycle stats calculation during migration
     expect(res.metadata.cycleStats?.[1]).toEqual({
-      completedCount: 1,
+      completedCount: 2,
       skippedCount: 0,
       totalDays: 91,
     });
@@ -145,8 +154,9 @@ describe('Storage Service (IndexedDB & segmented)', () => {
 
     // Verify cycle 1 logs are also saved to store
     const cycle1Logs = await loadLocalCycleLogs(1);
-    expect(cycle1Logs.length).toBe(1);
+    expect(cycle1Logs.length).toBe(2);
     expect(cycle1Logs[0].id).toBe('log_cycle_1');
+    expect(cycle1Logs[1].id).toBe('log_cycle_1_2');
   });
 
   it('should validate valid backup data', () => {
@@ -362,6 +372,19 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     const logs = await loadLocalCycleLogs(1);
     expect(logs).toHaveLength(1);
     expect(logs[0].id).toBe('log_no_cycle');
+  });
+
+  it('should migrate successfully even if logs is not an array during migration', async () => {
+    const legacyState = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      logs: 'not-an-array',
+    };
+    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
+    const result = await migrateLocalStorageToIndexedDB();
+    expect(result).toBe(true);
   });
 
   it('should return false if raw state is null in migrateLocalStorageToIndexedDB', async () => {
