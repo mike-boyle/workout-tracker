@@ -3,8 +3,10 @@ import {
   loadLocalState,
   loadLocalCycleLogs,
   saveLocalState,
+  saveLocalMetadata,
   clearLocalState,
   validateBackup,
+  migrateLocalStorageToIndexedDB,
   INITIAL_METADATA,
   db,
 } from '../src/services/storage';
@@ -163,5 +165,464 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     expect(validateBackup(undefined)).toBe(false);
     expect(validateBackup('string')).toBe(false);
     expect(validateBackup({ currentCycle: 'not-a-number' })).toBe(false);
+  });
+
+  it('should reject backup data with invalid non-numeric properties', () => {
+    expect(validateBackup({ currentCycle: 1, currentWeek: 'not-a-number', currentDay: 1 })).toBe(false);
+    expect(validateBackup({ currentCycle: 1, currentWeek: 1, currentDay: 'not-a-number' })).toBe(false);
+  });
+
+  it('should return false if JSON.parse fails during migration', async () => {
+    localStorage.setItem('workout_tracker_state', 'invalid-json{');
+    const result = await migrateLocalStorageToIndexedDB();
+    expect(result).toBe(false);
+  });
+
+  it('should initialize activeProgramId and programs if not present in loaded metadata', async () => {
+    const incompleteMetadata = {
+      version: 1,
+      currentCycle: 2,
+      currentWeek: 3,
+      currentDay: 1,
+      gdriveLinked: false,
+    };
+    store['metadata'] = incompleteMetadata;
+
+    const res = await loadLocalState();
+    expect(res.metadata.activeProgramId).toBe('p90x');
+    expect(res.metadata.programs?.p90x.currentCycle).toBe(2);
+  });
+
+  it('should fallback to legacy cycle logs if program-specific logs do not exist', async () => {
+    const mockMetadata = {
+      version: 1,
+      currentCycle: 2,
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: { currentCycle: 2, currentWeek: 1, currentDay: 1, cycleStats: {} },
+      },
+    };
+    store['metadata'] = mockMetadata;
+    const legacyLogs = [
+      {
+        id: 'legacy_log_1',
+        cycle: 2,
+        week: 1,
+        day: 1,
+        workoutId: 'plyometrics',
+        skipped: false,
+        exercises: {},
+      },
+    ];
+    store['cycle_2_logs'] = legacyLogs;
+
+    const res = await loadLocalState();
+    expect(res.logs).toEqual(legacyLogs);
+    expect(store['p90x_cycle_2_logs']).toEqual(legacyLogs);
+  });
+
+  it('should fallback to legacy cycle logs in loadLocalCycleLogs', async () => {
+    const legacyLogs = [
+      {
+        id: 'legacy_log_1',
+        cycle: 3,
+        week: 1,
+        day: 1,
+        workoutId: 'plyometrics',
+        skipped: false,
+        exercises: {},
+      },
+    ];
+    store['cycle_3_logs'] = legacyLogs;
+
+    const logs = await loadLocalCycleLogs(3);
+    expect(logs).toEqual(legacyLogs);
+    expect(store['p90x_cycle_3_logs']).toEqual(legacyLogs);
+  });
+
+  it('should return empty logs if neither new logs nor legacy logs exist in loadLocalState', async () => {
+    const mockMetadata = {
+      version: 1,
+      currentCycle: 2,
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: { currentCycle: 2, currentWeek: 1, currentDay: 1, cycleStats: {} },
+      },
+    };
+    store['metadata'] = mockMetadata;
+
+    const res = await loadLocalState();
+    expect(res.logs).toEqual([]);
+  });
+
+  it('should return empty logs if neither new logs nor legacy logs exist in loadLocalCycleLogs', async () => {
+    const logs = await loadLocalCycleLogs(4);
+    expect(logs).toEqual([]);
+  });
+
+  it('should initialize missing metadata fields on saveLocalState', async () => {
+    const incompleteMetadata: UserMetadata = {
+      version: 1,
+      currentCycle: 2,
+      currentWeek: 3,
+      currentDay: 1,
+      gdriveLinked: false,
+    };
+
+    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
+    expect(incompleteMetadata.programs).toBeDefined();
+    expect(incompleteMetadata.programs!.p90x).toBeDefined();
+    expect(incompleteMetadata.cycleStats).toBeDefined();
+    expect(incompleteMetadata.cycleStats![2]).toBeDefined();
+    expect(incompleteMetadata.cycleTimestamps).toBeDefined();
+    expect(incompleteMetadata.cycleTimestamps![2]).toBeDefined();
+  });
+
+  it('should initialize cycleStats on saveLocalState if program exists but cycleStats is undefined', async () => {
+    const incompleteMetadata: UserMetadata = {
+      version: 1,
+      currentCycle: 2,
+      currentWeek: 3,
+      currentDay: 1,
+      gdriveLinked: false,
+      programs: {
+        p90x: {
+          currentCycle: 2,
+          currentWeek: 1,
+          currentDay: 1,
+          cycleStats: undefined as unknown as { [cycle: number]: { completedCount: number; skippedCount: number; totalDays: number } },
+        },
+      },
+    };
+
+    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
+    expect(incompleteMetadata.programs!.p90x.cycleStats).toBeDefined();
+    expect(incompleteMetadata.programs!.p90x.cycleStats[2]).toBeDefined();
+  });
+
+  it('should set totalDays to 7 on saveLocalState for test_workout program', async () => {
+    const metadata = { ...INITIAL_METADATA };
+    await saveLocalState(metadata, 1, [], 'test_workout');
+    expect(metadata.cycleStats?.[1].totalDays).toBe(7);
+  });
+
+  it('should fallback to default values in saveLocalState when metadata values are missing', async () => {
+    const incompleteMetadata = {
+      version: 1,
+      currentCycle: undefined,
+      currentWeek: undefined,
+      currentDay: undefined,
+      gdriveLinked: false,
+    } as unknown as UserMetadata;
+
+    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
+    expect(incompleteMetadata.programs!.p90x.currentCycle).toBe(1);
+    expect(incompleteMetadata.programs!.p90x.currentWeek).toBe(1);
+    expect(incompleteMetadata.programs!.p90x.currentDay).toBe(1);
+  });
+
+  it('should fallback to default values in migrateLocalStorageToIndexedDB if properties are missing', async () => {
+    const legacyState = {
+      gdriveLinked: false,
+      logs: [],
+    };
+    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
+
+    const result = await migrateLocalStorageToIndexedDB();
+    expect(result).toBe(true);
+
+    const res = await loadLocalState(1);
+    expect(res.metadata.version).toBe(1);
+    expect(res.metadata.currentCycle).toBe(1);
+    expect(res.metadata.currentWeek).toBe(1);
+    expect(res.metadata.currentDay).toBe(1);
+  });
+
+  it('should fallback to cycle 1 for logs without cycle during migration', async () => {
+    const legacyState = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      logs: [
+        {
+          id: 'log_no_cycle',
+          week: 1,
+          day: 1,
+          workoutId: 'chest_and_back',
+          skipped: false,
+          exercises: {},
+        },
+      ],
+    };
+    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
+
+    await migrateLocalStorageToIndexedDB();
+
+    const logs = await loadLocalCycleLogs(1);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].id).toBe('log_no_cycle');
+  });
+
+  it('should return false if raw state is null in migrateLocalStorageToIndexedDB', async () => {
+    const result = await migrateLocalStorageToIndexedDB();
+    expect(result).toBe(false);
+  });
+
+  it('should return false if state is not an object in migrateLocalStorageToIndexedDB', async () => {
+    localStorage.setItem('workout_tracker_state', '123');
+    const result = await migrateLocalStorageToIndexedDB();
+    expect(result).toBe(false);
+  });
+
+  it('should save metadata using saveLocalMetadata', async () => {
+    const mockMetadata = { ...INITIAL_METADATA, currentCycle: 10 };
+    await saveLocalMetadata(mockMetadata);
+    expect(store['metadata']).toEqual(mockMetadata);
+  });
+
+  it('should fallback to default values in loadLocalState if metadata values are missing/empty', async () => {
+    const incompleteMetadata = {
+      version: 1,
+      currentCycle: undefined,
+      currentWeek: undefined,
+      currentDay: undefined,
+      gdriveLinked: false,
+    } as unknown as UserMetadata;
+    store['metadata'] = incompleteMetadata;
+
+    const res = await loadLocalState();
+    expect(res.metadata.activeProgramId).toBe('p90x');
+    expect(res.metadata.programs?.p90x.currentCycle).toBe(1);
+    expect(res.metadata.programs?.p90x.currentWeek).toBe(1);
+    expect(res.metadata.programs?.p90x.currentDay).toBe(1);
+  });
+
+  it('should fallback to default values in loadLocalState when program id is not in programs', async () => {
+    const incompleteMetadata = {
+      version: 1,
+      currentCycle: undefined,
+      currentWeek: undefined,
+      currentDay: undefined,
+      activeProgramId: undefined, // test fallback activeProgramId
+      programs: {
+        other_program: { currentCycle: 1, currentWeek: 1, currentDay: 1, cycleStats: {} },
+      },
+      cycleStats: undefined,
+    } as unknown as UserMetadata;
+    store['metadata'] = incompleteMetadata;
+
+    const res = await loadLocalState();
+    expect(res.metadata.activeProgramId).toBe('p90x');
+    expect(res.metadata.programs?.other_program.currentCycle).toBe(1);
+    expect(res.metadata.programs?.p90x).toBeUndefined();
+  });
+
+  describe('WorkoutTrackerDB real implementation tests', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const createMockIDBRequest = (
+      success: boolean,
+      resultValue?: unknown,
+      upgradeNeeded: boolean = false,
+      requestSuccess: boolean = true
+    ) => {
+      const req = {
+        result: {
+          objectStoreNames: {
+            contains: () => !upgradeNeeded,
+          } as unknown as DOMStringList,
+          createObjectStore: vi.fn(),
+          transaction: () => ({
+            objectStore: () => ({
+              get: () => {
+                const getReq = {
+                  result: resultValue,
+                  error: new Error('Request error') as DOMException | null,
+                  onsuccess: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
+                  onerror: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
+                } as unknown as IDBRequest<unknown>;
+                setTimeout(() => {
+                  if (requestSuccess) {
+                    getReq.onsuccess?.({} as Event);
+                  } else {
+                    getReq.onerror?.({} as Event);
+                  }
+                }, 0);
+                return getReq;
+              },
+              put: () => {
+                const putReq = {
+                  error: new Error('Request error') as DOMException | null,
+                  onsuccess: null as ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown) | null,
+                  onerror: null as ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown) | null,
+                } as unknown as IDBRequest<IDBValidKey>;
+                setTimeout(() => {
+                  if (requestSuccess) {
+                    putReq.onsuccess?.({} as Event);
+                  } else {
+                    putReq.onerror?.({} as Event);
+                  }
+                }, 0);
+                return putReq;
+              },
+              delete: () => {
+                const delReq = {
+                  error: new Error('Request error') as DOMException | null,
+                  onsuccess: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                  onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                } as unknown as IDBRequest<undefined>;
+                setTimeout(() => {
+                  if (requestSuccess) {
+                    delReq.onsuccess?.({} as Event);
+                  } else {
+                    delReq.onerror?.({} as Event);
+                  }
+                }, 0);
+                return delReq;
+              },
+              clear: () => {
+                const clearReq = {
+                  error: new Error('Request error') as DOMException | null,
+                  onsuccess: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                  onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                } as unknown as IDBRequest<undefined>;
+                setTimeout(() => {
+                  if (requestSuccess) {
+                    clearReq.onsuccess?.({} as Event);
+                  } else {
+                    clearReq.onerror?.({} as Event);
+                  }
+                }, 0);
+                return clearReq;
+              },
+            } as unknown as IDBObjectStore),
+          } as unknown as IDBTransaction),
+        } as unknown as IDBDatabase,
+        error: new Error('IDB error') as DOMException | null,
+        onsuccess: null as ((this: IDBOpenDBRequest, ev: Event) => unknown) | null,
+        onerror: null as ((this: IDBOpenDBRequest, ev: Event) => unknown) | null,
+        onupgradeneeded: null as ((this: IDBOpenDBRequest, ev: IDBVersionChangeEvent) => unknown) | null,
+      } as unknown as IDBOpenDBRequest;
+
+      setTimeout(() => {
+        if (success) {
+          if (upgradeNeeded && req.onupgradeneeded) {
+            req.onupgradeneeded({} as IDBVersionChangeEvent);
+          }
+          req.onsuccess?.({} as Event);
+        } else {
+          req.onerror?.({} as Event);
+        }
+      }, 0);
+
+      return req;
+    };
+
+    it('should successfully get a value using real WorkoutTrackerDB methods', async () => {
+      const mockRequest = createMockIDBRequest(true, 'some_val');
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      const val = await db.get('test_key');
+      expect(val).toBe('some_val');
+    });
+
+    it('should handle get error when openDB fails', async () => {
+      const mockRequest = createMockIDBRequest(false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      const val = await db.get('test_key');
+      expect(val).toBeNull();
+    });
+
+    it('should handle get request error', async () => {
+      const mockRequest = createMockIDBRequest(true, null, false, false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      const val = await db.get('test_key');
+      expect(val).toBeNull();
+    });
+
+    it('should successfully set a value', async () => {
+      const mockRequest = createMockIDBRequest(true);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.set('test_key', 'val')).resolves.not.toThrow();
+    });
+
+    it('should handle set error when openDB fails', async () => {
+      const mockRequest = createMockIDBRequest(false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.set('test_key', 'val')).resolves.not.toThrow();
+    });
+
+    it('should handle set request error', async () => {
+      const mockRequest = createMockIDBRequest(true, null, false, false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.set('test_key', 'val')).resolves.not.toThrow();
+    });
+
+    it('should successfully delete a value', async () => {
+      const mockRequest = createMockIDBRequest(true);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.delete('test_key')).resolves.not.toThrow();
+    });
+
+    it('should handle delete error when openDB fails', async () => {
+      const mockRequest = createMockIDBRequest(false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.delete('test_key')).resolves.not.toThrow();
+    });
+
+    it('should handle delete request error', async () => {
+      const mockRequest = createMockIDBRequest(true, null, false, false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.delete('test_key')).resolves.not.toThrow();
+    });
+
+    it('should successfully clear', async () => {
+      const mockRequest = createMockIDBRequest(true);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.clear()).resolves.not.toThrow();
+    });
+
+    it('should handle clear error when openDB fails', async () => {
+      const mockRequest = createMockIDBRequest(false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.clear()).resolves.not.toThrow();
+    });
+
+    it('should handle clear request error', async () => {
+      const mockRequest = createMockIDBRequest(true, null, false, false);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await expect(db.clear()).resolves.not.toThrow();
+    });
+
+    it('should call onupgradeneeded when upgrading', async () => {
+      const mockRequest = createMockIDBRequest(true, null, true);
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await db.get('upgrade_key');
+      expect(mockRequest.result.createObjectStore).toHaveBeenCalledWith('keyValueStore');
+    });
+
+    it('should call onupgradeneeded when upgrading and keyValueStore already exists', async () => {
+      const mockRequest = createMockIDBRequest(true, null, true);
+      mockRequest.result.objectStoreNames.contains = () => true;
+      vi.stubGlobal('indexedDB', { open: () => mockRequest });
+
+      await db.get('upgrade_key');
+      expect(mockRequest.result.createObjectStore).not.toHaveBeenCalled();
+    });
   });
 });
