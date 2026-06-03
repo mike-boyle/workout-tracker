@@ -15,13 +15,38 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
-import { FIREBASE_CONFIG } from '../config';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { FIREBASE_CONFIG, ENABLE_APP_CHECK, RECAPTCHA_SITE_KEY } from '../config';
 import type { UserMetadata, WorkoutLog } from '../types';
+
+declare global {
+  interface Window {
+    FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
+  }
+}
 
 // Initialize Firebase
 const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Initialize Firebase App Check conditionally
+if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {
+  if (import.meta.env.DEV) {
+    window.FIREBASE_APPCHECK_DEBUG_TOKEN =
+      import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
+  }
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn('Firebase App Check failed to initialize:', err);
+  }
+}
+
+
 const googleProvider = new GoogleAuthProvider();
 
 // Initialize Analytics optionally (only in supported browser environments)
