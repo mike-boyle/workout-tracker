@@ -8,7 +8,9 @@ export const RestTimer: React.FC = () => {
   // Play a simple synthesized beep using browser Web Audio API (no external file dependencies)
   const triggerBuzzer = () => {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
 

@@ -12,12 +12,12 @@ import type { UserMetadata, WorkoutLog } from '../src/types';
 
 describe('Storage Service (IndexedDB & segmented)', () => {
   let store: Record<string, unknown> = {};
- 
+
   beforeEach(() => {
     store = {};
     localStorage.clear();
     vi.restoreAllMocks();
- 
+
     // Mock the db calls using our in-memory store
     vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
     vi.spyOn(db, 'set').mockImplementation(async (key: string, val: unknown) => {
@@ -61,7 +61,7 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     ];
 
     await saveLocalState(mockMetadata, 2, mockLogs);
-    
+
     const loaded = await loadLocalState(2);
     expect(loaded.metadata.currentCycle).toBe(2);
     expect(loaded.logs).toEqual(mockLogs);
@@ -73,11 +73,11 @@ describe('Storage Service (IndexedDB & segmented)', () => {
   it('should clear IndexedDB and localStorage on clearLocalState', async () => {
     const mockMetadata = { ...INITIAL_METADATA, currentCycle: 5 };
     await saveLocalState(mockMetadata, 5, []);
-    
+
     expect((await loadLocalState(5)).metadata.currentCycle).toBe(5);
 
     await clearLocalState();
-    
+
     const cleared = await loadLocalState();
     expect(cleared.metadata).toEqual(INITIAL_METADATA);
   });
@@ -107,7 +107,7 @@ describe('Storage Service (IndexedDB & segmented)', () => {
           workoutId: 'plyometrics',
           skipped: true,
           exercises: {},
-        }
+        },
       ],
     };
 
@@ -119,12 +119,12 @@ describe('Storage Service (IndexedDB & segmented)', () => {
 
     expect(localStorage.getItem('workout_tracker_state')).toBeNull();
     expect(localStorage.getItem('workout_tracker_gdrive_file_id')).toBeNull();
-    
+
     // Metadata check
     expect(res.metadata.currentCycle).toBe(2);
     expect(res.metadata.gdriveLinked).toBe(true);
     expect(res.metadata.metadataFileId).toBe('remote_metadata_file_123');
-    
+
     // Check cycle stats calculation during migration
     expect(res.metadata.cycleStats?.[1]).toEqual({
       completedCount: 1,

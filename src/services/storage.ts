@@ -149,7 +149,7 @@ export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
     for (const cycleStr of Object.keys(logsByCycle)) {
       const cycleNum = parseInt(cycleStr, 10);
       const cycleLogs = logsByCycle[cycleNum];
-      
+
       // Save logs
       await db.set(`cycle_${cycleNum}_logs`, cycleLogs);
 
@@ -244,7 +244,10 @@ export async function loadLocalState(selectedCycle?: number): Promise<{
 /**
  * Loads a specific cycle's logs from IndexedDB.
  */
-export async function loadLocalCycleLogs(cycleNum: number, activeProgramId: string = 'p90x'): Promise<WorkoutLog[]> {
+export async function loadLocalCycleLogs(
+  cycleNum: number,
+  activeProgramId: string = 'p90x'
+): Promise<WorkoutLog[]> {
   const newKey = activeProgramId + '_cycle_' + cycleNum + '_logs';
   let logs = await db.get<WorkoutLog[]>(newKey);
   if (!logs) {

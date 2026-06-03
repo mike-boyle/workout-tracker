@@ -67,10 +67,7 @@ interface WorkoutContextType {
   setSelectedDay: (week: number, day: number, cycle?: number) => void;
   startNewCycle: () => void;
   linkGoogleDrive: (linked: boolean) => void;
-  syncGoogleDriveData: (
-    metadata: UserMetadata,
-    activeCycleLogs: WorkoutLog[]
-  ) => void;
+  syncGoogleDriveData: (metadata: UserMetadata, activeCycleLogs: WorkoutLog[]) => void;
   resetDatabase: () => void;
   loadCycleLogs: (cycleNum: number) => Promise<void>;
   switchProgram: (programId: string) => Promise<void>;
@@ -167,7 +164,13 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
     case 'COMPLETE_WORKOUT': {
       const { workoutId, exercises, abRipperCompleted, comments } = action.payload;
-      const logId = 'cycle_' + state.selectedCycle + '_week_' + state.selectedWeek + '_day_' + state.selectedDay;
+      const logId =
+        'cycle_' +
+        state.selectedCycle +
+        '_week_' +
+        state.selectedWeek +
+        '_day_' +
+        state.selectedDay;
 
       const newLog: WorkoutLog = {
         id: logId,
@@ -233,10 +236,17 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
           currentCycle: state.currentCycle,
           currentWeek: nextWeek,
           currentDay: nextDay,
-          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
-            [state.selectedCycle]: nextStats
-          })
-        }
+          cycleStats: Object.assign(
+            {},
+            (state.programs &&
+              state.programs[activeProg] &&
+              state.programs[activeProg].cycleStats) ||
+              {},
+            {
+              [state.selectedCycle]: nextStats,
+            }
+          ),
+        },
       });
 
       return {
@@ -247,10 +257,10 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedDay: nextSelDay,
         logs: nextLogs,
         loadedCycles: Object.assign({}, state.loadedCycles, {
-          [state.selectedCycle]: nextLogs
+          [state.selectedCycle]: nextLogs,
         }),
         cycleStats: Object.assign({}, state.cycleStats, {
-          [state.selectedCycle]: nextStats
+          [state.selectedCycle]: nextStats,
         }),
         programs: updatedPrograms,
       };
@@ -258,7 +268,13 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
     case 'SKIP_DAY': {
       const { workoutId } = action.payload;
-      const logId = 'cycle_' + state.selectedCycle + '_week_' + state.selectedWeek + '_day_' + state.selectedDay;
+      const logId =
+        'cycle_' +
+        state.selectedCycle +
+        '_week_' +
+        state.selectedWeek +
+        '_day_' +
+        state.selectedDay;
 
       const skipLog: WorkoutLog = {
         id: logId,
@@ -324,10 +340,17 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
           currentCycle: state.currentCycle,
           currentWeek: nextWeek,
           currentDay: nextDay,
-          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
-            [state.selectedCycle]: nextStats
-          })
-        }
+          cycleStats: Object.assign(
+            {},
+            (state.programs &&
+              state.programs[activeProg] &&
+              state.programs[activeProg].cycleStats) ||
+              {},
+            {
+              [state.selectedCycle]: nextStats,
+            }
+          ),
+        },
       });
 
       return {
@@ -338,10 +361,10 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedDay: nextSelDay,
         logs: nextLogs,
         loadedCycles: Object.assign({}, state.loadedCycles, {
-          [state.selectedCycle]: nextLogs
+          [state.selectedCycle]: nextLogs,
         }),
         cycleStats: Object.assign({}, state.cycleStats, {
-          [state.selectedCycle]: nextStats
+          [state.selectedCycle]: nextStats,
         }),
         programs: updatedPrograms,
       };
@@ -351,7 +374,7 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       const { week, day, cycle } = action.payload;
       const targetCycle = cycle !== undefined ? cycle : state.selectedCycle;
       const hasChangedCycle = targetCycle !== state.selectedCycle;
-      const targetLogs = hasChangedCycle ? (state.loadedCycles[targetCycle] || []) : state.logs;
+      const targetLogs = hasChangedCycle ? state.loadedCycles[targetCycle] || [] : state.logs;
 
       return {
         ...state,
@@ -376,10 +399,17 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
           currentCycle: nextCycle,
           currentWeek: 1,
           currentDay: 1,
-          cycleStats: Object.assign({}, (state.programs && state.programs[activeProg] && state.programs[activeProg].cycleStats) || {}, {
-            [nextCycle]: nextStats
-          })
-        }
+          cycleStats: Object.assign(
+            {},
+            (state.programs &&
+              state.programs[activeProg] &&
+              state.programs[activeProg].cycleStats) ||
+              {},
+            {
+              [nextCycle]: nextStats,
+            }
+          ),
+        },
       });
       return {
         ...state,
@@ -391,10 +421,10 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
         selectedDay: 1,
         logs: [],
         loadedCycles: Object.assign({}, state.loadedCycles, {
-          [nextCycle]: []
+          [nextCycle]: [],
         }),
         cycleStats: Object.assign({}, state.cycleStats, {
-          [nextCycle]: nextStats
+          [nextCycle]: nextStats,
         }),
         programs: updatedPrograms,
       };
@@ -477,7 +507,7 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
             comments: 'Fast-forward skipped',
           });
         }
-      } 
+      }
 
       const nextLogs = [...currentCycleLogs, ...newSkipLogs];
 
@@ -554,7 +584,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
     if (selectedCycleLogs) {
-      saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs, state.activeProgramId).catch((err) =>
+      saveLocalState(
+        metadataToPersist,
+        state.selectedCycle,
+        selectedCycleLogs,
+        state.activeProgramId
+      ).catch((err) =>
         console.error('Failed to save cycle ' + state.selectedCycle + ' logs:', err)
       );
     }
@@ -651,13 +686,18 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const currentActiveProg = state.activeProgramId || 'p90x';
     const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
     if (selectedCycleLogs) {
-      await saveLocalState(metadataToPersist, state.selectedCycle, selectedCycleLogs, currentActiveProg);
+      await saveLocalState(
+        metadataToPersist,
+        state.selectedCycle,
+        selectedCycleLogs,
+        currentActiveProg
+      );
     } else {
       await saveLocalMetadata(metadataToPersist);
     }
 
     // 2. Load target program state from metadata or set defaults if not exists
-    const metadata = await loadLocalState().then(res => res.metadata);
+    const metadata = await loadLocalState().then((res) => res.metadata);
     metadata.activeProgramId = programId;
     if (!metadata.programs) {
       metadata.programs = {};
@@ -708,10 +748,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     dispatch({ type: 'LINK_GDRIVE', payload: linked });
   };
 
-  const syncGoogleDriveData = (
-    metadata: UserMetadata,
-    activeCycleLogs: WorkoutLog[]
-  ) => {
+  const syncGoogleDriveData = (metadata: UserMetadata, activeCycleLogs: WorkoutLog[]) => {
     dispatch({
       type: 'SYNC_GDRIVE_DATA',
       payload: { metadata, activeCycleLogs },

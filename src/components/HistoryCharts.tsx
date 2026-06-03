@@ -300,7 +300,7 @@ export const HistoryCharts: React.FC = () => {
                 width: '32px',
                 height: '32px',
                 animation: 'spin 1.2s linear infinite',
-                margin: '0 auto 12px auto'
+                margin: '0 auto 12px auto',
               }}
             />
             <p style={{ fontWeight: '500' }}>Loading progression analytics...</p>

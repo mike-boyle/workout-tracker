@@ -114,7 +114,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   };
 
   const activeCycleLogs = state.loadedCycles[state.currentCycle];
- 
+
   // Perform auto-sync on workout log or metadata modifications if connected
   useEffect(() => {
     if (state.loading) return;
@@ -167,7 +167,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
 
         state.cycleFileIds = updatedMetadata.cycleFileIds;
         state.cycleTimestamps = updatedMetadata.cycleTimestamps;
- 
+
         setSyncStatus('synced');
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
@@ -222,7 +222,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
             width: '48px',
             height: '48px',
             animation: 'spin 1.2s linear infinite',
-            marginBottom: '16px'
+            marginBottom: '16px',
           }}
         />
         <h3>Loading Workout Tracker...</h3>
@@ -381,7 +381,40 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           fontSize: '0.85rem',
         }}
       >
-        Workout Tracker • Keep pushing play, do your best, and forget the rest!
+        <div style={{ marginBottom: '8px' }}>
+          Workout Tracker • Keep pushing play, do your best, and forget the rest!
+        </div>
+        <div>
+          <a
+            href="https://github.com/mike-boyle/workout-tracker"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: 'var(--color-cyan)',
+              textDecoration: 'none',
+              fontWeight: '500',
+              transition: 'opacity var(--transition-fast)',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            GitHub Repository
+          </a>
+          {' • '}
+          <a
+            href="https://mike-boyle.github.io/workout-tracker/"
+            style={{
+              color: 'var(--color-cyan)',
+              textDecoration: 'none',
+              fontWeight: '500',
+              transition: 'opacity var(--transition-fast)',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.8')}
+            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            Hosted Site
+          </a>
+        </div>
       </footer>
     </div>
   );

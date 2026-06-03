@@ -54,7 +54,6 @@ describe('RestTimer Component', () => {
   });
 });
 
-
 describe('WorkoutSession Component View Mode Defaults', () => {
   let store: Record<string, unknown> = {};
 

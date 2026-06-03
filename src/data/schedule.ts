@@ -525,7 +525,6 @@ export const generateClassicSchedule = (): ScheduleDay[] => {
 
 export const p90xClassicSchedule = generateClassicSchedule();
 
-
 // --- TEST WORKOUT SPLIT PROGRAM ---
 export const testExercises: ExerciseInfo[] = [
   { id: 'test_push_up', name: 'Test Push Ups', type: 'bodyweight', setCount: 1 },

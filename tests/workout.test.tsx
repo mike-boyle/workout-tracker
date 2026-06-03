@@ -61,10 +61,7 @@ const TestConsumer: React.FC = () => {
         Reset
       </button>
 
-      <button
-        data-testid="btn-fast-forward"
-        onClick={() => fastForwardToDay(1, 4)}
-      >
+      <button data-testid="btn-fast-forward" onClick={() => fastForwardToDay(1, 4)}>
         Fast Forward
       </button>
 
@@ -115,12 +112,12 @@ const renderWithProvider = () => {
 
 describe('Workout Context & Reducer', () => {
   let store: Record<string, unknown> = {};
- 
+
   beforeEach(async () => {
     store = {};
     localStorage.clear();
     vi.restoreAllMocks();
- 
+
     // Mock IndexedDB database calls to run in-memory during tests
     vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
     vi.spyOn(db, 'set').mockImplementation(async (key: string, val: unknown) => {
@@ -318,33 +315,42 @@ describe('Workout Context & Reducer', () => {
 describe('Workout Wizard View step generation', () => {
   it('should generate steps for chest_and_back with correct swapping logic on set 2', () => {
     const exercises = [
-      'ex1', 'ex2', 'ex3', 'ex4',
-      'ex5', 'ex6', 'ex7', 'ex8',
-      'ex9', 'ex10', 'ex11', 'ex12'
+      'ex1',
+      'ex2',
+      'ex3',
+      'ex4',
+      'ex5',
+      'ex6',
+      'ex7',
+      'ex8',
+      'ex9',
+      'ex10',
+      'ex11',
+      'ex12',
     ];
     const steps = generateWizardSteps('chest_and_back', exercises);
-    
+
     // Total steps: 12 (Set 1) + 12 (Set 2) = 24
     expect(steps.length).toBe(24);
-    
+
     // Set 1: default order
     for (let i = 0; i < 12; i++) {
       expect(steps[i]).toEqual({ exerciseId: exercises[i], setIndex: 0 });
     }
-    
+
     // Set 2: swapped order within groups of 4
     // Group 1: 1, 0, 3, 2 (i.e. ex2, ex1, ex4, ex3)
     expect(steps[12]).toEqual({ exerciseId: 'ex2', setIndex: 1 });
     expect(steps[13]).toEqual({ exerciseId: 'ex1', setIndex: 1 });
     expect(steps[14]).toEqual({ exerciseId: 'ex4', setIndex: 1 });
     expect(steps[15]).toEqual({ exerciseId: 'ex3', setIndex: 1 });
-    
+
     // Group 2: 5, 4, 7, 6 (i.e. ex6, ex5, ex8, ex7)
     expect(steps[16]).toEqual({ exerciseId: 'ex6', setIndex: 1 });
     expect(steps[17]).toEqual({ exerciseId: 'ex5', setIndex: 1 });
     expect(steps[18]).toEqual({ exerciseId: 'ex8', setIndex: 1 });
     expect(steps[19]).toEqual({ exerciseId: 'ex7', setIndex: 1 });
-    
+
     // Group 3: 9, 8, 11, 10 (i.e. ex10, ex9, ex12, ex11)
     expect(steps[20]).toEqual({ exerciseId: 'ex10', setIndex: 1 });
     expect(steps[21]).toEqual({ exerciseId: 'ex9', setIndex: 1 });
@@ -355,10 +361,10 @@ describe('Workout Wizard View step generation', () => {
   it('should generate steps for shoulders_and_arms with correct round grouping', () => {
     const exercises = Array.from({ length: 15 }, (_, i) => `ex${i + 1}`);
     const steps = generateWizardSteps('shoulders_and_arms', exercises);
-    
+
     // Total steps: 15 exercises * 2 sets = 30 steps
     expect(steps.length).toBe(30);
-    
+
     // Round 0: ex1, ex2, ex3 Set 1 then Set 2
     expect(steps[0]).toEqual({ exerciseId: 'ex1', setIndex: 0 });
     expect(steps[1]).toEqual({ exerciseId: 'ex2', setIndex: 0 });
@@ -366,7 +372,7 @@ describe('Workout Wizard View step generation', () => {
     expect(steps[3]).toEqual({ exerciseId: 'ex1', setIndex: 1 });
     expect(steps[4]).toEqual({ exerciseId: 'ex2', setIndex: 1 });
     expect(steps[5]).toEqual({ exerciseId: 'ex3', setIndex: 1 });
-    
+
     // Round 1: ex4, ex5, ex6 Set 1 then Set 2
     expect(steps[6]).toEqual({ exerciseId: 'ex4', setIndex: 0 });
     expect(steps[7]).toEqual({ exerciseId: 'ex5', setIndex: 0 });
@@ -379,7 +385,7 @@ describe('Workout Wizard View step generation', () => {
   it('should generate steps for other resistance workouts in default order and setIndex 0', () => {
     const exercises = ['ex1', 'ex2', 'ex3'];
     const steps = generateWizardSteps('legs_and_back', exercises);
-    
+
     expect(steps.length).toBe(3);
     expect(steps[0]).toEqual({ exerciseId: 'ex1', setIndex: 0 });
     expect(steps[1]).toEqual({ exerciseId: 'ex2', setIndex: 0 });

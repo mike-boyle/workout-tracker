@@ -35,12 +35,20 @@ export const Dashboard: React.FC = () => {
 
   const handleDayClick = (dayInfo: ScheduleDay) => {
     // eslint-disable-next-line react-hooks/immutability -- Mutating window.location.hash directly is our lightweight SPA client-side routing mechanism, which is outside React's lifecycle and cannot be done through standard state hooks.
-    window.location.hash = '#/session/cycle/' + state.selectedCycle + '/week/' + dayInfo.weekNumber + '/day/' + dayInfo.dayOfWeek;
+    window.location.hash =
+      '#/session/cycle/' +
+      state.selectedCycle +
+      '/week/' +
+      dayInfo.weekNumber +
+      '/day/' +
+      dayInfo.dayOfWeek;
   };
 
   const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
   const isCycleCompleted =
-    state.currentWeek === maxWeeks && state.currentDay === 7 && getLogForDay(maxWeeks, 7) !== undefined;
+    state.currentWeek === maxWeeks &&
+    state.currentDay === 7 &&
+    getLogForDay(maxWeeks, 7) !== undefined;
 
   const showStartNextCyclePrompt = isCycleCompleted && state.selectedCycle === state.currentCycle;
 
@@ -250,8 +258,8 @@ export const Dashboard: React.FC = () => {
             🎉 Congratulations! Cycle Complete!
           </h2>
           <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>
-            You completed all 13 weeks of this training cycle. Ready to start another round of muscle
-            confusion?
+            You completed all 13 weeks of this training cycle. Ready to start another round of
+            muscle confusion?
           </p>
           <button
             className="btn btn-primary"

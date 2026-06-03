@@ -43,7 +43,9 @@ test.describe('Test Workout Split E2E Flow', () => {
       await activeCard.click();
 
       // Wait for session page to load
-      await page.locator('button:has-text("Back to Dashboard"), button:has-text("Cancel")').waitFor({ state: 'visible' });
+      await page
+        .locator('button:has-text("Back to Dashboard"), button:has-text("Cancel")')
+        .waitFor({ state: 'visible' });
 
       if (isSkip) {
         page.once('dialog', async (dialog) => {
@@ -86,7 +88,7 @@ test.describe('Test Workout Split E2E Flow', () => {
 
     // Log the 7 days of the Test Workout Split program
     console.log('Logging Test Workout Split Days...');
-    
+
     // Day 1: Test Push Day (Log it)
     await logActiveDay(1, false);
 

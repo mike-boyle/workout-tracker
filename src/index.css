@@ -401,15 +401,15 @@ main {
     gap: 8px;
     padding: 4px 0;
   }
-  
+
   .compact-set-row.weighted {
     grid-template-columns: 45px 1fr 70px 70px 80px;
   }
-  
+
   .compact-set-row.bodyweight {
     grid-template-columns: 45px 1fr 70px 80px;
   }
-  
+
   .input-field-compact {
     padding: 4px 6px;
     font-size: 0.85rem;

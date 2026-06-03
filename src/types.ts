@@ -77,4 +77,3 @@ export interface UserState {
   logs: WorkoutLog[];
   gdriveLinked: boolean;
 }
-

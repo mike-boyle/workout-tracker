@@ -1,6 +1,6 @@
 import type { UserMetadata, WorkoutLog } from '../types';
 import { validateBackup } from './storage';
- 
+
 interface GsiTokenClient {
   requestAccessToken: (options?: { prompt?: string }) => void;
 }
@@ -38,14 +38,14 @@ declare global {
 }
 
 let tokenClient: GsiTokenClient | null = null;
- 
+
 const getStoredToken = (): string | null => {
   if (typeof window === 'undefined' || !window.localStorage) return null;
   try {
     const token = localStorage.getItem('workout_tracker_gdrive_access_token');
     const expiresAtStr = localStorage.getItem('workout_tracker_gdrive_token_expires_at');
     if (!token || !expiresAtStr) return null;
- 
+
     const expiresAt = parseInt(expiresAtStr, 10);
     if (Date.now() >= expiresAt) {
       localStorage.removeItem('workout_tracker_gdrive_access_token');
@@ -58,7 +58,7 @@ const getStoredToken = (): string | null => {
     return null;
   }
 };
- 
+
 const saveToken = (token: string, expiresInSeconds: number) => {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -69,7 +69,7 @@ const saveToken = (token: string, expiresInSeconds: number) => {
     console.error('Failed to save to localStorage:', e);
   }
 };
- 
+
 const clearStoredToken = () => {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
@@ -79,9 +79,9 @@ const clearStoredToken = () => {
     console.error('Failed to clear localStorage:', e);
   }
 };
- 
+
 let accessToken: string | null = getStoredToken();
- 
+
 // Dynamically load the Google Identity Services SDK script
 export const loadGsiScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -104,7 +104,7 @@ export const loadGsiScript = (): Promise<void> => {
     document.head.appendChild(script);
   });
 };
- 
+
 /**
  * Initializes the OAuth token client
  */
@@ -112,7 +112,7 @@ export const initTokenClient = (clientId: string, onTokenReceived: (token: strin
   if (!window.google?.accounts?.oauth2) {
     throw new Error('Google Identity Services SDK is not loaded.');
   }
- 
+
   tokenClient = window.google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: 'https://www.googleapis.com/auth/drive.appdata',
