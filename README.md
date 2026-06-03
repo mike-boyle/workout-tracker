@@ -2,24 +2,12 @@
 
 🚀 **[Live Demo / Hosted Application](https://mike-boyle.github.io/workout-tracker/)**
 
-```text
-                  ||             ||
-              ====++====     ====++====
-                  ||    _oo_     ||
-                  \\   / || \   //
-                   \\ /  ||  \ //
-                    \\   ||   //
-                         ||
-                        /  \
-                       /    \
-                      /      \
-```
-
 A premium, client-side React web application designed to track workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using a high-performance **IndexedDB** key-value store and syncs securely to Google Drive via OAuth for cloud backup.
 
 ---
 
 ## 📋 Table of Contents
+
 1. [Core Features](#core-features)
 2. [Tech Stack](#tech-stack)
 3. [Project Directory Layout](#project-directory-layout)
@@ -115,19 +103,19 @@ To facilitate multi-cycle tracking, program swapping, and scalability, the state
 ```typescript
 // Metadata structure for individual exercises
 export interface ExerciseInfo {
-  id: string;        // e.g. "cb_standard_pushup"
-  name: string;      // e.g. "Standard Push-ups"
-  type: "bodyweight" | "weighted";
-  setCount: number;  // 1 or 2
+  id: string; // e.g. "cb_standard_pushup"
+  name: string; // e.g. "Standard Push-ups"
+  type: 'bodyweight' | 'weighted';
+  setCount: number; // 1 or 2
 }
 
 // Workout program definition
 export interface WorkoutInfo {
-  id: string;        // e.g. "chest_and_back"
-  name: string;      // e.g. "Chest & Back"
-  type: "resistance" | "cardio" | "stretch";
+  id: string; // e.g. "chest_and_back"
+  name: string; // e.g. "Chest & Back"
+  type: 'resistance' | 'cardio' | 'stretch';
   exercises: string[]; // List of ExerciseInfo IDs
-  abRipper: boolean;  // True if Ab Ripper X is appended
+  abRipper: boolean; // True if Ab Ripper X is appended
 }
 
 // Individual set logging details
@@ -139,13 +127,13 @@ export interface SetLog {
 
 // Workout session completion log
 export interface WorkoutLog {
-  id: string;            // `cycle_${cycle}_week_${week}_day_${day}`
-  cycle: number;         // Active cycle number (1, 2, ...)
-  week: number;          // Week number (1-13)
-  day: number;           // Day of the week (1-7)
-  workoutId: string;     // References WorkoutInfo.id or "rest"
+  id: string; // `cycle_${cycle}_week_${week}_day_${day}`
+  cycle: number; // Active cycle number (1, 2, ...)
+  week: number; // Week number (1-13)
+  day: number; // Day of the week (1-7)
+  workoutId: string; // References WorkoutInfo.id or "rest"
   dateCompleted: string; // ISO timestamp
-  skipped: boolean;      // True if marked as skipped
+  skipped: boolean; // True if marked as skipped
   exercises: {
     [exerciseId: string]: SetLog[]; // Array matching exercise.setCount length
   };
@@ -247,7 +235,7 @@ We maintain a strict quality assurance suite, keeping test coverage high across 
 When modifying or writing code, adhere to these key performance practices:
 
 - **Eliminate Rendering Waterfalls:** Put independent promise operations in `Promise.all` inside services.
-- **Avoid Expensive Re-renders:** 
+- **Avoid Expensive Re-renders:**
   - Wrap complex computations in `useMemo`.
   - Use `useCallback` for functions passed as props to memoized children.
   - Implement functional updates in state calls: `setState(prev => ...)` instead of depending on raw closures.
@@ -259,30 +247,39 @@ When modifying or writing code, adhere to these key performance practices:
 ## 💻 Setup & Development Commands
 
 ### Installation
+
 ```bash
 npm install
 ```
 
 ### Local Dev Server
+
 Runs a local hot-reloading development server:
+
 ```bash
 npm run dev
 ```
 
 ### Running Unit Tests
+
 Runs the Vitest test runner:
+
 ```bash
 npm run test
 ```
 
 ### Running End-to-End Tests
+
 Runs the Playwright browser integration tests:
+
 ```bash
 npx playwright test
 ```
 
 ### Linter & Formatter Checks
+
 Check for ESLint rules and auto-format files using Prettier:
+
 ```bash
 # Run ESLint check
 npm run lint
@@ -292,20 +289,9 @@ npm run format
 ```
 
 ### Production Build
+
 Checks type safety, linting constraints, and packages a minified production bundle:
+
 ```bash
 npm run build
 ```
-
-```text
-        _.-'''''''-._
-      .'  ________   '.
-     /   /  __    \    \
-    |   |  /  \    |   |
-    |   |  \__/    |   |
-    |   |  ____   /   /
-    |    \      .'  .'
-     \    '----'  .'
-      '-.________.-'
-```
-
