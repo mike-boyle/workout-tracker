@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { FIREBASE_CONFIG } from '../config';
 import type { UserMetadata, WorkoutLog } from '../types';
@@ -46,7 +47,10 @@ export const saveFirebaseMetadata = async (
   metadata: UserMetadata
 ): Promise<void> => {
   const docRef = doc(db, 'users', userId, 'metadata', 'settings');
-  await setDoc(docRef, metadata);
+  await setDoc(docRef, {
+    ...metadata,
+    lastUpdated: serverTimestamp(),
+  });
 };
 
 /**
@@ -71,7 +75,10 @@ export const saveFirebaseCycle = async (
   programId: string = 'p90x'
 ): Promise<void> => {
   const docRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
-  await setDoc(docRef, { logs });
+  await setDoc(docRef, {
+    logs,
+    lastUpdated: serverTimestamp(),
+  });
 };
 
 /**
