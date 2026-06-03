@@ -6,6 +6,33 @@ import { WorkoutSession } from '../src/components/WorkoutSession';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import { db, clearLocalState } from '../src/services/storage';
 
+// Mock Web Audio API for RestTimer buzzer
+const mockOscillator = {
+  connect: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+  type: 'sine',
+  frequency: { setValueAtTime: vi.fn() },
+};
+
+const mockGain = {
+  connect: vi.fn(),
+  gain: { setValueAtTime: vi.fn() },
+};
+
+class MockAudioContext {
+  currentTime = 0;
+  destination = {};
+  createOscillator() {
+    return mockOscillator;
+  }
+  createGain() {
+    return mockGain;
+  }
+}
+
+vi.stubGlobal('AudioContext', MockAudioContext);
+
 describe('RestTimer Component', () => {
   it('should render initial rest timer as 0:00', () => {
     render(<RestTimer />);
@@ -35,6 +62,15 @@ describe('RestTimer Component', () => {
     vi.useRealTimers();
   });
 
+  it('should add 60 seconds when clicking +60s', () => {
+    render(<RestTimer />);
+    const btnAdd60 = screen.getByText('+60s');
+    act(() => {
+      btnAdd60.click();
+    });
+    expect(screen.getByText('1:00')).toBeInTheDocument();
+  });
+
   it('should reset timer when clicking Reset button', () => {
     render(<RestTimer />);
 
@@ -51,6 +87,86 @@ describe('RestTimer Component', () => {
     });
 
     expect(screen.getByText('0:00')).toBeInTheDocument();
+  });
+
+  it('should count down to 0, trigger buzzer, and handle second tone', () => {
+    vi.useFakeTimers();
+    render(<RestTimer />);
+
+    // Add 30s
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+
+    // Advance 30 seconds to reach 0
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(screen.getByText('0:00')).toBeInTheDocument();
+    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
+    expect(screen.queryByText('Reset')).not.toBeInTheDocument();
+
+    // Advance an extra 200ms to trigger the second buzzer tone
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('should toggle play/pause of active timer', () => {
+    render(<RestTimer />);
+
+    // Add 30s
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+
+    const toggleBtn = screen.getByText('Pause');
+    
+    // Click pause
+    act(() => {
+      toggleBtn.click();
+    });
+    expect(screen.getByText('Start')).toBeInTheDocument();
+
+    // Click start
+    act(() => {
+      screen.getByText('Start').click();
+    });
+    expect(screen.getByText('Pause')).toBeInTheDocument();
+  });
+
+  it('should handle Web Audio API errors gracefully when starting buzzer', () => {
+    // Stub AudioContext to throw an error
+    vi.stubGlobal('AudioContext', class {
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        throw new Error('Web Audio not supported');
+      }
+    });
+
+    vi.useFakeTimers();
+    render(<RestTimer />);
+
+    // Add 30s and advance to 0
+    act(() => {
+      screen.getByText('+30s').click();
+    });
+
+    // Advance 30 seconds to reach 0
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    // It should not crash, because errors are caught
+    expect(screen.getByText('0:00')).toBeInTheDocument();
+
+    vi.useRealTimers();
+    // Restore default AudioContext mock
+    vi.stubGlobal('AudioContext', MockAudioContext);
   });
 });
 

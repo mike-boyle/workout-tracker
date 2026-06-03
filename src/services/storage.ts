@@ -44,7 +44,7 @@ class WorkoutTrackerDB {
   async get<T>(key: string): Promise<T | null> {
     try {
       const db = await this.openDB();
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         const transaction = db.transaction('keyValueStore', 'readonly');
         const store = transaction.objectStore('keyValueStore');
         const request = store.get(key);
@@ -60,7 +60,7 @@ class WorkoutTrackerDB {
   async set<T>(key: string, value: T): Promise<void> {
     try {
       const db = await this.openDB();
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         const transaction = db.transaction('keyValueStore', 'readwrite');
         const store = transaction.objectStore('keyValueStore');
         const request = store.put(value, key);
@@ -75,7 +75,7 @@ class WorkoutTrackerDB {
   async delete(key: string): Promise<void> {
     try {
       const db = await this.openDB();
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         const transaction = db.transaction('keyValueStore', 'readwrite');
         const store = transaction.objectStore('keyValueStore');
         const request = store.delete(key);
@@ -90,7 +90,7 @@ class WorkoutTrackerDB {
   async clear(): Promise<void> {
     try {
       const db = await this.openDB();
-      return new Promise((resolve, reject) => {
+      return await new Promise((resolve, reject) => {
         const transaction = db.transaction('keyValueStore', 'readwrite');
         const store = transaction.objectStore('keyValueStore');
         const request = store.clear();
