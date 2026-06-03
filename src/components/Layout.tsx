@@ -1,21 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import {
-  loadGsiScript,
-  initTokenClient,
-  signInGdrive,
-  findMetadataFile,
-  downloadMetadata,
-  createMetadataFile,
-  updateMetadataFile,
-  downloadCycleLogs,
-  createCycleFile,
-  updateCycleFile,
-  getAccessToken,
-} from '../services/gdrive';
-import type { UserMetadata, WorkoutLog } from '../types';
 import { PROGRAMS } from '../data/schedule';
-import { GOOGLE_CLIENT_ID } from '../config';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,174 +9,17 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) => {
-  const { state, syncGoogleDriveData, resetDatabase, switchProgram } = useWorkout();
+  const {
+    state,
+    user,
+    syncStatus,
+    errorMsg,
+    login,
+    logout,
+    resetDatabase,
+    switchProgram,
+  } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
-  const [gsiLoaded, setGsiLoaded] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
-    'idle'
-  );
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Dynamically load Google Identity Services SDK
-  useEffect(() => {
-    loadGsiScript()
-      .then(() => setGsiLoaded(true))
-      .catch((err) => {
-        console.error('Failed to load Google SDK script:', err);
-        setSyncStatus('error');
-        setErrorMsg('Google SDK script load failed');
-      });
-  }, []);
-
-  const handleGdriveConnect = () => {
-    if (
-      !GOOGLE_CLIENT_ID ||
-      GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'
-    ) {
-      alert('Please configure a valid GOOGLE_CLIENT_ID in src/config.ts first.');
-      return;
-    }
-
-    setSyncStatus('linking');
-
-    try {
-      initTokenClient(GOOGLE_CLIENT_ID, async () => {
-        setSyncStatus('syncing');
-        try {
-          const metadataFileId = await findMetadataFile();
-          if (metadataFileId) {
-            const remoteMetadata = await downloadMetadata(metadataFileId);
-            remoteMetadata.metadataFileId = metadataFileId;
-
-            // Load remote active cycle logs
-            const activeCycleNum = remoteMetadata.currentCycle;
-            const activeCycleFileId = remoteMetadata.cycleFileIds?.[activeCycleNum];
-            let activeLogs: WorkoutLog[] = [];
-            if (activeCycleFileId) {
-              activeLogs = await downloadCycleLogs(activeCycleFileId);
-            }
-
-            syncGoogleDriveData(remoteMetadata, activeLogs);
-            setSyncStatus('synced');
-          } else {
-            // Create active cycle logs file on GDrive
-            const activeCycleLogs = state.loadedCycles[state.currentCycle] || [];
-            const cycleFileId = await createCycleFile(state.currentCycle, activeCycleLogs);
-
-            // Create metadata file
-            const newMetadata: UserMetadata = {
-              version: state.version,
-              currentCycle: state.currentCycle,
-              currentWeek: state.currentWeek,
-              currentDay: state.currentDay,
-              gdriveLinked: true,
-              cycleFileIds: { [state.currentCycle]: cycleFileId },
-              cycleTimestamps: { [state.currentCycle]: new Date().toISOString() },
-              cycleStats: state.cycleStats || {},
-            };
-
-            const newMetadataFileId = await createMetadataFile(newMetadata);
-            newMetadata.metadataFileId = newMetadataFileId;
-
-            syncGoogleDriveData(newMetadata, activeCycleLogs);
-            setSyncStatus('synced');
-          }
-          setShowSettings(false);
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          console.error('Google Drive Sync error:', error);
-          setSyncStatus('error');
-          setErrorMsg(error.message);
-        }
-      });
-      signInGdrive(state.gdriveLinked ? false : true);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error('Gauth initialization error:', error);
-      setSyncStatus('error');
-      setErrorMsg(error.message);
-    }
-  };
-
-  const activeCycleLogs = state.loadedCycles[state.currentCycle];
-
-  // Perform auto-sync on workout log or metadata modifications if connected
-  useEffect(() => {
-    if (state.loading) return;
-
-    const syncWithDrive = async () => {
-      // eslint-disable-next-line react-hooks/immutability -- The state object returned by useWorkout() is mutated below to silently update Google Drive file/timestamp caches without dispatching context state updates, which would trigger infinite auto-sync effect loops. The rule flags the first access of state inside this hook.
-      const metadataFileId = state.metadataFileId;
-      if (!state.gdriveLinked || !metadataFileId) return;
-
-      if (!getAccessToken()) {
-        setSyncStatus('error');
-        setErrorMsg('Session expired. Please reconnect Google Drive.');
-        return;
-      }
-
-      setSyncStatus('syncing');
-      try {
-        const activeCycleNum = state.currentCycle;
-        const activeLogs = activeCycleLogs || [];
-        let activeCycleFileId = state.cycleFileIds?.[activeCycleNum];
-
-        // 1. Sync active cycle logs
-        if (!activeCycleFileId) {
-          activeCycleFileId = await createCycleFile(activeCycleNum, activeLogs);
-        } else {
-          await updateCycleFile(activeCycleFileId, activeLogs);
-        }
-
-        // 2. Build metadata
-        const updatedMetadata: UserMetadata = {
-          version: state.version,
-          currentCycle: state.currentCycle,
-          currentWeek: state.currentWeek,
-          currentDay: state.currentDay,
-          gdriveLinked: true,
-          metadataFileId: metadataFileId,
-          cycleFileIds: Object.assign({}, state.cycleFileIds, {
-            [activeCycleNum]: activeCycleFileId,
-          }),
-          cycleTimestamps: Object.assign({}, state.cycleTimestamps, {
-            [activeCycleNum]: new Date().toISOString(),
-          }),
-          cycleStats: state.cycleStats || {},
-          activeProgramId: state.activeProgramId || 'p90x',
-          programs: state.programs || {},
-        };
-
-        // 3. Sync metadata
-        await updateMetadataFile(metadataFileId, updatedMetadata);
-
-        state.cycleFileIds = updatedMetadata.cycleFileIds;
-        state.cycleTimestamps = updatedMetadata.cycleTimestamps;
-
-        setSyncStatus('synced');
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        console.error('Auto sync failed:', error);
-        setSyncStatus('error');
-        setErrorMsg(error.message || 'Auto-sync failed');
-      }
-    };
-
-    // Run syncing
-    syncWithDrive();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Dependency array is granularly specified to target only value changes; including state reference triggers infinite loop.
-  }, [
-    state.currentCycle,
-    state.currentWeek,
-    state.currentDay,
-    state.gdriveLinked,
-    state.metadataFileId,
-    state.cycleStats,
-    activeCycleLogs,
-    state.loading,
-    state.activeProgramId,
-    state.programs,
-  ]);
 
   if (state.loading) {
     const spinnerStyle = `
@@ -262,7 +90,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           >
             Analytics
           </button>
-          {state.gdriveLinked && (
+
+          {/* Sync Status Button/Badge */}
+          {user ? (
             <button
               className={`btn ${
                 syncStatus === 'synced'
@@ -271,7 +101,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                     ? 'btn-warning'
                     : 'btn-secondary'
               }`}
-              onClick={handleGdriveConnect}
+              onClick={syncStatus === 'error' ? login : undefined}
               disabled={syncStatus === 'linking' || syncStatus === 'syncing'}
               style={{
                 fontSize: '0.85rem',
@@ -289,12 +119,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               }}
               title={
                 syncStatus === 'synced'
-                  ? 'Google Drive synced. Click to reconnect / force sync.'
+                  ? 'Firebase cloud storage synced.'
                   : syncStatus === 'error'
                     ? `Sync Paused: ${errorMsg}. Click to reconnect.`
                     : syncStatus === 'syncing'
                       ? 'Syncing data...'
-                      : 'Connecting to Google Drive...'
+                      : 'Connecting...'
               }
             >
               {syncStatus === 'synced' && (
@@ -316,7 +146,27 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 </>
               )}
             </button>
+          ) : (
+            <button
+              className="btn btn-secondary"
+              onClick={login}
+              disabled={syncStatus === 'linking'}
+              style={{
+                fontSize: '0.85rem',
+                padding: '8px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Connect Cloud Backup (Firebase)"
+            >
+              <span>☁️</span>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
+                {syncStatus === 'linking' ? 'Connecting...' : 'Backup'}
+              </span>
+            </button>
           )}
+
           <button
             className="btn btn-secondary"
             onClick={() => setShowSettings(!showSettings)}
@@ -341,29 +191,39 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
               marginBottom: '16px',
             }}
           >
-            Configure client-side backup to keep your data safe. Since your progress is stored in
-            LocalStorage, linking Google Drive avoids data loss.
+            Configure client-side backup to keep your data safe. Syncing with Firebase allows automatic, silent background updates across devices.
           </p>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
-            <button
-              className="btn btn-primary"
-              onClick={handleGdriveConnect}
-              disabled={!gsiLoaded || syncStatus === 'linking' || syncStatus === 'syncing'}
-            >
-              {syncStatus === 'syncing'
-                ? 'Syncing...'
-                : syncStatus === 'linking'
-                  ? 'Connecting...'
-                  : state.gdriveLinked
-                    ? 'Sync / Reconnect'
-                    : 'Connect Google Drive'}
-            </button>
-
-            {syncStatus === 'synced' && (
-              <span className="badge badge-green">✓ Connected & Cloud Synced</span>
+            {user ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                  Signed in as: <strong>{user.email}</strong>
+                </span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button className="btn btn-secondary" onClick={logout}>
+                    Sign Out
+                  </button>
+                  {syncStatus === 'synced' && (
+                    <span className="badge badge-green">✓ Synced with Cloud</span>
+                  )}
+                  {syncStatus === 'syncing' && (
+                    <span className="badge badge-yellow">🔄 Syncing...</span>
+                  )}
+                  {syncStatus === 'error' && (
+                    <span className="badge badge-red" title={errorMsg}>⚠️ Sync Error</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <button
+                className="btn btn-primary"
+                onClick={login}
+                disabled={syncStatus === 'linking' || syncStatus === 'syncing'}
+              >
+                {syncStatus === 'linking' ? 'Connecting...' : 'Connect Google Account'}
+              </button>
             )}
-            {syncStatus === 'error' && <span className="badge badge-red">⚠️ {errorMsg}</span>}
           </div>
 
           {/* Workout Program Selector */}
@@ -415,7 +275,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                   )
                 ) {
                   resetDatabase();
-                  localStorage.removeItem('workout_tracker_gdrive_file_id');
                 }
               }}
             >

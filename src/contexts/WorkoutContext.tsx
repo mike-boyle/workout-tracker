@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
+import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog, CycleStats } from '../types';
 import {
   loadLocalState,
@@ -9,6 +10,15 @@ import {
   INITIAL_METADATA,
 } from '../services/storage';
 import { getScheduleForProgram } from '../data/schedule';
+import {
+  signInWithGoogle,
+  signOutUser,
+  listenForAuthChanges,
+  saveFirebaseMetadata,
+  loadFirebaseMetadata,
+  saveFirebaseCycle,
+  loadFirebaseCycle,
+} from '../services/firebase';
 
 export interface ExtendedState extends UserMetadata {
   selectedCycle: number;
@@ -50,6 +60,13 @@ type WorkoutAction =
         activeCycleLogs: WorkoutLog[];
       };
     }
+  | {
+      type: 'SYNC_FIREBASE_DATA';
+      payload: {
+        metadata: UserMetadata;
+        activeCycleLogs: WorkoutLog[];
+      };
+    }
   | { type: 'RESET_DATABASE' }
   | {
       type: 'FAST_FORWARD_TO_DAY';
@@ -58,6 +75,11 @@ type WorkoutAction =
 
 interface WorkoutContextType {
   state: ExtendedState;
+  user: User | null;
+  syncStatus: 'idle' | 'linking' | 'syncing' | 'synced' | 'error';
+  errorMsg: string;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   completeWorkout: (
     exercises: { [exerciseId: string]: SetLog[] },
     abRipperCompleted: boolean,
@@ -454,6 +476,23 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       };
     }
 
+    case 'SYNC_FIREBASE_DATA': {
+      const { metadata, activeCycleLogs } = action.payload;
+      return {
+        ...state,
+        ...metadata,
+        selectedCycle: metadata.currentCycle,
+        selectedWeek: metadata.currentWeek,
+        selectedDay: metadata.currentDay,
+        logs: activeCycleLogs,
+        loadedCycles: {
+          ...state.loadedCycles,
+          [metadata.currentCycle]: activeCycleLogs,
+        },
+        loading: false,
+      };
+    }
+
     case 'RESET_DATABASE': {
       return {
         ...INITIAL_STATE,
@@ -544,6 +583,10 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const wasLoggedInRef = useRef(false);
 
   // Load initial local state on mount
   useEffect(() => {
@@ -560,6 +603,97 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
   }, []);
 
+  const login = async () => {
+    setSyncStatus('linking');
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      console.error('Google login failed:', err);
+      setSyncStatus('error');
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const logout = async () => {
+    setSyncStatus('syncing');
+    try {
+      await signOutUser();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+      setSyncStatus('error');
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  // Reset database helper
+  const resetDatabase = () => {
+    clearLocalState()
+      .then(() => {
+        dispatch({ type: 'RESET_DATABASE' });
+      })
+      .catch((err) => {
+        console.error('Failed to clear database:', err);
+        dispatch({ type: 'RESET_DATABASE' });
+      });
+  };
+
+  // Listen for auth changes and pull/push data
+  useEffect(() => {
+    const unsubscribe = listenForAuthChanges(async (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        wasLoggedInRef.current = true;
+        setSyncStatus('syncing');
+        try {
+          const cloudMetadata = await loadFirebaseMetadata(user.uid);
+          if (cloudMetadata) {
+            const activeLogs = await loadFirebaseCycle(user.uid, cloudMetadata.currentCycle);
+            await saveLocalState(
+              cloudMetadata,
+              cloudMetadata.currentCycle,
+              activeLogs,
+              cloudMetadata.activeProgramId || 'p90x'
+            );
+            dispatch({
+              type: 'SYNC_FIREBASE_DATA',
+              payload: { metadata: cloudMetadata, activeCycleLogs: activeLogs },
+            });
+            setSyncStatus('synced');
+          } else {
+            // New Firebase user: migrate local state to Firestore
+            const currentMetadata: UserMetadata = {
+              version: state.version,
+              currentCycle: state.currentCycle,
+              currentWeek: state.currentWeek,
+              currentDay: state.currentDay,
+              gdriveLinked: false,
+              cycleStats: state.cycleStats,
+              activeProgramId: state.activeProgramId,
+              programs: state.programs,
+            };
+            await saveFirebaseMetadata(user.uid, currentMetadata);
+            const activeCycleLogs = state.loadedCycles[state.currentCycle] || [];
+            await saveFirebaseCycle(user.uid, state.currentCycle, activeCycleLogs);
+            setSyncStatus('synced');
+          }
+        } catch (err) {
+          console.error('Initial cloud sync failed:', err);
+          setSyncStatus('error');
+          setErrorMsg(err instanceof Error ? err.message : String(err));
+        }
+      } else {
+        setSyncStatus('idle');
+        if (wasLoggedInRef.current) {
+          wasLoggedInRef.current = false;
+          resetDatabase();
+        }
+      }
+    });
+
+    return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []);
+
   // Save changes to local database (metadata + selected cycle logs)
   useEffect(() => {
     if (state.loading) return;
@@ -569,10 +703,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentCycle: state.currentCycle,
       currentWeek: state.currentWeek,
       currentDay: state.currentDay,
-      gdriveLinked: state.gdriveLinked,
-      metadataFileId: state.metadataFileId,
-      cycleFileIds: state.cycleFileIds,
-      cycleTimestamps: state.cycleTimestamps,
+      gdriveLinked: false, // Turn off GDrive linking as we are now on Firebase
       cycleStats: state.cycleStats,
       activeProgramId: state.activeProgramId,
       programs: state.programs,
@@ -598,10 +729,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     state.currentCycle,
     state.currentWeek,
     state.currentDay,
-    state.gdriveLinked,
-    state.metadataFileId,
-    state.cycleFileIds,
-    state.cycleTimestamps,
     state.cycleStats,
     state.selectedCycle,
     state.loadedCycles,
@@ -609,8 +736,51 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     state.activeProgramId,
   ]);
 
+  // Save changes to Firestore if authenticated and sync is active
+  useEffect(() => {
+    if (state.loading || !firebaseUser || syncStatus !== 'synced') return;
+
+    const metadataToPersist: UserMetadata = {
+      version: state.version,
+      currentCycle: state.currentCycle,
+      currentWeek: state.currentWeek,
+      currentDay: state.currentDay,
+      gdriveLinked: false,
+      cycleStats: state.cycleStats,
+      activeProgramId: state.activeProgramId,
+      programs: state.programs,
+    };
+
+    const syncToFirebase = async () => {
+      try {
+        await saveFirebaseMetadata(firebaseUser.uid, metadataToPersist);
+        const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
+        if (selectedCycleLogs) {
+          await saveFirebaseCycle(firebaseUser.uid, state.selectedCycle, selectedCycleLogs);
+        }
+      } catch (err) {
+        console.error('Firebase auto-sync failed:', err);
+        setSyncStatus('error');
+        setErrorMsg(err instanceof Error ? err.message : String(err));
+      }
+    };
+
+    syncToFirebase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Selective dependency array to prevent infinite rendering loop
+  }, [
+    state.currentCycle,
+    state.currentWeek,
+    state.currentDay,
+    state.cycleStats,
+    state.selectedCycle,
+    state.loadedCycles,
+    state.loading,
+    state.activeProgramId,
+    firebaseUser,
+    syncStatus,
+  ]);
+
   const loadCycleLogs = async (cycleNum: number) => {
-    // If already loaded or currently loading, skip
     if (state.loadedCycles[cycleNum] !== undefined || state.loadingCycles[cycleNum]) {
       return;
     }
@@ -621,21 +791,17 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // 1. Try local IndexedDB
       let cycleLogs = await loadLocalCycleLogs(cycleNum, state.activeProgramId || 'p90x');
 
-      // 2. If GDrive is linked and we don't have it locally, fetch from GDrive
-      const fileId = state.cycleFileIds?.[cycleNum];
-      if (cycleLogs.length === 0 && state.gdriveLinked && fileId) {
-        const { downloadCycleLogs } = await import('../services/gdrive');
-        cycleLogs = await downloadCycleLogs(fileId);
-        // Save locally for future runs
+      // 2. If Firebase is signed in and we don't have it locally, fetch from Firestore
+      if (cycleLogs.length === 0 && firebaseUser) {
+        cycleLogs = await loadFirebaseCycle(firebaseUser.uid, cycleNum);
+        
+        // Save locally for future offline runs
         const metadataToPersist: UserMetadata = {
           version: state.version,
           currentCycle: state.currentCycle,
           currentWeek: state.currentWeek,
           currentDay: state.currentDay,
-          gdriveLinked: state.gdriveLinked,
-          metadataFileId: state.metadataFileId,
-          cycleFileIds: state.cycleFileIds,
-          cycleTimestamps: state.cycleTimestamps,
+          gdriveLinked: false,
           cycleStats: state.cycleStats,
           activeProgramId: state.activeProgramId,
           programs: state.programs,
@@ -668,16 +834,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const switchProgram = async (programId: string) => {
-    // 1. Save current active program state
     const metadataToPersist: UserMetadata = {
       version: state.version,
       currentCycle: state.currentCycle,
       currentWeek: state.currentWeek,
       currentDay: state.currentDay,
-      gdriveLinked: state.gdriveLinked,
-      metadataFileId: state.metadataFileId,
-      cycleFileIds: state.cycleFileIds,
-      cycleTimestamps: state.cycleTimestamps,
+      gdriveLinked: false,
       cycleStats: state.cycleStats,
       activeProgramId: state.activeProgramId,
       programs: state.programs,
@@ -696,7 +858,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await saveLocalMetadata(metadataToPersist);
     }
 
-    // 2. Load target program state from metadata or set defaults if not exists
     const metadata = await loadLocalState().then((res) => res.metadata);
     metadata.activeProgramId = programId;
     if (!metadata.programs) {
@@ -719,10 +880,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     await saveLocalMetadata(metadata);
 
-    // 3. Load logs for target program's cycle
     const targetLogs = await loadLocalCycleLogs(targetProgState.currentCycle, programId);
 
-    // 4. Dispatch update to reducer to refresh state
     dispatch({
       type: 'INITIALIZE_STATE',
       payload: {
@@ -744,8 +903,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     dispatch({ type: 'START_NEW_CYCLE' });
   };
 
+  // Kept for backward compatibility interface matching
   const linkGoogleDrive = (linked: boolean) => {
-    dispatch({ type: 'LINK_GDRIVE', payload: linked });
+    console.log('Google Drive linking deprecated. Using Firebase.', linked);
   };
 
   const syncGoogleDriveData = (metadata: UserMetadata, activeCycleLogs: WorkoutLog[]) => {
@@ -753,17 +913,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       type: 'SYNC_GDRIVE_DATA',
       payload: { metadata, activeCycleLogs },
     });
-  };
-
-  const resetDatabase = () => {
-    clearLocalState()
-      .then(() => {
-        dispatch({ type: 'RESET_DATABASE' });
-      })
-      .catch((err) => {
-        console.error('Failed to clear database:', err);
-        dispatch({ type: 'RESET_DATABASE' });
-      });
   };
 
   const fastForwardToDay = (week: number, day: number) => {
@@ -774,6 +923,11 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <WorkoutContext.Provider
       value={{
         state,
+        user: firebaseUser,
+        syncStatus,
+        errorMsg,
+        login,
+        logout,
         completeWorkout,
         skipDay,
         setSelectedDay,
