@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { setupStrictNetworkIsolation } from './network-isolation';
 
 test.describe('Workout Tracker E2E Flow', () => {
   // Set high timeout since we are simulating 189 days of workouts purely through the UI
   test.setTimeout(300000);
+
+  setupStrictNetworkIsolation();
 
   test.beforeEach(async ({ page }) => {
     // Navigate to local site

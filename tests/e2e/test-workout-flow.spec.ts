@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { setupStrictNetworkIsolation } from './network-isolation';
 
 test.describe('Test Workout Split E2E Flow', () => {
   test.setTimeout(60000);
+
+  setupStrictNetworkIsolation();
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
