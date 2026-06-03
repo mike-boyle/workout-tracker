@@ -303,8 +303,17 @@ h4 {
   }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .animate-fade-in {
   animation: fadeIn var(--transition-normal) forwards;
+}
+
+.animate-spin {
+  animation: spin 1.2s linear infinite;
 }
 
 /* Grid Layout Shell */

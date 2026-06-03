@@ -133,11 +133,15 @@ export const initTokenClient = (clientId: string, onTokenReceived: (token: strin
 /**
  * Request sign-in / trigger Google OAuth popup
  */
-export const signInGdrive = (): void => {
+export const signInGdrive = (forceConsent = false): void => {
   if (!tokenClient) {
     throw new Error('Token client not initialized. Please configure Client ID first.');
   }
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  if (forceConsent) {
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } else {
+    tokenClient.requestAccessToken();
+  }
 };
 
 /**

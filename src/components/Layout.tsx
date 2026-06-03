@@ -104,7 +104,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           setErrorMsg(error.message);
         }
       });
-      signInGdrive();
+      signInGdrive(state.gdriveLinked ? false : true);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error('Gauth initialization error:', error);
@@ -262,6 +262,61 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           >
             Analytics
           </button>
+          {state.gdriveLinked && (
+            <button
+              className={`btn ${
+                syncStatus === 'synced'
+                  ? 'btn-secondary'
+                  : syncStatus === 'error'
+                    ? 'btn-warning'
+                    : 'btn-secondary'
+              }`}
+              onClick={handleGdriveConnect}
+              disabled={syncStatus === 'linking' || syncStatus === 'syncing'}
+              style={{
+                fontSize: '0.85rem',
+                padding: '8px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: '1px solid',
+                borderColor:
+                  syncStatus === 'synced'
+                    ? 'hsla(142, 72%, 46%, 0.4)'
+                    : syncStatus === 'error'
+                      ? 'hsla(350, 89%, 60%, 0.4)'
+                      : 'var(--color-border)',
+              }}
+              title={
+                syncStatus === 'synced'
+                  ? 'Google Drive synced. Click to reconnect / force sync.'
+                  : syncStatus === 'error'
+                    ? `Sync Paused: ${errorMsg}. Click to reconnect.`
+                    : syncStatus === 'syncing'
+                      ? 'Syncing data...'
+                      : 'Connecting to Google Drive...'
+              }
+            >
+              {syncStatus === 'synced' && (
+                <>
+                  <span style={{ color: 'var(--color-green)' }}>☁️</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>Synced</span>
+                </>
+              )}
+              {syncStatus === 'error' && (
+                <>
+                  <span style={{ color: 'var(--color-red)' }}>⚠️</span>
+                  <span style={{ color: 'var(--color-red)', fontSize: '0.8rem', fontWeight: 600 }}>Sync Paused</span>
+                </>
+              )}
+              {(syncStatus === 'syncing' || syncStatus === 'linking') && (
+                <>
+                  <span className="animate-spin" style={{ display: 'inline-block' }}>🔄</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>Syncing...</span>
+                </>
+              )}
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => setShowSettings(!showSettings)}
