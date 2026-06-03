@@ -587,6 +587,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const wasLoggedInRef = useRef(false);
+  const hasPendingChangesRef = useRef(false);
 
   // Load initial local state on mount
   useEffect(() => {
@@ -627,6 +628,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Reset database helper
   const resetDatabase = () => {
+    hasPendingChangesRef.current = true;
     clearLocalState()
       .then(() => {
         dispatch({ type: 'RESET_DATABASE' });
@@ -748,6 +750,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Save changes to Firestore if authenticated and sync is active
   useEffect(() => {
     if (state.loading || !firebaseUser || syncStatus !== 'synced') return;
+    if (!hasPendingChangesRef.current) return;
 
     const metadataToPersist: UserMetadata = {
       version: state.version,
@@ -760,26 +763,40 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       programs: state.programs,
     };
 
-    const syncToFirebase = async () => {
-      try {
-        await saveFirebaseMetadata(firebaseUser.uid, metadataToPersist);
-        const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
-        if (selectedCycleLogs) {
-          await saveFirebaseCycle(
-            firebaseUser.uid,
-            state.selectedCycle,
-            selectedCycleLogs,
-            state.activeProgramId || 'p90x'
-          );
+    const debounceHandler = setTimeout(() => {
+      const syncToFirebase = async () => {
+        try {
+          await saveFirebaseMetadata(firebaseUser.uid, metadataToPersist);
+          const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
+          if (selectedCycleLogs) {
+            await saveFirebaseCycle(
+              firebaseUser.uid,
+              state.selectedCycle,
+              selectedCycleLogs,
+              state.activeProgramId || 'p90x'
+            );
+          }
+          // Successfully synced, clear the flag
+          hasPendingChangesRef.current = false;
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          // If we hit permission-denied (which is the rate limit error from rules),
+          // retry in 60 seconds silently in the background
+          if (errMsg.includes('permission-denied') || errMsg.includes('insufficient permissions')) {
+            console.warn('Sync rate limit hit. Retrying in 60 seconds...', err);
+            setTimeout(syncToFirebase, 60000);
+          } else {
+            console.error('Firebase auto-sync failed:', err);
+            setSyncStatus('error');
+            setErrorMsg(errMsg);
+          }
         }
-      } catch (err) {
-        console.error('Firebase auto-sync failed:', err);
-        setSyncStatus('error');
-        setErrorMsg(err instanceof Error ? err.message : String(err));
-      }
-    };
+      };
 
-    syncToFirebase();
+      syncToFirebase();
+    }, 2000); // 2 second debounce
+
+    return () => clearTimeout(debounceHandler);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Selective dependency array to prevent infinite rendering loop
   }, [
     state.currentCycle,
@@ -845,6 +862,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
     const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
 
+    hasPendingChangesRef.current = true;
     dispatch({
       type: 'COMPLETE_WORKOUT',
       payload: { workoutId, exercises, abRipperCompleted, comments },
@@ -852,6 +870,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const switchProgram = async (programId: string) => {
+    hasPendingChangesRef.current = true;
     const metadataToPersist: UserMetadata = {
       version: state.version,
       currentCycle: state.currentCycle,
@@ -910,6 +929,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const skipDay = (workoutId: string) => {
+    hasPendingChangesRef.current = true;
     dispatch({ type: 'SKIP_DAY', payload: { workoutId } });
   };
 
@@ -918,6 +938,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startNewCycle = () => {
+    hasPendingChangesRef.current = true;
     dispatch({ type: 'START_NEW_CYCLE' });
   };
 
@@ -934,6 +955,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const fastForwardToDay = (week: number, day: number) => {
+    hasPendingChangesRef.current = true;
     dispatch({ type: 'FAST_FORWARD_TO_DAY', payload: { week, day } });
   };
 
