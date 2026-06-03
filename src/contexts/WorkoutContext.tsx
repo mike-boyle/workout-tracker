@@ -20,6 +20,7 @@ import {
   loadFirebaseCycle,
   logAnalyticsEvent,
 } from '../services/firebase';
+import { ENABLE_APP_CHECK } from '../config';
 
 export interface ExtendedState extends UserMetadata {
   selectedCycle: number;
@@ -649,6 +650,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           logAnalyticsEvent('login', { method: 'google' });
         }
         wasLoggedInRef.current = true;
+
+        if (!ENABLE_APP_CHECK) {
+          setSyncStatus('idle');
+          return;
+        }
+
         setSyncStatus('syncing');
         try {
           const cloudMetadata = await loadFirebaseMetadata(user.uid);
@@ -754,6 +761,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Save changes to Firestore if authenticated and sync is active
   useEffect(() => {
+    if (!ENABLE_APP_CHECK) return;
     if (state.loading || !firebaseUser || syncStatus !== 'synced') return;
     if (!hasPendingChangesRef.current) return;
 
@@ -827,8 +835,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // 1. Try local IndexedDB
       let cycleLogs = await loadLocalCycleLogs(cycleNum, state.activeProgramId || 'p90x');
 
-      // 2. If Firebase is signed in and we don't have it locally, fetch from Firestore
-      if (cycleLogs.length === 0 && firebaseUser) {
+      // 2. If Firebase is signed in, App Check is enabled, and we don't have it locally, fetch from Firestore
+      if (cycleLogs.length === 0 && firebaseUser && ENABLE_APP_CHECK) {
         cycleLogs = await loadFirebaseCycle(
           firebaseUser.uid,
           cycleNum,
