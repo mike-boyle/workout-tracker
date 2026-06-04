@@ -590,11 +590,15 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [errorMsg, setErrorMsg] = useState('');
   const wasLoggedInRef = useRef(false);
   const hasPendingChangesRef = useRef(false);
+  const syncedLogsRef = useRef<{ [cycle: number]: WorkoutLog[] }>({});
 
   // Load initial local state on mount
   useEffect(() => {
     loadLocalState()
       .then(({ metadata, logs }) => {
+        syncedLogsRef.current = {
+          [metadata.currentCycle]: logs,
+        };
         dispatch({ type: 'INITIALIZE_STATE', payload: { metadata, logs } });
       })
       .catch((err) => {
@@ -631,6 +635,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Reset database helper
   const resetDatabase = () => {
     hasPendingChangesRef.current = true;
+    syncedLogsRef.current = {};
     clearLocalState()
       .then(() => {
         dispatch({ type: 'RESET_DATABASE' });
@@ -650,7 +655,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           logAnalyticsEvent('login', { method: 'google' });
         }
         wasLoggedInRef.current = true;
-
+ 
         if (!ENABLE_APP_CHECK) {
           setSyncStatus('idle');
           return;
@@ -671,6 +676,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
               activeLogs,
               cloudMetadata.activeProgramId || 'p90x'
             );
+            syncedLogsRef.current = {
+              [cloudMetadata.currentCycle]: activeLogs,
+            };
             dispatch({
               type: 'SYNC_FIREBASE_DATA',
               payload: { metadata: cloudMetadata, activeCycleLogs: activeLogs },
@@ -696,6 +704,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
               activeCycleLogs,
               state.activeProgramId || 'p90x'
             );
+            syncedLogsRef.current = {
+              [state.currentCycle]: activeCycleLogs,
+            };
             setSyncStatus('synced');
           }
         } catch (err) {
@@ -780,14 +791,38 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const syncToFirebase = async () => {
         try {
           await saveFirebaseMetadata(firebaseUser.uid, metadataToPersist);
-          const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
-          if (selectedCycleLogs) {
-            await saveFirebaseCycle(
-              firebaseUser.uid,
-              state.selectedCycle,
-              selectedCycleLogs,
-              state.activeProgramId || 'p90x'
-            );
+          // Sync changes for all loaded cycles that have differences
+          for (const cycleStr of Object.keys(state.loadedCycles)) {
+            const cycleNum = parseInt(cycleStr, 10);
+            const currentLogs = state.loadedCycles[cycleNum];
+            if (!currentLogs) continue;
+
+            const syncedLogs = syncedLogsRef.current[cycleNum] || [];
+            const syncedMap = new Map(syncedLogs.map(l => [l.id, l]));
+
+            const changedLogs = currentLogs.filter((log) => {
+              const syncedLog = syncedMap.get(log.id);
+              if (!syncedLog) return true; // New log
+              return (
+                log.skipped !== syncedLog.skipped ||
+                log.abRipperCompleted !== syncedLog.abRipperCompleted ||
+                log.comments !== syncedLog.comments ||
+                log.dateCompleted !== syncedLog.dateCompleted ||
+                JSON.stringify(log.exercises) !== JSON.stringify(syncedLog.exercises)
+              );
+            });
+
+            if (changedLogs.length > 0) {
+              await saveFirebaseCycle(
+                firebaseUser.uid,
+                cycleNum,
+                changedLogs,
+                state.activeProgramId || 'p90x'
+              );
+            }
+            
+            // Mark these as synced by setting syncedLogsRef to the full current logs array
+            syncedLogsRef.current[cycleNum] = currentLogs;
           }
           // Successfully synced, clear the flag
           hasPendingChangesRef.current = false;
@@ -857,6 +892,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await saveLocalState(metadataToPersist, cycleNum, cycleLogs, state.activeProgramId);
       }
 
+      syncedLogsRef.current[cycleNum] = cycleLogs;
       dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: cycleLogs } });
     } catch (error) {
       console.error('Failed to load logs for cycle ' + cycleNum + ':', error);

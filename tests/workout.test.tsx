@@ -4,6 +4,17 @@ import { render, screen, act } from '@testing-library/react';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import { clearLocalState, db } from '../src/services/storage';
 import { generateWizardSteps } from '../src/utils/wizard';
+import { saveFirebaseCycle, listenForAuthChanges } from '../src/services/firebase';
+import type { User } from 'firebase/auth';
+
+// Mock config to enable sync in tests
+vi.mock('../src/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/config')>();
+  return {
+    ...actual,
+    ENABLE_APP_CHECK: true,
+  };
+});
 
 // Test consumer component to interact with the context
 const TestConsumer: React.FC = () => {
@@ -309,6 +320,45 @@ describe('Workout Context & Reducer', () => {
     // Sync payload sets remote progress to Cycle 1, Week 1, Day 3
     expect(screen.getByTestId('day').textContent).toBe('3');
     expect(screen.getByTestId('sel-day').textContent).toBe('3');
+  });
+
+  it('should incrementally sync only the modified log when completing a workout', async () => {
+    // Mock user login
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      callback({ uid: 'mock-user-123' } as unknown as User);
+      return () => {};
+    });
+
+    vi.useFakeTimers();
+    renderWithProvider();
+    
+    // Wait for initial state load and login sync timer to settle
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    
+    // Clear mock history after initialization sync
+    vi.mocked(saveFirebaseCycle).mockClear();
+
+    // Complete workout to trigger sync
+    const btnComplete = screen.getByTestId('btn-complete');
+    await act(async () => {
+      btnComplete.click();
+    });
+
+    // Advance fake timers by debounce interval (2000ms) plus a bit extra
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    // Verify saveFirebaseCycle was called exactly once for the changed log
+    expect(saveFirebaseCycle).toHaveBeenCalledTimes(1);
+    const calls = vi.mocked(saveFirebaseCycle).mock.calls;
+    const passedLogs = calls[0][2];
+    expect(passedLogs.length).toBe(1);
+    expect(passedLogs[0].id).toBe('cycle_1_week_1_day_1');
+
+    vi.useRealTimers();
   });
 });
 

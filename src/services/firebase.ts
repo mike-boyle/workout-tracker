@@ -13,6 +13,10 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
+  collection,
+  getDocs,
+  writeBatch,
+  deleteField,
 } from 'firebase/firestore';
 import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
@@ -121,7 +125,7 @@ export const loadFirebaseMetadata = async (userId: string): Promise<UserMetadata
 };
 
 /**
- * Save workout logs array for a specific cycle to Firestore cycles subcollection doc
+ * Save workout logs array for a specific cycle to Firestore cycles logs subcollection
  */
 export const saveFirebaseCycle = async (
   userId: string,
@@ -129,26 +133,63 @@ export const saveFirebaseCycle = async (
   logs: WorkoutLog[],
   programId: string = 'p90x'
 ): Promise<void> => {
-  const docRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
-  await setDoc(docRef, {
-    logs,
-    lastUpdated: serverTimestamp(),
-  });
+  const cycleDocRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
+  // Save/update the parent doc's timestamp
+  await setDoc(cycleDocRef, { lastUpdated: serverTimestamp() }, { merge: true });
+
+  if (logs.length > 0) {
+    const batch = writeBatch(db);
+    const logsCollectionRef = collection(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`, 'logs');
+    logs.forEach((log) => {
+      const logDocRef = doc(logsCollectionRef, log.id);
+      batch.set(logDocRef, log);
+    });
+    await batch.commit();
+  }
 };
 
 /**
- * Load workout logs array for a specific cycle from Firestore cycles subcollection doc
+ * Load workout logs array for a specific cycle from Firestore cycles logs subcollection
  */
 export const loadFirebaseCycle = async (
   userId: string,
   cycleNum: number,
   programId: string = 'p90x'
 ): Promise<WorkoutLog[]> => {
-  const docRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
-  const docSnap = await getDoc(docRef);
+  const cycleDocRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
+  const logsCollectionRef = collection(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`, 'logs');
+
+  // 1. Try to load from new subcollection
+  const querySnapshot = await getDocs(logsCollectionRef);
+  if (!querySnapshot.empty) {
+    const logs: WorkoutLog[] = [];
+    querySnapshot.forEach((docSnap) => {
+      logs.push(docSnap.data() as WorkoutLog);
+    });
+    // Sort by week and day to maintain chronological order
+    return logs.sort((a, b) => {
+      if (a.week !== b.week) return a.week - b.week;
+      return a.day - b.day;
+    });
+  }
+
+  // 2. Fallback to legacy document format and migrate on-the-fly
+  const docSnap = await getDoc(cycleDocRef);
   if (docSnap.exists()) {
     const data = docSnap.data();
-    return (data.logs || []) as WorkoutLog[];
+    if (Array.isArray(data.logs) && data.logs.length > 0) {
+      const legacyLogs = data.logs as WorkoutLog[];
+      const batch = writeBatch(db);
+      legacyLogs.forEach((log) => {
+        const logDocRef = doc(logsCollectionRef, log.id);
+        batch.set(logDocRef, log);
+      });
+      // Remove legacy logs array from parent document
+      batch.update(cycleDocRef, { logs: deleteField() });
+      await batch.commit();
+      return legacyLogs;
+    }
   }
+
   return [];
 };
