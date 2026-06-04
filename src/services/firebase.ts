@@ -19,7 +19,7 @@ import {
   writeBatch,
   deleteField,
   connectFirestoreEmulator,
-} from 'firebase/firestore';
+} from 'firebase/firestore/lite';
 import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { FIREBASE_CONFIG, ENABLE_APP_CHECK, RECAPTCHA_SITE_KEY } from '../config';

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { saveFirebaseCycle, loadFirebaseCycle } from '../src/services/firebase';
-import { getDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore';
-import type { QuerySnapshot, DocumentSnapshot } from 'firebase/firestore';
+import { getDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore/lite';
+import type { QuerySnapshot, DocumentSnapshot } from 'firebase/firestore/lite';
 import type { WorkoutLog } from '../src/types';
 
 // Unmock the firebase service so we test the actual implementation
@@ -38,7 +38,7 @@ vi.mock('firebase/app-check', () => ({
 }));
 
 // Mock firestore functions
-vi.mock('firebase/firestore', () => {
+vi.mock('firebase/firestore/lite', () => {
   const mockBatch = {
     set: vi.fn(),
     update: vi.fn(),

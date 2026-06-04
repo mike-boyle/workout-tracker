@@ -1,24 +1,81 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isNotBanned() {
+      return isAuthenticated() && (!('banned' in request.auth.token) || request.auth.token.banned != true);
+    }
+
     // Secure user metadata settings documents
-    match /users/{userId}/metadata/{settingsId} {
-      allow read, delete: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
+    match /users/{userId}/metadata/settings {
+      allow read, delete: if isOwner(userId) && isNotBanned();
+      allow create, update: if isOwner(userId) && isNotBanned()
+        && request.resource.data.keys().hasOnly([
+             'version', 'currentCycle', 'currentWeek', 'currentDay', 'gdriveLinked',
+             'metadataFileId', 'cycleFileIds', 'cycleTimestamps', 'cycleStats',
+             'activeProgramId', 'programs', 'lastUpdated'
+           ])
+        && request.resource.data.version is int
+        && request.resource.data.currentCycle is int
+        && request.resource.data.currentCycle >= 1
+        && request.resource.data.currentCycle <= 20
+        && request.resource.data.currentWeek is int
+        && request.resource.data.currentWeek >= 1
+        && request.resource.data.currentWeek <= 13
+        && request.resource.data.currentDay is int
+        && request.resource.data.currentDay >= 1
+        && request.resource.data.currentDay <= 7
+        && request.resource.data.gdriveLinked is bool
+        && (!('activeProgramId' in request.resource.data) || (request.resource.data.activeProgramId is string && request.resource.data.activeProgramId.size() < 100))
+        && request.resource.data.lastUpdated == request.time
+        && (resource == null || request.time > resource.data.lastUpdated + duration.value(2, 's'));
     }
 
     // Secure user cycle documents and nested subcollections
     match /users/{userId}/cycles/{cycleId} {
-      allow read, delete: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow read, delete: if isOwner(userId) && isNotBanned();
+      allow create, update: if isOwner(userId) && isNotBanned()
+        && cycleId.matches('^[a-zA-Z0-9_-]+_cycle_(1[0-9]|20|[1-9])$')
+        && request.resource.data.keys().hasOnly(['lastUpdated', 'logs'])
+        && request.resource.data.lastUpdated == request.time
+        && (resource == null || request.time > resource.data.lastUpdated + duration.value(2, 's'));
 
       // Secure individual workout logs in the subcollection
       match /logs/{logId} {
-        allow read, delete: if request.auth != null && request.auth.uid == userId;
-        allow create, update: if request.auth != null && request.auth.uid == userId
-          // Prevent unreasonably long comments (max 2000 characters)
-          && (request.resource.data.comments == null || request.resource.data.comments.size() < 2000);
+        allow read, delete: if isOwner(userId) && isNotBanned();
+        allow create, update: if isOwner(userId) && isNotBanned()
+          && logId.matches('^cycle_(1[0-9]|20|[1-9])_week_(1[0-3]|[1-9])_day_[1-7]$')
+          && request.resource.data.keys().hasOnly([
+               'id', 'cycle', 'week', 'day', 'workoutId', 'dateCompleted',
+               'skipped', 'exercises', 'abRipperCompleted', 'comments'
+             ])
+          && request.resource.data.id == logId
+          && request.resource.data.id.size() < 100
+          && request.resource.data.cycle is int
+          && request.resource.data.cycle >= 1 && request.resource.data.cycle <= 20
+          && request.resource.data.week is int
+          && request.resource.data.week >= 1 && request.resource.data.week <= 13
+          && request.resource.data.day is int
+          && request.resource.data.day >= 1 && request.resource.data.day <= 7
+          && request.resource.data.workoutId is string
+          && request.resource.data.workoutId.size() < 100
+          && request.resource.data.dateCompleted is string
+          && request.resource.data.dateCompleted.size() < 100
+          && request.resource.data.skipped is bool
+          && request.resource.data.abRipperCompleted is bool
+          && request.resource.data.comments is string
+          && request.resource.data.comments.size() < 2000
+          && request.resource.data.exercises is map
+          && request.resource.data.exercises.size() <= 40;
       }
     }
   }

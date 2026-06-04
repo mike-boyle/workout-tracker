@@ -10,6 +10,24 @@ export default defineConfig({
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5173,
     strictPort: !!process.env.PORT,
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'vendor-charts';
+            }
+            return 'vendor-core';
+          }
+        }
+      }
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',
