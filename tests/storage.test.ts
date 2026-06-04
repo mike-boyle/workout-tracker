@@ -322,6 +322,12 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     expect(metadata.cycleStats?.[1].totalDays).toBe(7);
   });
 
+  it('should fallback to p90x on saveLocalState when program id is invalid', async () => {
+    const metadata = { ...INITIAL_METADATA };
+    await saveLocalState(metadata, 1, [], 'invalid_program');
+    expect(metadata.cycleStats?.[1].totalDays).toBe(91);
+  });
+
   it('should fallback to default values in saveLocalState when metadata values are missing', async () => {
     const incompleteMetadata = {
       version: 1,

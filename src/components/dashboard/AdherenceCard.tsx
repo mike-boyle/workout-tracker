@@ -1,6 +1,7 @@
 import React from 'react';
 import { useWorkout } from '../../contexts/WorkoutContext';
 import { Flex, Heading, Text, Card } from '../ui';
+import { PROGRAMS } from '../../data/schedule';
 
 export const AdherenceCard: React.FC = () => {
   const { state, startNewCycle } = useWorkout();
@@ -9,10 +10,13 @@ export const AdherenceCard: React.FC = () => {
   const selectedCycleLogs = state.logs.filter((log) => log.cycle === state.selectedCycle);
   const completedCount = selectedCycleLogs.filter((log) => !log.skipped).length;
   const skippedCount = selectedCycleLogs.filter((log) => log.skipped).length;
-  const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
+  const activeProg = state.activeProgramId || 'p90x';
+  const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+  const totalDays = program.totalDays;
   const progressPercent = Math.round((selectedCycleLogs.length / totalDays) * 100);
 
-  const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
+  const maxWeeks = program.totalWeeks;
+  const daysPerWeek = program.daysPerWeek;
   const getLogForDay = (week: number, day: number) => {
     return state.logs.find(
       (log) => log.cycle === state.selectedCycle && log.week === week && log.day === day
@@ -20,8 +24,8 @@ export const AdherenceCard: React.FC = () => {
   };
   const isCycleCompleted =
     state.currentWeek === maxWeeks &&
-    state.currentDay === 7 &&
-    getLogForDay(maxWeeks, 7) !== undefined;
+    state.currentDay === daysPerWeek &&
+    getLogForDay(maxWeeks, daysPerWeek) !== undefined;
 
   const showStartNextCyclePrompt = isCycleCompleted && state.selectedCycle === state.currentCycle;
 
@@ -117,8 +121,8 @@ export const AdherenceCard: React.FC = () => {
             🎉 Congratulations! Cycle Complete!
           </Heading>
           <Text variant="p" color="secondary" style={{ marginBottom: '16px' }}>
-            You completed all 13 weeks of this training cycle. Ready to start another round of
-            muscle confusion?
+            You completed all {maxWeeks} weeks of this training cycle. Ready to start another round
+            of muscle confusion?
           </Text>
           <button
             className="btn btn-primary"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import { workouts, getScheduleForProgram } from '../data/schedule';
+import { workouts, getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 import { Flex, Heading, Text, Card, Badge } from './ui';
 
@@ -12,7 +12,9 @@ export const History: React.FC = () => {
     const stats = state.cycleStats?.[cycleNum];
     const completedCount = stats ? stats.completedCount : 0;
     const skippedCount = stats ? stats.skippedCount : 0;
-    const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
+    const activeProg = state.activeProgramId || 'p90x';
+    const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+    const totalDays = program.totalDays;
     const loggedCount = completedCount + skippedCount;
     const progressPercent = stats ? Math.round((loggedCount / totalDays) * 100) : 0;
     const isCompleted = cycleNum < state.currentCycle;
@@ -27,14 +29,9 @@ export const History: React.FC = () => {
   };
 
   const getPhases = () => {
-    if (state.activeProgramId === 'test_workout') {
-      return [{ num: 1, name: 'Testing', weeks: [1] }];
-    }
-    return [
-      { num: 1, name: 'Foundation', weeks: [1, 2, 3, 4] },
-      { num: 2, name: 'Max Strength', weeks: [5, 6, 7, 8] },
-      { num: 3, name: 'The Final Stretch', weeks: [9, 10, 11, 12, 13] },
-    ];
+    const activeProg = state.activeProgramId || 'p90x';
+    const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+    return program.phases;
   };
 
   const handleDayClick = (cycleNum: number, dayInfo: ScheduleDay) => {
@@ -264,8 +261,11 @@ export const History: React.FC = () => {
                               const weekDays = getScheduleForProgram(
                                 state.activeProgramId || 'p90x'
                               ).filter((d) => d.weekNumber === weekNum);
-                              const isRecoveryWeek =
-                                weekNum === 4 || weekNum === 8 || weekNum === 13;
+                              const activeProg = state.activeProgramId || 'p90x';
+                              const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+                              const isRecoveryWeek = (program.recoveryWeeks || []).includes(
+                                weekNum
+                              );
 
                               return (
                                 <Card

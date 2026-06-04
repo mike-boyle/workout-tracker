@@ -2,6 +2,8 @@ import React from 'react';
 import { DayCard } from './DayCard';
 import type { ScheduleDay, WorkoutLog } from '../../types';
 import { Flex, Grid, Card, Heading } from '../ui';
+import { useWorkout } from '../../contexts/WorkoutContext';
+import { PROGRAMS } from '../../data/schedule';
 
 interface Phase {
   num: number;
@@ -22,6 +24,11 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
   getLogForDay,
   handleDayClick,
 }) => {
+  const { state } = useWorkout();
+  const activeProg = state.activeProgramId || 'p90x';
+  const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+  const recoveryWeeks = program.recoveryWeeks || [];
+
   return (
     <div className="phase-section" style={{ marginBottom: '32px' }}>
       <Heading
@@ -41,7 +48,7 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
         {phase.weeks.map((weekNum) => {
           // Filter days in schedule matching this week
           const weekDays = schedule.filter((d) => d.weekNumber === weekNum);
-          const isRecoveryWeek = weekNum === 4 || weekNum === 8 || weekNum === 13;
+          const isRecoveryWeek = recoveryWeeks.includes(weekNum);
 
           return (
             <Card key={weekNum} style={{ padding: '16px' }}>

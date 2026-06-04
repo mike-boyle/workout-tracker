@@ -570,22 +570,44 @@ export const testWorkoutSchedule: ScheduleDay[] = [
 exercises.push(...testExercises);
 workouts.push(...testWorkouts);
 
+export interface PhaseConfig {
+  num: number;
+  name: string;
+  weeks: number[];
+}
+
 export interface ProgramConfig {
   id: string;
   name: string;
+  daysPerWeek: number;
+  totalWeeks: number;
   totalDays: number;
+  phases: PhaseConfig[];
+  recoveryWeeks: number[];
 }
 
 export const PROGRAMS: { [programId: string]: ProgramConfig } = {
   p90x: {
     id: 'p90x',
     name: 'P90X Classic',
+    daysPerWeek: 7,
+    totalWeeks: 13,
     totalDays: 91,
+    phases: [
+      { num: 1, name: 'Foundation', weeks: [1, 2, 3, 4] },
+      { num: 2, name: 'Max Strength', weeks: [5, 6, 7, 8] },
+      { num: 3, name: 'The Final Stretch', weeks: [9, 10, 11, 12, 13] },
+    ],
+    recoveryWeeks: [4, 8, 13],
   },
   test_workout: {
     id: 'test_workout',
     name: 'Test Workout Split',
+    daysPerWeek: 7,
+    totalWeeks: 1,
     totalDays: 7,
+    phases: [{ num: 1, name: 'Testing', weeks: [1] }],
+    recoveryWeeks: [],
   },
 };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
-import { getScheduleForProgram } from '../data/schedule';
+import { getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 import { AdherenceCard } from './dashboard/AdherenceCard';
 import { PhaseSection } from './dashboard/PhaseSection';
@@ -19,14 +19,9 @@ export const Dashboard: React.FC = () => {
   const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
 
   const getPhases = () => {
-    if (state.activeProgramId === 'test_workout') {
-      return [{ num: 1, name: 'Testing', weeks: [1] }];
-    }
-    return [
-      { num: 1, name: 'Foundation', weeks: [1, 2, 3, 4] },
-      { num: 2, name: 'Max Strength', weeks: [5, 6, 7, 8] },
-      { num: 3, name: 'The Final Stretch', weeks: [9, 10, 11, 12, 13] },
-    ];
+    const activeProg = state.activeProgramId || 'p90x';
+    const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
+    return program.phases;
   };
 
   const handleDayClick = (dayInfo: ScheduleDay) => {

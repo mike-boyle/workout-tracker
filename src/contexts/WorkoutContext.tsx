@@ -9,7 +9,7 @@ import {
   clearLocalState,
   INITIAL_METADATA,
 } from '../services/storage';
-import { getScheduleForProgram } from '../data/schedule';
+import { getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import {
   signInWithGoogle,
   signOutUser,
@@ -231,23 +231,27 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
-      const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
+      const activeProgId = state.activeProgramId || 'p90x';
+      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
+      const maxWeeks = activeProgram.totalWeeks;
+      const daysPerWeek = activeProgram.daysPerWeek;
+
       if (isCompletingActiveDay) {
         nextDay = state.currentDay + 1;
-        if (nextDay > 7) {
+        if (nextDay > daysPerWeek) {
           nextDay = 1;
           nextWeek += 1;
         }
         if (nextWeek > maxWeeks) {
           nextWeek = maxWeeks;
-          nextDay = 7;
+          nextDay = daysPerWeek;
         } else {
           nextSelWeek = nextWeek;
           nextSelDay = nextDay;
         }
       }
 
-      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
+      const totalDays = activeProgram.totalDays;
       const nextStats: CycleStats = {
         completedCount: nextLogs.filter((l) => !l.skipped).length,
         skippedCount: nextLogs.filter((l) => l.skipped).length,
@@ -335,23 +339,27 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
-      const maxWeeks = state.activeProgramId === 'test_workout' ? 1 : 13;
+      const activeProgId = state.activeProgramId || 'p90x';
+      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
+      const maxWeeks = activeProgram.totalWeeks;
+      const daysPerWeek = activeProgram.daysPerWeek;
+
       if (isCompletingActiveDay) {
         nextDay = state.currentDay + 1;
-        if (nextDay > 7) {
+        if (nextDay > daysPerWeek) {
           nextDay = 1;
           nextWeek += 1;
         }
         if (nextWeek > maxWeeks) {
           nextWeek = maxWeeks;
-          nextDay = 7;
+          nextDay = daysPerWeek;
         } else {
           nextSelWeek = nextWeek;
           nextSelDay = nextDay;
         }
       }
 
-      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
+      const totalDays = activeProgram.totalDays;
       const nextStats: CycleStats = {
         completedCount: nextLogs.filter((l) => !l.skipped).length,
         skippedCount: nextLogs.filter((l) => l.skipped).length,
@@ -411,7 +419,9 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 
     case 'START_NEW_CYCLE': {
       const nextCycle = state.currentCycle + 1;
-      const totalDays = state.activeProgramId === 'test_workout' ? 7 : 91;
+      const activeProgId = state.activeProgramId || 'p90x';
+      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
+      const totalDays = activeProgram.totalDays;
       const nextStats: CycleStats = {
         completedCount: 0,
         skippedCount: 0,
@@ -509,6 +519,10 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       const { week, day } = action.payload;
       const currentCycleLogs = state.loadedCycles[state.currentCycle] || [];
 
+      const activeProgId = state.activeProgramId || 'p90x';
+      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
+      const daysPerWeek = activeProgram.daysPerWeek;
+
       const intermediateDays: { week: number; day: number }[] = [];
       let w = state.currentWeek;
       let d = state.currentDay;
@@ -516,14 +530,14 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       while (w < week || (w === week && d < day)) {
         intermediateDays.push({ week: w, day: d });
         d++;
-        if (d > 7) {
+        if (d > daysPerWeek) {
           d = 1;
           w++;
         }
       }
 
       const newSkipLogs: WorkoutLog[] = [];
-      const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
+      const schedule = getScheduleForProgram(activeProgId);
       for (const item of intermediateDays) {
         const hasLog = currentCycleLogs.some(
           (log) => log.week === item.week && log.day === item.day
@@ -555,7 +569,7 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       const nextStats: CycleStats = {
         completedCount: nextLogs.filter((l) => !l.skipped).length,
         skippedCount: nextLogs.filter((l) => l.skipped).length,
-        totalDays: 91,
+        totalDays: activeProgram.totalDays,
       };
 
       const isSelectedActiveCycle = state.selectedCycle === state.currentCycle;

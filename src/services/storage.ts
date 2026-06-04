@@ -1,4 +1,5 @@
 import type { UserMetadata, WorkoutLog, CycleStats } from '../types';
+import { PROGRAMS } from '../data/schedule';
 
 const CURRENT_VERSION = 1;
 
@@ -156,10 +157,11 @@ export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
       // Compute stats
       const completedCount = cycleLogs.filter((l) => !l.skipped).length;
       const skippedCount = cycleLogs.filter((l) => l.skipped).length;
+      const prog = PROGRAMS.p90x;
       statsMap[cycleNum] = {
         completedCount,
         skippedCount,
-        totalDays: 91,
+        totalDays: prog.totalDays,
       };
 
       // Set timestamp
@@ -273,7 +275,8 @@ export async function saveLocalState(
 ): Promise<void> {
   const completedCount = cycleLogs.filter((l) => !l.skipped).length;
   const skippedCount = cycleLogs.filter((l) => l.skipped).length;
-  const totalDays = activeProgramId === 'test_workout' ? 7 : 91;
+  const prog = PROGRAMS[activeProgramId] || PROGRAMS.p90x;
+  const totalDays = prog.totalDays;
 
   if (!metadata.programs) {
     metadata.programs = {};
