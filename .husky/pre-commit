@@ -1,1 +1,25 @@
-npm test
+#!/bin/sh
+
+# Run standard unit tests
+npm test || exit 1
+
+# Check if rules or rules test changed in git status (staged changes)
+if git diff --cached --name-only | grep -E '^firebase/firestore\.rules$|^tests/firestore\.rules\.test\.ts$'; then
+  echo "Firestore security rules or rules test changes detected. Running security rules tests..."
+
+  # Add Scoop OpenJDK 21 path to PATH if java is not in PATH
+  if ! command -v java >/dev/null 2>&1; then
+    USER_HOME=$(eval echo "~$USER")
+    SCOOP_JAVA_PATH="$USER_HOME/scoop/apps/openjdk21/current/bin"
+    if [ -d "$SCOOP_JAVA_PATH" ]; then
+      export PATH="$PATH:$SCOOP_JAVA_PATH"
+    else
+      SCOOP_JAVA_PATH="$USER_HOME/scoop/apps/openjdk17/current/bin"
+      if [ -d "$SCOOP_JAVA_PATH" ]; then
+        export PATH="$PATH:$SCOOP_JAVA_PATH"
+      fi
+    fi
+  fi
+
+  npm run test:rules || exit 1
+fi

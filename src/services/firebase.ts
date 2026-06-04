@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  connectAuthEmulator,
   type User,
 } from 'firebase/auth';
 import {
@@ -17,6 +18,7 @@ import {
   getDocs,
   writeBatch,
   deleteField,
+  connectFirestoreEmulator,
 } from 'firebase/firestore';
 import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
@@ -33,6 +35,17 @@ declare global {
 const app = initializeApp(FIREBASE_CONFIG);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Connect Firebase emulators in development if opt-in env flag is true
+if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+  try {
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectAuthEmulator(auth, 'http://localhost:9099');
+    console.log('Firebase Emulators connected (Firestore: 8080, Auth: 9099)');
+  } catch (err) {
+    console.warn('Firebase Emulators failed to connect or are already connected:', err);
+  }
+}
 
 // Initialize Firebase App Check conditionally
 if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {

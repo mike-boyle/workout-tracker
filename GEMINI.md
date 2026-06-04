@@ -108,6 +108,11 @@ We enforce automated test verification locally to prevent regressions from being
   - Run full-flow browser E2E tests to verify workout logging wizard, skip calculations, multi-cycle rollover logic, and history tracking.
   - **Automation**: Verified automatically before any push to the remote repository via the pre-push hook (`npm run test:e2e`).
   - **Manual command**: `npm run test:e2e` (or `npx playwright test --ui` for visual browser interactive mode).
+- **Firestore Security Rules Tests**:
+  - Run unit tests for database security permissions, collection locks, and field validation constraints using `@firebase/rules-unit-testing`.
+  - **Automation**: Verified automatically in `.husky/pre-commit` *only if* the security rules file ([firestore.rules](file:///c:/Users/Mike/dev/p90x/firebase/firestore.rules)) or the rules test file ([firestore.rules.test.ts](file:///c:/Users/Mike/dev/p90x/tests/firestore.rules.test.ts)) has staged changes. This limits friction for general commits while ensuring strict validation before pushing rules.
+  - **Manual command**: `npm run test:rules`
+  - **Dependency**: Requires **Java (JDK 21 or higher)** to run the Firebase Emulator Suite.
 - **Test-Driven Development (TDD)**: Practicing TDD is highly encouraged to ensure that code interfaces are clean, modular, and highly testable. Before writing implementation code for a new feature, write the corresponding test assertions first, then implement the code to satisfy the tests.
 - **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
 
@@ -161,6 +166,11 @@ This project is built using a modern, type-safe web stack optimized for rapid fr
   - **Firebase Auth**: Identifies users securely via Google OAuth.
   - **Firestore**: Synchronizes workout cycles, history, and user metadata to the cloud for multi-device sync and backups.
     - *Security Rules*: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](file:///c:/Users/Mike/dev/p90x/firebase/firestore.rules). These local rules must be synced with the Firebase Console (either via manual console upload or using the Firebase CLI) whenever access patterns or schema requirements change.
+  - **Local Emulator Integration**:
+    - Supports running Firestore and Auth locally during interactive development.
+    - **Activation**: Set the environment variable `VITE_USE_FIREBASE_EMULATOR=true` when starting the development server (`npm run dev`).
+    - Connects Firestore to `localhost:8080` and Auth to `http://localhost:9099`.
+    - Requires starting the Firebase Emulator Suite separately in your terminal using `firebase emulators:start` (which requires Java JDK 21+).
   - **Firebase Analytics**: Tracks screen flows, cycle rollovers, and core workout logging events to evaluate feature usage.
 
 ### Testing & Verification Tools
