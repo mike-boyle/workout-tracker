@@ -2,12 +2,17 @@ import { test, expect } from '@playwright/test';
 import { setupStrictNetworkIsolation } from './network-isolation';
 
 test.describe('Workout Tracker E2E Flow', () => {
-  // Set high timeout since we are simulating 189 days of workouts purely through the UI
-  test.setTimeout(300000);
+  // Set reasonable timeout since we use fast-forwarding now
+  test.setTimeout(60000);
 
   setupStrictNetworkIsolation();
 
   test.beforeEach(async ({ page }) => {
+    // Listen for console logs/errors
+    page.on('console', (msg) => {
+      console.log(`[BROWSER ${msg.type()}]: ${msg.text()}`);
+    });
+
     // Navigate to local site
     await page.goto('/');
 
@@ -82,31 +87,82 @@ test.describe('Workout Tracker E2E Flow', () => {
         // Wait for redirect back to dashboard
         await page.waitForURL(/#\/dashboard\/cycle\/\d+/);
       }
+
+      // Wait for dashboard cards to be fully rendered in the DOM
+      await page.locator('.glass-panel-hover').first().waitFor({ state: 'visible' });
+    };
+
+    // Helper to fast-forward to a future day from the dashboard
+    const fastForwardToFutureDay = async (cycleNum: number, dayNum: number) => {
+      const weekNum = Math.ceil(dayNum / 7);
+      const dayOfWeek = dayNum % 7 === 0 ? 7 : dayNum % 7;
+
+      // Navigate to the target session page directly by changing location hash
+      await page.evaluate((hash) => {
+        window.location.hash = hash;
+      }, `#/session/cycle/${cycleNum}/week/${weekNum}/day/${dayOfWeek}`);
+
+      // Wait for session page to load
+      await page
+        .locator('button:has-text("Back to Dashboard"), button:has-text("Cancel")')
+        .waitFor({ state: 'visible' });
+
+      // Handle the skip confirmation dialog
+      page.once('dialog', async (dialog) => {
+        expect(dialog.message()).toContain('skip all workouts up to');
+        await dialog.accept();
+      });
+
+      // Click Skip to this Day button
+      await page.locator('button:has-text("Skip to this Day")').click();
+
+      // Wait for redirect back to dashboard
+      await page.waitForURL(new RegExp(`#/dashboard/cycle/${cycleNum}`));
+      await page.locator('.glass-panel-hover').first().waitFor({ state: 'visible' });
     };
 
     // --- CYCLE 1 ---
     console.log('Logging Cycle 1...');
-    for (let d = 1; d <= 91; d++) {
-      const isSkip = d === 3;
-      await logActiveDay(1, d, isSkip);
-    }
+    await logActiveDay(1, 1, false); // Log Day 1 (Resistance)
+    await logActiveDay(1, 2, false); // Log Day 2 (Cardio)
+    await logActiveDay(1, 3, true); // Skip Day 3 (Manual Skip flow)
+
+    // Fast forward to Day 90 (Cardio - Yoga X)
+    console.log('Fast forwarding to Day 90...');
+    await fastForwardToFutureDay(1, 90);
+    await logActiveDay(1, 90, false); // Log Day 90 (Cardio)
+    await logActiveDay(1, 91, false); // Log Day 91 (Rest / Start Cycle 2)
+
     // Verify Cycle 2 has started
     await expect(page.locator('.logo-section p')).toHaveText(/Cycle 2 • Week 1 • Day 1/);
 
     // --- CYCLE 2 ---
     console.log('Logging Cycle 2...');
-    for (let d = 1; d <= 91; d++) {
-      const isSkip = d === 5;
-      await logActiveDay(2, d, isSkip);
-    }
+    await logActiveDay(2, 1, false); // Log Day 1 (Resistance)
+    await logActiveDay(2, 2, false); // Log Day 2 (Cardio)
+    await logActiveDay(2, 3, true); // Skip Day 3
+
+    // Fast forward to Day 90 (Cardio - Yoga X)
+    console.log('Fast forwarding to Day 90...');
+    await fastForwardToFutureDay(2, 90);
+    await logActiveDay(2, 90, false); // Log Day 90 (Cardio)
+    await logActiveDay(2, 91, false); // Log Day 91 (Rest / Start Cycle 3)
+
     // Verify Cycle 3 has started
     await expect(page.locator('.logo-section p')).toHaveText(/Cycle 3 • Week 1 • Day 1/);
 
-    // --- CYCLE 3 (Log first week) ---
-    console.log('Logging Cycle 3 (Week 1)...');
-    for (let d = 1; d <= 7; d++) {
-      await logActiveDay(3, d, false);
-    }
+    // --- CYCLE 3 ---
+    console.log('Logging Cycle 3...');
+    await logActiveDay(3, 1, false); // Log Day 1 (Resistance)
+    await logActiveDay(3, 2, false); // Log Day 2 (Cardio)
+    await logActiveDay(3, 3, true); // Skip Day 3
+
+    // Fast forward to Day 6 (Cardio - Kenpo X)
+    console.log('Fast forwarding to Day 6...');
+    await fastForwardToFutureDay(3, 6);
+    await logActiveDay(3, 6, false); // Log Day 6 (Cardio)
+    await logActiveDay(3, 7, false); // Log Day 7 (Rest)
+
     // Verify progress is at Cycle 3, Week 2, Day 1
     await expect(page.locator('.logo-section p')).toHaveText(/Cycle 3 • Week 2 • Day 1/);
 
@@ -154,9 +210,9 @@ test.describe('Workout Tracker E2E Flow', () => {
     const cycle2Day1 = cycle2Panel.locator('.glass-panel-hover', { hasText: /\bDay 1(?!\d)/ });
     await expect(cycle2Day1.locator('.badge-green')).toHaveText('✓ Done');
 
-    // Check Day 5 status (Skipped)
-    const cycle2Day5 = cycle2Panel.locator('.glass-panel-hover', { hasText: /\bDay 5(?!\d)/ });
-    await expect(cycle2Day5.locator('.badge-yellow')).toHaveText('Skipped');
+    // Check Day 3 status (Skipped)
+    const cycle2Day3 = cycle2Panel.locator('.glass-panel-hover', { hasText: /\bDay 3(?!\d)/ });
+    await expect(cycle2Day3.locator('.badge-yellow')).toHaveText('Skipped');
 
     // Click Day 1 to inspect inputs
     await cycle2Day1.click();
