@@ -58,6 +58,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
                 onClick={() => setShowSettings(!showSettings)}
                 style={{ padding: '8px' }}
                 title="Settings & Backups"
+                aria-label="Settings & Backups"
               >
                 ⚙️
               </button>

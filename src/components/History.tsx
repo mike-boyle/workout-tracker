@@ -87,6 +87,9 @@ export const History: React.FC = () => {
                 wrap="wrap"
                 gap={4}
                 style={{ cursor: 'pointer' }}
+                role="button"
+                aria-expanded={isExpanded}
+                aria-label={`Cycle ${cNum}`}
                 onClick={() => {
                   const nextExpanded = isExpanded ? null : cNum;
                   setExpandedCycle(nextExpanded);
@@ -348,6 +351,8 @@ export const History: React.FC = () => {
                                                 ? 'hsla(48, 96%, 53%, 0.02)'
                                                 : 'transparent',
                                           }}
+                                          role="button"
+                                          aria-label={`Cycle ${cNum} Day ${dayInfo.dayNumber}: ${workoutDef?.name || 'Rest'}`}
                                           onClick={() => handleDayClick(cNum, dayInfo)}
                                         >
                                           <Flex justify="between" align="center">

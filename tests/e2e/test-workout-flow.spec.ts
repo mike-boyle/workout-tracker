@@ -26,28 +26,28 @@ test.describe('Test Workout Split E2E Flow', () => {
     page,
   }) => {
     // 1. Open settings panel
-    await page.locator('button[title="Settings & Backups"]').click();
+    await page.getByRole('button', { name: 'Settings & Backups' }).click();
 
     // 2. Select "Test Workout Split" from the dropdown
-    const select = page.locator('#program-select');
+    const select = page.getByLabel('Select Workout Program');
     await expect(select).toBeVisible();
     await select.selectOption('test_workout');
 
     // 3. Close settings panel
-    await page.locator('button[title="Settings & Backups"]').click();
+    await page.getByRole('button', { name: 'Settings & Backups' }).click();
 
     // 4. Verify initial state of the selected program
-    await expect(page.locator('.logo-section p')).toHaveText(/Cycle 1 • Week 1 • Day 1/);
+    await expect(page.getByText(/Cycle 1 • Week 1 • Day 1/)).toBeVisible();
 
     // Helper to log a single active day in the Test Workout Split
     const logActiveDay = async (dayNum: number, isSkip: boolean) => {
       // Find and click the active day card
-      const activeCard = page.locator('.glass-panel-hover', { hasText: 'Active' });
+      const activeCard = page.getByRole('button', { name: /Active/ });
       await activeCard.click();
 
       // Wait for session page to load
       await page
-        .locator('button:has-text("Back to Dashboard"), button:has-text("Cancel")')
+        .getByRole('button', { name: /Back to Dashboard|Cancel/ })
         .waitFor({ state: 'visible' });
 
       if (isSkip) {
@@ -55,10 +55,10 @@ test.describe('Test Workout Split E2E Flow', () => {
           expect(dialog.message()).toContain('skip this workout day');
           await dialog.accept();
         });
-        await page.locator('button:has-text("Skip Day")').click();
+        await page.getByRole('button', { name: 'Skip Day' }).click();
       } else {
-        const saveBtn = page.locator('button:has-text("Save Workout Data")');
-        const restBtn = page.locator('button:has-text("Mark Completed")');
+        const saveBtn = page.getByRole('button', { name: 'Save Workout Data' });
+        const restBtn = page.getByRole('button', { name: 'Mark Completed' });
 
         if (await restBtn.isVisible()) {
           await restBtn.click();
@@ -78,7 +78,7 @@ test.describe('Test Workout Split E2E Flow', () => {
 
       // Check if congratulations / start next cycle is triggered on Day 7 completion
       if (dayNum === 7 && !isSkip) {
-        const startNextCycleBtn = page.locator('button:has-text("Start Cycle 2")');
+        const startNextCycleBtn = page.getByRole('button', { name: 'Start Cycle 2' });
         await startNextCycleBtn.waitFor({ state: 'visible' });
         await startNextCycleBtn.click();
         // Wait for redirect to new cycle dashboard
@@ -114,25 +114,25 @@ test.describe('Test Workout Split E2E Flow', () => {
     await logActiveDay(7, false);
 
     // 5. Verify Cycle 2 has started
-    await expect(page.locator('.logo-section p')).toHaveText(/Cycle 2 • Week 1 • Day 1/);
+    await expect(page.getByText(/Cycle 2 • Week 1 • Day 1/)).toBeVisible();
 
     // 6. Verify history shows Cycle 1 logs
-    await page.locator('button:has-text("History")').click();
+    await page.getByRole('button', { name: 'History' }).click();
     await expect(page).toHaveURL(/#\/history/);
 
     const cycle1Panel = page.locator('.glass-panel', {
-      has: page.locator('h3', { hasText: 'Cycle 1' }),
+      has: page.getByRole('heading', { name: 'Cycle 1' }),
     });
 
     // Expand Cycle 1 history
-    await cycle1Panel.locator('h3:has-text("Cycle 1")').click();
+    await cycle1Panel.getByRole('button', { name: 'Cycle 1' }).click();
 
     // Check Day 1 status is Done
-    const day1Card = cycle1Panel.locator('.glass-panel-hover', { hasText: 'Day 1' });
-    await expect(day1Card.locator('.badge-green')).toHaveText('✓ Done');
+    const day1Card = cycle1Panel.getByRole('button', { name: /Day 1\b/ });
+    await expect(day1Card.getByText('✓ Done')).toBeVisible();
 
     // Check Day 3 status is Skipped
-    const day3Card = cycle1Panel.locator('.glass-panel-hover', { hasText: 'Day 3' });
-    await expect(day3Card.locator('.badge-yellow')).toHaveText('Skipped');
+    const day3Card = cycle1Panel.getByRole('button', { name: /Day 3\b/ });
+    await expect(day3Card.getByText('Skipped', { exact: true })).toBeVisible();
   });
 });

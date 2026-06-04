@@ -194,11 +194,11 @@ describe('ResistanceWizardView Component', () => {
     expect(handleInputChange).toHaveBeenCalledWith('cb_standard_pushup', 0, 'assisted', true);
 
     // Back button is disabled on step 0
-    const prevBtn = screen.getByText('← Previous');
+    const prevBtn = screen.getByRole('button', { name: '← Previous' });
     expect(prevBtn).toBeDisabled();
 
     // Click Next button to change step index
-    const nextBtn = screen.getByText('Next →');
+    const nextBtn = screen.getByRole('button', { name: 'Next →' });
     fireEvent.click(nextBtn);
     expect(setCurrentStepIndex).toHaveBeenCalled();
 
@@ -218,13 +218,13 @@ describe('ResistanceWizardView Component', () => {
     expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
 
     // Back button is enabled on step 1
-    const prevBtnActive = screen.getByText('← Previous');
+    const prevBtnActive = screen.getByRole('button', { name: '← Previous' });
     expect(prevBtnActive).not.toBeDisabled();
     fireEvent.click(prevBtnActive);
     expect(setCurrentStepIndex).toHaveBeenCalled();
 
     // Finish button is visible on step 1 (last step)
-    const finishBtn = screen.getByText('Finish ✓');
+    const finishBtn = screen.getByRole('button', { name: 'Finish ✓' });
     fireEvent.click(finishBtn);
     expect(handleSave).toHaveBeenCalled();
   });

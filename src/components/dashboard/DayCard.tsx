@@ -76,6 +76,8 @@ export const DayCard: React.FC<DayCardProps> = ({ dayInfo, log, handleDayClick }
       style={cardStyle}
       onClick={() => handleDayClick(dayInfo)}
       className="flex flex-col justify-between"
+      role="button"
+      aria-label={`Day ${dayInfo.dayNumber}: ${workoutDef?.name || 'Rest'}${isCurrent ? ' (Active)' : ''}${isCompleted ? ' (Done)' : ''}${isSkipped ? ' (Skipped)' : ''}`}
     >
       <div>
         <Flex justify="between" align="center" style={{ marginBottom: '6px' }}>

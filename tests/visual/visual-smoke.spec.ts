@@ -25,7 +25,7 @@ test.describe('Visual Smoke Tests', () => {
 
   test('settings-panel-view', async ({ page }) => {
     // Open settings panel
-    const settingsBtn = page.getByTitle('Settings & Backups');
+    const settingsBtn = page.getByRole('button', { name: 'Settings & Backups' });
     await settingsBtn.click();
 
     // Wait for settings panel to animate in and display content
@@ -40,7 +40,7 @@ test.describe('Visual Smoke Tests', () => {
 
   test('history-view-empty', async ({ page }) => {
     // Switch to History tab
-    await page.locator('button:has-text("History")').click();
+    await page.getByRole('button', { name: 'History' }).click();
     await page.waitForURL(/#\/history/);
 
     // Take snapshot of empty history view
@@ -49,7 +49,7 @@ test.describe('Visual Smoke Tests', () => {
 
   test('analytics-view-empty', async ({ page }) => {
     // Switch to Analytics tab
-    await page.locator('button:has-text("Analytics")').click();
+    await page.getByRole('button', { name: 'Analytics' }).click();
     await page.waitForURL(/#\/analytics/);
 
     // Take snapshot of empty analytics view

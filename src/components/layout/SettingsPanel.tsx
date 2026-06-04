@@ -60,9 +60,11 @@ export const SettingsPanel: React.FC = () => {
 
       {/* Workout Program Selector */}
       <div style={{ marginBottom: '20px' }}>
-        <Heading level={4} style={{ fontSize: '0.95rem', marginBottom: '8px' }}>
-          Select Workout Program
-        </Heading>
+        <label htmlFor="program-select" style={{ display: 'block' }}>
+          <Heading level={4} style={{ fontSize: '0.95rem', marginBottom: '8px' }}>
+            Select Workout Program
+          </Heading>
+        </label>
         <select
           id="program-select"
           className="input-field"

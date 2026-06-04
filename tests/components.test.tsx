@@ -50,13 +50,13 @@ describe('RestTimer Component', () => {
     vi.useFakeTimers();
     render(<RestTimer />);
 
-    const btnAdd30 = screen.getByText('+30s');
+    const btnAdd30 = screen.getByRole('button', { name: '+30s' });
     act(() => {
       btnAdd30.click();
     });
 
     expect(screen.getByText('0:30')).toBeInTheDocument();
-    expect(screen.getByText('Pause')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
 
     // Advance 5 seconds
     act(() => {
@@ -70,7 +70,7 @@ describe('RestTimer Component', () => {
 
   it('should add 60 seconds when clicking +60s', () => {
     render(<RestTimer />);
-    const btnAdd60 = screen.getByText('+60s');
+    const btnAdd60 = screen.getByRole('button', { name: '+60s' });
     act(() => {
       btnAdd60.click();
     });
@@ -80,14 +80,14 @@ describe('RestTimer Component', () => {
   it('should reset timer when clicking Reset button', () => {
     render(<RestTimer />);
 
-    const btnAdd60 = screen.getByText('+60s');
+    const btnAdd60 = screen.getByRole('button', { name: '+60s' });
     act(() => {
       btnAdd60.click();
     });
 
     expect(screen.getByText('1:00')).toBeInTheDocument();
 
-    const btnReset = screen.getByText('Reset');
+    const btnReset = screen.getByRole('button', { name: 'Reset' });
     act(() => {
       btnReset.click();
     });
@@ -101,7 +101,7 @@ describe('RestTimer Component', () => {
 
     // Add 30s
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
 
     // Advance 30 seconds to reach 0
@@ -110,8 +110,8 @@ describe('RestTimer Component', () => {
     });
 
     expect(screen.getByText('0:00')).toBeInTheDocument();
-    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
-    expect(screen.queryByText('Reset')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
 
     // Advance an extra 200ms to trigger the second buzzer tone
     act(() => {
@@ -126,22 +126,22 @@ describe('RestTimer Component', () => {
 
     // Add 30s
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
 
-    const toggleBtn = screen.getByText('Pause');
+    const toggleBtn = screen.getByRole('button', { name: 'Pause' });
 
     // Click pause
     act(() => {
       toggleBtn.click();
     });
-    expect(screen.getByText('Start')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
 
     // Click start
     act(() => {
-      screen.getByText('Start').click();
+      screen.getByRole('button', { name: 'Start' }).click();
     });
-    expect(screen.getByText('Pause')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
   });
 
   it('should handle Web Audio API errors gracefully when starting buzzer', () => {
@@ -162,7 +162,7 @@ describe('RestTimer Component', () => {
 
     // Add 30s and advance to 0
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
 
     // Advance 30 seconds to reach 0
@@ -186,7 +186,7 @@ describe('RestTimer Component', () => {
     vi.useFakeTimers();
     render(<RestTimer />);
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
     act(() => {
       vi.advanceTimersByTime(30000);
@@ -204,7 +204,7 @@ describe('RestTimer Component', () => {
     vi.useFakeTimers();
     render(<RestTimer />);
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
     act(() => {
       vi.advanceTimersByTime(30000);
@@ -218,13 +218,13 @@ describe('RestTimer Component', () => {
   it('should reset timer when paused and ref is cleared', () => {
     render(<RestTimer />);
     act(() => {
-      screen.getByText('+30s').click();
+      screen.getByRole('button', { name: '+30s' }).click();
     });
     act(() => {
-      screen.getByText('Pause').click();
+      screen.getByRole('button', { name: 'Pause' }).click();
     });
     act(() => {
-      screen.getByText('Reset').click();
+      screen.getByRole('button', { name: 'Reset' }).click();
     });
     expect(screen.getByText('0:00')).toBeInTheDocument();
   });
@@ -272,8 +272,8 @@ describe('WorkoutSession Component View Mode Defaults', () => {
 
     // Week 1 Day 1 (Chest & Back) is the default active day.
     // It should default to wizard mode, displaying the "Switch to Full Sheet View" button.
-    expect(await screen.findByText('Chest & Back')).toBeInTheDocument();
-    expect(screen.getByText('Switch to Full Sheet View')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Chest & Back' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Switch to Full Sheet View' })).toBeInTheDocument();
 
     // Now click the navigation button to go to Week 1 Day 5 (Legs & Back), which is inactive/future.
     const navBtn = screen.getByTestId('nav-btn');
@@ -283,7 +283,7 @@ describe('WorkoutSession Component View Mode Defaults', () => {
 
     // We should now be on Legs & Back, which is an inactive day, so it defaults to sheet mode
     // (displaying the "Switch to Wizard View" button).
-    expect(await screen.findByText('Legs & Back')).toBeInTheDocument();
-    expect(screen.getByText('Switch to Wizard View')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Legs & Back' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Switch to Wizard View' })).toBeInTheDocument();
   });
 });
