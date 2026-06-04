@@ -138,6 +138,7 @@ Before committing and pushing code to the remote repository, ensure the followin
 - [ ] **No Focus Tags**: Ensure no `describe.only`, `test.only`, or `it.only` test filters are committed.
 - [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
 - [ ] **Up-to-Date Documentation**: Ensure [README.md](README.md) is updated with any new feature details, setup instructions, or environment variables.
+- [ ] **Firebase Analytics Tracking**: Verify that all new UI page/view routes or key interactive workflows (e.g. starting a cycle, completing workouts, toggling settings) have corresponding Firebase Analytics event tracking integrated.
 - [ ] **Checklist & Policy Updates (GEMINI.md)**: Proactively identify any new architectural decisions, workflows, or testing patterns established in the conversation that should be documented in [GEMINI.md](GEMINI.md). Always prompt and ask the user before performing updates to [GEMINI.md](GEMINI.md).
 
 ---
@@ -159,6 +160,7 @@ This project is built using a modern, type-safe web stack optimized for rapid fr
 - **Firebase SDK (v12)**: Used for cloud features when the user connects:
   - **Firebase Auth**: Identifies users securely via Google OAuth.
   - **Firestore**: Synchronizes workout cycles, history, and user metadata to the cloud for multi-device sync and backups.
+    - *Security Rules*: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](file:///c:/Users/Mike/dev/p90x/firebase/firestore.rules). These local rules must be synced with the Firebase Console (either via manual console upload or using the Firebase CLI) whenever access patterns or schema requirements change.
   - **Firebase Analytics**: Tracks screen flows, cycle rollovers, and core workout logging events to evaluate feature usage.
 
 ### Testing & Verification Tools
