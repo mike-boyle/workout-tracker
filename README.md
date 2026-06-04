@@ -57,12 +57,15 @@ workout-tracker/
 │   └── ...
 ├── src/
 │   ├── components/          # Reusable UI Components
-│   │   ├── Dashboard.tsx    # 13-week grid calendar, stats & phase overview
-│   │   ├── WorkoutSession.tsx # Guided logging sheet (Wizard vs. Full Sheet)
+│   │   ├── layout/          # Layout subcomponents (LoadingScreen, SettingsPanel, SyncBadge)
+│   │   ├── session/         # Session subcomponents (ExerciseCard, ResistanceSheetView, ResistanceWizardView)
+│   │   ├── dashboard/       # Dashboard subcomponents (DayCard, AdherenceCard, PhaseSection)
+│   │   ├── Dashboard.tsx    # Main dashboard coordinator
+│   │   ├── WorkoutSession.tsx # Main workout session router
 │   │   ├── History.tsx      # Cycle management, stats, & data reset actions
 │   │   ├── HistoryCharts.tsx # Chart.js visualizations
 │   │   ├── RestTimer.tsx    # Rest stopwatch/alert buzzer
-│   │   └── Layout.tsx       # Main header, settings & cloud sync indicator
+│   │   └── Layout.tsx       # Main header & settings wrapper
 │   ├── contexts/
 │   │   └── WorkoutContext.tsx # Global state context provider, reducer, and actions
 │   ├── data/
@@ -70,8 +73,7 @@ workout-tracker/
 │   ├── services/
 │   │   ├── storage.ts       # IndexedDB wrapper, migrations & backup validations
 │   │   └── gdrive.ts        # Google Drive API auth & file sync module
-│   ├── styles/
-│   │   └── index.css        # Premium dark-mode glassmorphic styles
+│   ├── index.css            # Premium dark-mode glassmorphic styles
 │   ├── utils/
 │   │   └── wizard.ts        # Exercise ordering & wizard step generator
 │   ├── App.css              # Base styles & animation classes
@@ -91,6 +93,7 @@ workout-tracker/
 ├── vite.config.ts           # Vite + Vitest config
 ├── playwright.config.ts     # Playwright test suite runner config
 ├── tsconfig.json            # TypeScript project settings
+├── GEMINI.md                # Code organization, workflow, and quality guidelines
 └── README.md                # This file (Project reference documentation)
 ```
 

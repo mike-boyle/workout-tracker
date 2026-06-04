@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * Configures strict network request interception for Playwright E2E tests.
- * 
+ *
  * - Allows local requests to communication with the Vite dev server (localhost/127.0.0.1)
  * - Mocks expected external services (Google Analytics, Google Tag Manager, Firebase)
  * - Allows static asset loading from Google Fonts

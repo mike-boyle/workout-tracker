@@ -304,8 +304,12 @@ h4 {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-fade-in {
@@ -423,4 +427,74 @@ main {
     padding: 4px 6px;
     font-size: 0.85rem;
   }
+}
+
+/* --- Layout & Spacing Utility Classes --- */
+.flex {
+  display: flex;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.items-center {
+  align-items: center;
+}
+.items-start {
+  align-items: flex-start;
+}
+.items-end {
+  align-items: flex-end;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+/* Spacing Gaps */
+.gap-1 {
+  gap: 4px;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-4 {
+  gap: 16px;
+}
+.gap-6 {
+  gap: 24px;
+}
+.gap-8 {
+  gap: 32px;
+}
+
+/* Text Colors */
+.text-primary {
+  color: var(--color-text-primary);
+}
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-muted {
+  color: var(--color-text-muted);
+}
+.text-cyan {
+  color: var(--color-cyan);
+}
+.text-yellow {
+  color: var(--color-yellow);
+}
+.text-green {
+  color: var(--color-green);
+}
+.text-red {
+  color: var(--color-red);
+}
+.text-purple {
+  color: var(--color-purple);
 }

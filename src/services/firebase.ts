@@ -37,8 +37,7 @@ export const db = getFirestore(app);
 // Initialize Firebase App Check conditionally
 if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {
   if (import.meta.env.DEV) {
-    window.FIREBASE_APPCHECK_DEBUG_TOKEN =
-      import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
+    window.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
   }
   try {
     initializeAppCheck(app, {
@@ -49,7 +48,6 @@ if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {
     console.warn('Firebase App Check failed to initialize:', err);
   }
 }
-
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -80,7 +78,6 @@ export const logAnalyticsEvent = (
     }
   }
 };
-
 
 /**
  * Triggers Google Sign-In popup
@@ -139,7 +136,14 @@ export const saveFirebaseCycle = async (
 
   if (logs.length > 0) {
     const batch = writeBatch(db);
-    const logsCollectionRef = collection(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`, 'logs');
+    const logsCollectionRef = collection(
+      db,
+      'users',
+      userId,
+      'cycles',
+      `${programId}_cycle_${cycleNum}`,
+      'logs'
+    );
     logs.forEach((log) => {
       const logDocRef = doc(logsCollectionRef, log.id);
       batch.set(logDocRef, log);
@@ -157,7 +161,14 @@ export const loadFirebaseCycle = async (
   programId: string = 'p90x'
 ): Promise<WorkoutLog[]> => {
   const cycleDocRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
-  const logsCollectionRef = collection(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`, 'logs');
+  const logsCollectionRef = collection(
+    db,
+    'users',
+    userId,
+    'cycles',
+    `${programId}_cycle_${cycleNum}`,
+    'logs'
+  );
 
   // 1. Try to load from new subcollection
   const querySnapshot = await getDocs(logsCollectionRef);

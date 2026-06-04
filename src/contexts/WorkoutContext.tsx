@@ -586,7 +586,9 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
+    'idle'
+  );
   const [errorMsg, setErrorMsg] = useState('');
   const wasLoggedInRef = useRef(false);
   const hasPendingChangesRef = useRef(false);
@@ -655,7 +657,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           logAnalyticsEvent('login', { method: 'google' });
         }
         wasLoggedInRef.current = true;
- 
+
         if (!ENABLE_APP_CHECK) {
           setSyncStatus('idle');
           return;
@@ -798,7 +800,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (!currentLogs) continue;
 
             const syncedLogs = syncedLogsRef.current[cycleNum] || [];
-            const syncedMap = new Map(syncedLogs.map(l => [l.id, l]));
+            const syncedMap = new Map(syncedLogs.map((l) => [l.id, l]));
 
             const changedLogs = currentLogs.filter((log) => {
               const syncedLog = syncedMap.get(log.id);
@@ -820,7 +822,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 state.activeProgramId || 'p90x'
               );
             }
-            
+
             // Mark these as synced by setting syncedLogsRef to the full current logs array
             syncedLogsRef.current[cycleNum] = currentLogs;
           }
@@ -877,7 +879,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           cycleNum,
           state.activeProgramId || 'p90x'
         );
-        
+
         // Save locally for future offline runs
         const metadataToPersist: UserMetadata = {
           version: state.version,

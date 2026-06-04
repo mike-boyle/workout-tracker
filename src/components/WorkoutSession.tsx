@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
 import { workouts, exercises as allExercises, getScheduleForProgram } from '../data/schedule';
 import { RestTimer } from './RestTimer';
+import { ResistanceSheetView } from './session/ResistanceSheetView';
+import { ResistanceWizardView } from './session/ResistanceWizardView';
 import type { SetLog } from '../types';
-
-import { generateWizardSteps } from '../utils/wizard';
 
 export const WorkoutSession: React.FC = () => {
   const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
@@ -89,11 +89,11 @@ export const WorkoutSession: React.FC = () => {
     return (
       <div className="glass-panel animate-fade-in" style={{ padding: '32px', textAlign: 'center' }}>
         <h2 style={{ marginBottom: '16px' }}>Rest Day</h2>
-        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+        <p className="text-secondary" style={{ marginBottom: '24px' }}>
           No formal workout scheduled for Week {state.selectedWeek} Day {state.selectedDay}. Rest,
           stretch, or do some light activity.
         </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+        <div className="flex justify-center gap-4">
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -182,7 +182,7 @@ export const WorkoutSession: React.FC = () => {
   const isResistance = workoutDef.type === 'resistance';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="flex flex-col gap-6">
       {/* Sticky Header Container */}
       <div
         style={{
@@ -194,20 +194,9 @@ export const WorkoutSession: React.FC = () => {
           borderBottom: '1px solid var(--color-border)',
           padding: '16px 0',
           background: 'var(--color-bg-base)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
+        <div className="flex justify-between items-center flex-wrap gap-4">
           <div>
             <button
               className="btn btn-secondary"
@@ -219,12 +208,12 @@ export const WorkoutSession: React.FC = () => {
               ← Back
             </button>
             <h2>{workoutDef.name}</h2>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
+            <p className="text-secondary">
               Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
               ROUTINE
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex gap-2 items-center">
             {isResistance && (
               <button
                 className="btn btn-secondary"
@@ -246,17 +235,14 @@ export const WorkoutSession: React.FC = () => {
 
         {/* Embedded Rest Timer for lifting inside the sticky header */}
         {isResistance && (
-          <div>
+          <div style={{ marginTop: '12px' }}>
             <RestTimer />
           </div>
         )}
       </div>
 
       {/* Inner Non-Sticky Contents */}
-      <div
-        className="animate-fade-in"
-        style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
-      >
+      <div className="animate-fade-in flex flex-col gap-6">
         {/* Non-resistance Workout Details */}
         {!isResistance && (
           <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
@@ -265,8 +251,8 @@ export const WorkoutSession: React.FC = () => {
             </span>
             <h3 style={{ marginBottom: '12px' }}>Ready to push play?</h3>
             <p
+              className="text-secondary"
               style={{
-                color: 'var(--color-text-secondary)',
                 marginBottom: '24px',
                 maxWidth: '600px',
                 margin: '0 auto 24px auto',
@@ -277,13 +263,8 @@ export const WorkoutSession: React.FC = () => {
             </p>
             {workoutDef.abRipper && (
               <div
-                style={{
-                  marginBottom: '24px',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
+                className="flex justify-center items-center gap-2"
+                style={{ marginBottom: '24px' }}
               >
                 <input
                   type="checkbox"
@@ -303,423 +284,32 @@ export const WorkoutSession: React.FC = () => {
           </div>
         )}
 
-        {/* Resistance Exercise Cards */}
+        {/* Resistance Exercise Views */}
         {isResistance &&
           formData &&
           (viewMode === 'sheet' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {workoutDef.exercises.map((exId, idx) => {
-                const exInfo = allExercises.find((e) => e.id === exId);
-                if (!exInfo) return null;
-
-                const sets = formData[exId] || [];
-                const isWeighted = exInfo.type === 'weighted';
-
-                return (
-                  <div key={exId} className="glass-panel" style={{ padding: '16px' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '12px',
-                      }}
-                    >
-                      <div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
-                          {idx + 1}. {exInfo.name}
-                        </h3>
-                        <span
-                          style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--color-text-muted)',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {exInfo.type}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Header Row */}
-                    <div
-                      className={`compact-set-row ${isWeighted ? 'weighted' : 'bodyweight'}`}
-                      style={{
-                        borderBottom: '1px solid var(--color-border)',
-                        paddingBottom: '4px',
-                        marginBottom: '4px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '0.8rem',
-                          fontWeight: '600',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        Set
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.8rem',
-                          fontWeight: '600',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        Previous
-                      </span>
-                      {isWeighted && (
-                        <span
-                          style={{
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            color: 'var(--color-text-secondary)',
-                          }}
-                        >
-                          Weight
-                        </span>
-                      )}
-                      <span
-                        style={{
-                          fontSize: '0.8rem',
-                          fontWeight: '600',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        Reps
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.8rem',
-                          fontWeight: '600',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        Style
-                      </span>
-                    </div>
-
-                    {/* Set Rows */}
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {sets.map((set, setIdx) => {
-                        const prevLog = getPreviousLog(exId, setIdx);
-
-                        return (
-                          <div
-                            key={setIdx}
-                            className={`compact-set-row ${isWeighted ? 'weighted' : 'bodyweight'}`}
-                          >
-                            <span
-                              style={{
-                                fontSize: '0.9rem',
-                                fontWeight: '500',
-                                color: 'var(--color-text-secondary)',
-                              }}
-                            >
-                              {setIdx + 1}
-                            </span>
-
-                            <span
-                              style={{
-                                fontSize: '0.85rem',
-                                color: 'var(--color-text-muted)',
-                              }}
-                            >
-                              {prevLog ? (
-                                <>
-                                  {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
-                                  {prevLog.reps} reps
-                                  {prevLog.assisted ? (isWeighted ? ' (Wtd)' : ' (Asst)') : ''}
-                                </>
-                              ) : (
-                                '--'
-                              )}
-                            </span>
-
-                            {isWeighted && (
-                              <input
-                                type="number"
-                                className="input-field-compact"
-                                value={set.weight || ''}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  handleInputChange(exId, setIdx, 'weight', e.target.value)
-                                }
-                              />
-                            )}
-
-                            <input
-                              type="number"
-                              className="input-field-compact"
-                              value={set.reps || ''}
-                              placeholder="0"
-                              onChange={(e) =>
-                                handleInputChange(exId, setIdx, 'reps', e.target.value)
-                              }
-                            />
-
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                              <label
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '0.85rem',
-                                  cursor: 'pointer',
-                                  userSelect: 'none',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={set.assisted}
-                                  onChange={(e) =>
-                                    handleInputChange(exId, setIdx, 'assisted', e.target.checked)
-                                  }
-                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                />
-                                <span
-                                  style={{
-                                    fontSize: '0.8rem',
-                                    color: 'var(--color-text-secondary)',
-                                  }}
-                                >
-                                  {isWeighted ? 'Weighted' : 'Assisted'}
-                                </span>
-                              </label>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ResistanceSheetView
+              workoutDef={workoutDef}
+              formData={formData}
+              handleInputChange={handleInputChange}
+              getPreviousLog={getPreviousLog}
+            />
           ) : (
-            /* Wizard View Card */
-            (() => {
-              const steps = generateWizardSteps(workoutDef.id, workoutDef.exercises);
-              const totalSteps = steps.length;
-              if (totalSteps === 0) return null;
-
-              // Make sure currentStepIndex is within bounds
-              const stepIndex = Math.min(currentStepIndex, totalSteps - 1);
-              const currentStep = steps[stepIndex];
-              if (!currentStep) return null;
-
-              const exInfo = allExercises.find((e) => e.id === currentStep.exerciseId);
-              if (!exInfo) return null;
-
-              const set = formData[currentStep.exerciseId]?.[currentStep.setIndex] || {
-                reps: 0,
-                weight: 0,
-                assisted: false,
-              };
-              const prevLog = getPreviousLog(currentStep.exerciseId, currentStep.setIndex);
-              const progressPercent = ((stepIndex + 1) / totalSteps) * 100;
-
-              return (
-                <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
-                  {/* Progress Indicator */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '12px',
-                      flexWrap: 'wrap',
-                      gap: '8px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '0.9rem',
-                        color: 'var(--color-text-secondary)',
-                        fontWeight: '600',
-                      }}
-                    >
-                      Step {stepIndex + 1} of {totalSteps}
-                    </span>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span className="badge badge-purple">
-                        {exInfo.setCount > 1 ? `Set ${currentStep.setIndex + 1}` : 'Single Set'}
-                      </span>
-                      {prevLog && (
-                        <span className="badge badge-cyan">
-                          Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
-                          {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: 'var(--color-border)',
-                      borderRadius: '4px',
-                      height: '8px',
-                      overflow: 'hidden',
-                      width: '100%',
-                      marginBottom: '24px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: 'var(--gradient-primary)',
-                        width: `${progressPercent}%`,
-                        height: '100%',
-                        transition: 'width 0.3s ease',
-                      }}
-                    />
-                  </div>
-
-                  {/* Exercise Info */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
-                      {exInfo.name}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--color-text-muted)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {exInfo.type}
-                    </span>
-                  </div>
-
-                  {/* Input Fields */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '16px',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      marginBottom: '24px',
-                    }}
-                  >
-                    {exInfo.type === 'weighted' && (
-                      <div className="input-group" style={{ flex: '1 1 200px' }}>
-                        <label className="input-label">Weight (lbs)</label>
-                        <input
-                          type="number"
-                          className="input-field"
-                          value={set.weight || ''}
-                          placeholder="0"
-                          onChange={(e) =>
-                            handleInputChange(
-                              currentStep.exerciseId,
-                              currentStep.setIndex,
-                              'weight',
-                              e.target.value
-                            )
-                          }
-                        />
-                      </div>
-                    )}
-
-                    <div className="input-group" style={{ flex: '1 1 200px' }}>
-                      <label className="input-label">Reps</label>
-                      <input
-                        type="number"
-                        className="input-field"
-                        value={set.reps || ''}
-                        placeholder="0"
-                        onChange={(e) =>
-                          handleInputChange(
-                            currentStep.exerciseId,
-                            currentStep.setIndex,
-                            'reps',
-                            e.target.value
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        alignSelf: 'flex-end',
-                        paddingBottom: '6px',
-                      }}
-                    >
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '0.85rem',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={set.assisted}
-                          onChange={(e) =>
-                            handleInputChange(
-                              currentStep.exerciseId,
-                              currentStep.setIndex,
-                              'assisted',
-                              e.target.checked
-                            )
-                          }
-                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                        />
-                        {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Navigation Controls */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      marginTop: '32px',
-                    }}
-                  >
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
-                      disabled={stepIndex === 0}
-                      style={{ flex: 1 }}
-                    >
-                      ← Previous
-                    </button>
-                    {stepIndex < totalSteps - 1 ? (
-                      <button
-                        className="btn btn-primary"
-                        onClick={() =>
-                          setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))
-                        }
-                        style={{ flex: 1 }}
-                      >
-                        Next →
-                      </button>
-                    ) : (
-                      <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
-                        Finish ✓
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })()
+            <ResistanceWizardView
+              workoutDef={workoutDef}
+              formData={formData}
+              currentStepIndex={currentStepIndex}
+              setCurrentStepIndex={setCurrentStepIndex}
+              handleInputChange={handleInputChange}
+              getPreviousLog={getPreviousLog}
+              handleSave={handleSave}
+            />
           ))}
 
         {/* General Comments and Ab Ripper */}
-        <div
-          className="glass-panel"
-          style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
-        >
+        <div className="glass-panel flex flex-col gap-4" style={{ padding: '20px' }}>
           {workoutDef.abRipper && isResistance && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="ab-ripper-cb"
@@ -733,16 +323,9 @@ export const WorkoutSession: React.FC = () => {
             </div>
           )}
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              alignItems: 'flex-start',
-            }}
-          >
+          <div className="flex flex-col gap-2 items-start">
             <label className="input-label">Workout Comments / Notes</label>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="flex gap-4 items-center flex-wrap">
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -755,18 +338,16 @@ export const WorkoutSession: React.FC = () => {
                 Add/Edit Comments
               </button>
               {comments && (
-                <span
-                  style={{ fontSize: '0.85rem', color: 'var(--color-green)', fontWeight: '500' }}
-                >
+                <span className="text-green" style={{ fontSize: '0.85rem', fontWeight: '500' }}>
                   ✓ Comment added
                 </span>
               )}
             </div>
             {comments && (
               <div
+                className="text-secondary"
                 style={{
                   fontSize: '0.85rem',
-                  color: 'var(--color-text-secondary)',
                   background: 'hsla(var(--hue-base), 25%, 8%, 0.2)',
                   border: '1px dashed var(--color-border)',
                   borderRadius: '6px',
@@ -797,7 +378,7 @@ export const WorkoutSession: React.FC = () => {
           background: 'var(--color-bg-base)',
         }}
       >
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="flex gap-4">
           <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
             Save Workout Data
           </button>
@@ -835,31 +416,22 @@ export const WorkoutSession: React.FC = () => {
           onClick={() => setIsCommentModalOpen(false)}
         >
           <div
-            className="glass-panel"
+            className="glass-panel flex flex-col gap-6"
             style={{
               width: '100%',
               maxWidth: '500px',
               background: 'var(--color-bg-modal)',
               padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
               boxShadow: 'var(--shadow-lg)',
               animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <h3
-                style={{
-                  fontSize: '1.25rem',
-                  marginBottom: '6px',
-                  color: 'var(--color-text-primary)',
-                }}
-              >
+              <h3 className="text-primary" style={{ fontSize: '1.25rem', marginBottom: '6px' }}>
                 Workout Comments / Notes
               </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+              <p className="text-secondary" style={{ fontSize: '0.85rem' }}>
                 Add details about how the workout felt, changes in weight/reps, or general notes.
               </p>
             </div>
@@ -876,7 +448,7 @@ export const WorkoutSession: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div className="flex gap-4 justify-end">
               <button
                 type="button"
                 className="btn btn-secondary"

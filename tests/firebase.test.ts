@@ -47,12 +47,18 @@ vi.mock('firebase/firestore', () => {
   return {
     getFirestore: vi.fn(),
     doc: vi.fn((parent, ...paths) => {
-      const parentPath = parent && typeof parent === 'object' && 'path' in parent ? (parent as { path: string }).path : '';
+      const parentPath =
+        parent && typeof parent === 'object' && 'path' in parent
+          ? (parent as { path: string }).path
+          : '';
       const docPath = paths.join('/');
       return { path: parentPath ? `${parentPath}/${docPath}` : docPath };
     }),
     collection: vi.fn((parent, ...paths) => {
-      const parentPath = parent && typeof parent === 'object' && 'path' in parent ? (parent as { path: string }).path : '';
+      const parentPath =
+        parent && typeof parent === 'object' && 'path' in parent
+          ? (parent as { path: string }).path
+          : '';
       const colPath = paths.join('/');
       return { path: parentPath ? `${parentPath}/${colPath}` : colPath };
     }),
@@ -151,9 +157,7 @@ describe('Firebase Service - Cycles storage and migration', () => {
     } as unknown as QuerySnapshot);
 
     // 2. Legacy doc snapshot exists and contains a logs array
-    const legacyLogs = [
-      { id: 'legacy-log', cycle: 1, week: 1, day: 1 },
-    ];
+    const legacyLogs = [{ id: 'legacy-log', cycle: 1, week: 1, day: 1 }];
     vi.mocked(getDoc).mockResolvedValueOnce({
       exists: () => true,
       data: () => ({ logs: legacyLogs }),

@@ -178,8 +178,12 @@ describe('Storage Service (IndexedDB & segmented)', () => {
   });
 
   it('should reject backup data with invalid non-numeric properties', () => {
-    expect(validateBackup({ currentCycle: 1, currentWeek: 'not-a-number', currentDay: 1 })).toBe(false);
-    expect(validateBackup({ currentCycle: 1, currentWeek: 1, currentDay: 'not-a-number' })).toBe(false);
+    expect(validateBackup({ currentCycle: 1, currentWeek: 'not-a-number', currentDay: 1 })).toBe(
+      false
+    );
+    expect(validateBackup({ currentCycle: 1, currentWeek: 1, currentDay: 'not-a-number' })).toBe(
+      false
+    );
   });
 
   it('should return false if JSON.parse fails during migration', async () => {
@@ -300,7 +304,9 @@ describe('Storage Service (IndexedDB & segmented)', () => {
           currentCycle: 2,
           currentWeek: 1,
           currentDay: 1,
-          cycleStats: undefined as unknown as { [cycle: number]: { completedCount: number; skippedCount: number; totalDays: number } },
+          cycleStats: undefined as unknown as {
+            [cycle: number]: { completedCount: number; skippedCount: number; totalDays: number };
+          },
         },
       },
     };
@@ -458,76 +464,88 @@ describe('Storage Service (IndexedDB & segmented)', () => {
             contains: () => !upgradeNeeded,
           } as unknown as DOMStringList,
           createObjectStore: vi.fn(),
-          transaction: () => ({
-            objectStore: () => ({
-              get: () => {
-                const getReq = {
-                  result: resultValue,
-                  error: new Error('Request error') as DOMException | null,
-                  onsuccess: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
-                  onerror: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
-                } as unknown as IDBRequest<unknown>;
-                setTimeout(() => {
-                  if (requestSuccess) {
-                    getReq.onsuccess?.({} as Event);
-                  } else {
-                    getReq.onerror?.({} as Event);
-                  }
-                }, 0);
-                return getReq;
-              },
-              put: () => {
-                const putReq = {
-                  error: new Error('Request error') as DOMException | null,
-                  onsuccess: null as ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown) | null,
-                  onerror: null as ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown) | null,
-                } as unknown as IDBRequest<IDBValidKey>;
-                setTimeout(() => {
-                  if (requestSuccess) {
-                    putReq.onsuccess?.({} as Event);
-                  } else {
-                    putReq.onerror?.({} as Event);
-                  }
-                }, 0);
-                return putReq;
-              },
-              delete: () => {
-                const delReq = {
-                  error: new Error('Request error') as DOMException | null,
-                  onsuccess: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
-                  onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
-                } as unknown as IDBRequest<undefined>;
-                setTimeout(() => {
-                  if (requestSuccess) {
-                    delReq.onsuccess?.({} as Event);
-                  } else {
-                    delReq.onerror?.({} as Event);
-                  }
-                }, 0);
-                return delReq;
-              },
-              clear: () => {
-                const clearReq = {
-                  error: new Error('Request error') as DOMException | null,
-                  onsuccess: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
-                  onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
-                } as unknown as IDBRequest<undefined>;
-                setTimeout(() => {
-                  if (requestSuccess) {
-                    clearReq.onsuccess?.({} as Event);
-                  } else {
-                    clearReq.onerror?.({} as Event);
-                  }
-                }, 0);
-                return clearReq;
-              },
-            } as unknown as IDBObjectStore),
-          } as unknown as IDBTransaction),
+          transaction: () =>
+            ({
+              objectStore: () =>
+                ({
+                  get: () => {
+                    const getReq = {
+                      result: resultValue,
+                      error: new Error('Request error') as DOMException | null,
+                      onsuccess: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
+                      onerror: null as ((this: IDBRequest<unknown>, ev: Event) => unknown) | null,
+                    } as unknown as IDBRequest<unknown>;
+                    setTimeout(() => {
+                      if (requestSuccess) {
+                        getReq.onsuccess?.({} as Event);
+                      } else {
+                        getReq.onerror?.({} as Event);
+                      }
+                    }, 0);
+                    return getReq;
+                  },
+                  put: () => {
+                    const putReq = {
+                      error: new Error('Request error') as DOMException | null,
+                      onsuccess: null as
+                        | ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown)
+                        | null,
+                      onerror: null as
+                        | ((this: IDBRequest<IDBValidKey>, ev: Event) => unknown)
+                        | null,
+                    } as unknown as IDBRequest<IDBValidKey>;
+                    setTimeout(() => {
+                      if (requestSuccess) {
+                        putReq.onsuccess?.({} as Event);
+                      } else {
+                        putReq.onerror?.({} as Event);
+                      }
+                    }, 0);
+                    return putReq;
+                  },
+                  delete: () => {
+                    const delReq = {
+                      error: new Error('Request error') as DOMException | null,
+                      onsuccess: null as
+                        | ((this: IDBRequest<undefined>, ev: Event) => unknown)
+                        | null,
+                      onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                    } as unknown as IDBRequest<undefined>;
+                    setTimeout(() => {
+                      if (requestSuccess) {
+                        delReq.onsuccess?.({} as Event);
+                      } else {
+                        delReq.onerror?.({} as Event);
+                      }
+                    }, 0);
+                    return delReq;
+                  },
+                  clear: () => {
+                    const clearReq = {
+                      error: new Error('Request error') as DOMException | null,
+                      onsuccess: null as
+                        | ((this: IDBRequest<undefined>, ev: Event) => unknown)
+                        | null,
+                      onerror: null as ((this: IDBRequest<undefined>, ev: Event) => unknown) | null,
+                    } as unknown as IDBRequest<undefined>;
+                    setTimeout(() => {
+                      if (requestSuccess) {
+                        clearReq.onsuccess?.({} as Event);
+                      } else {
+                        clearReq.onerror?.({} as Event);
+                      }
+                    }, 0);
+                    return clearReq;
+                  },
+                }) as unknown as IDBObjectStore,
+            }) as unknown as IDBTransaction,
         } as unknown as IDBDatabase,
         error: new Error('IDB error') as DOMException | null,
         onsuccess: null as ((this: IDBOpenDBRequest, ev: Event) => unknown) | null,
         onerror: null as ((this: IDBOpenDBRequest, ev: Event) => unknown) | null,
-        onupgradeneeded: null as ((this: IDBOpenDBRequest, ev: IDBVersionChangeEvent) => unknown) | null,
+        onupgradeneeded: null as
+          | ((this: IDBOpenDBRequest, ev: IDBVersionChangeEvent) => unknown)
+          | null,
       } as unknown as IDBOpenDBRequest;
 
       setTimeout(() => {

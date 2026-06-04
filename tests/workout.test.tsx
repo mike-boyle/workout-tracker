@@ -331,12 +331,12 @@ describe('Workout Context & Reducer', () => {
 
     vi.useFakeTimers();
     renderWithProvider();
-    
+
     // Wait for initial state load and login sync timer to settle
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-    
+
     // Clear mock history after initialization sync
     vi.mocked(saveFirebaseCycle).mockClear();
 

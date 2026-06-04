@@ -29,8 +29,13 @@ function AppContent() {
       day: state.selectedDay,
       program_id: state.activeProgramId || 'unknown',
     });
-  }, [currentHash, state.selectedCycle, state.selectedWeek, state.selectedDay, state.activeProgramId]);
-
+  }, [
+    currentHash,
+    state.selectedCycle,
+    state.selectedWeek,
+    state.selectedDay,
+    state.activeProgramId,
+  ]);
 
   useEffect(() => {
     const handleHashChange = () => {

@@ -130,7 +130,7 @@ describe('RestTimer Component', () => {
     });
 
     const toggleBtn = screen.getByText('Pause');
-    
+
     // Click pause
     act(() => {
       toggleBtn.click();
@@ -146,13 +146,16 @@ describe('RestTimer Component', () => {
 
   it('should handle Web Audio API errors gracefully when starting buzzer', () => {
     // Stub AudioContext to throw an error
-    vi.stubGlobal('AudioContext', class {
-      currentTime = 0;
-      destination = {};
-      createOscillator() {
-        throw new Error('Web Audio not supported');
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        currentTime = 0;
+        destination = {};
+        createOscillator() {
+          throw new Error('Web Audio not supported');
+        }
       }
-    });
+    );
 
     vi.useFakeTimers();
     render(<RestTimer />);
