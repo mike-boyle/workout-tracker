@@ -34,7 +34,6 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
   // Make sure currentStepIndex is within bounds
   const stepIndex = Math.min(currentStepIndex, totalSteps - 1);
   const currentStep = steps[stepIndex];
-  if (!currentStep) return null;
 
   const exInfo = allExercises.find((e) => e.id === currentStep.exerciseId);
   if (!exInfo) return null;
