@@ -40,6 +40,19 @@ export function setupStrictNetworkIsolation(): void {
         return;
       }
 
+      if (url.includes('/webConfig')) {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            projectId: 'workout-tracker-498019',
+            appId: '1:414005593916:web:be8aabf5acc97bcd244039',
+            measurementId: 'G-Q4HYM1RGF3',
+          }),
+        });
+        return;
+      }
+
       const isFirebaseOrAnalytics =
         url.includes('google-analytics') ||
         url.includes('analytics.google') ||
