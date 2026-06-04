@@ -70,8 +70,17 @@ If a linter rule must be suppressed:
 
 ---
 
-## 4. Testing Strategy
+## 4. Testing Strategy & Git Hooks
 
-* **Unit Tests (Vitest)**: Maintain test coverage for the `WorkoutContext` reducer, database storage adapters, and component layouts.
-* **E2E Tests (Playwright)**: Run E2E suites to verify page navigations, complete workout flows, skip calculations, and multi-cycle rollover logic.
-* **Formatting**: Ensure files match the Prettier configuration before committing by running `npm run format`.
+We enforce automated test verification locally to prevent regressions from being committed or pushed:
+
+* **Unit Tests (Vitest)**:
+  - Run E2E and component-level unit tests for the `WorkoutContext` reducer, database storage adapters, and layout components.
+  - **Automation**: Verified automatically on every commit via the pre-commit hook (`npm test`).
+  - **Manual command**: `npm test` or `npm run test:coverage`.
+* **E2E Tests (Playwright)**:
+  - Run full-flow browser E2E tests to verify workout logging wizard, skip calculations, multi-cycle rollover logic, and history tracking.
+  - **Automation**: Verified automatically before any push to the remote repository via the pre-push hook (`npm run test:e2e`).
+  - **Manual command**: `npm run test:e2e` (or `npx playwright test --ui` for visual browser interactive mode).
+* **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
+

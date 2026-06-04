@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Check if we have an upstream tracking branch
+if git rev-parse --verify @{u} >/dev/null 2>&1; then
+  files=$(git diff --name-only @{u}..HEAD 2>/dev/null)
+else
+  # If no upstream branch (e.g. first push of a new branch), run E2E to be safe
+  echo "No upstream tracking branch found. Running E2E tests to be safe..."
+  npm run test:e2e
+  exit $?
+fi
+
+# Check if any changed files match source code, tests, configs, or public assets
+if [ -n "$files" ]; then
+  if echo "$files" | grep -qE '^src/|^public/|^tests/|^index\.html|^playwright\.config\.ts|^package\.json|^vite\.config\.ts'; then
+    echo "Code changes detected. Running Playwright E2E tests..."
+    npm run test:e2e
+    exit $?
+  else
+    echo "No code/source changes detected in this push range. Skipping E2E tests."
+    exit 0
+  fi
+fi
+
+# Fallback if diff is empty
+echo "No changes detected. Skipping E2E tests."
+exit 0
