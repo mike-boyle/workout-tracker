@@ -33,7 +33,7 @@ To avoid repeating layout styles inline (like `style={{ display: 'flex', gap: '8
 
 ### Reusable Layout CSS Utilities
 
-Avoid repeating layout styles inline. While the styling primitives (`Flex`, `Grid`) are preferred, you can also leverage direct lightweight CSS utility classes defined in [index.css](file:///c:/Users/Mike/dev/p90x/src/index.css):
+Avoid repeating layout styles inline. While the styling primitives (`Flex`, `Grid`) are preferred, you can also leverage direct lightweight CSS utility classes defined in [index.css](src/index.css):
 
 - **Flexbox**: `.flex`, `.flex-col`, `.items-center`, `.justify-between`, `.flex-wrap`
 - **Spacing Gaps**: `.gap-1` (4px), `.gap-2` (8px), `.gap-4` (16px), `.gap-6` (24px), `.gap-8` (32px)
@@ -123,8 +123,8 @@ Before committing and pushing code to the remote repository, ensure the followin
 - [ ] **Playwright E2E Tests**: Run `npm run test:e2e` to verify all end-to-end user flows (workout logging, cycle rollover, history, analytics) pass without regression.
 - [ ] **No Focus Tags**: Ensure no `describe.only`, `test.only`, or `it.only` test filters are committed.
 - [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
-- [ ] **Up-to-Date Documentation**: Ensure [README.md](file:///c:/Users/Mike/dev/p90x/README.md) is updated with any new feature details, setup instructions, or environment variables.
-- [ ] **Checklist & Policy Updates (GEMINI.md)**: Proactively identify any new architectural decisions, workflows, or testing patterns established in the conversation that should be documented in [GEMINI.md](file:///c:/Users/Mike/dev/p90x/GEMINI.md). Always prompt and ask the user before performing updates to [GEMINI.md](file:///c:/Users/Mike/dev/p90x/GEMINI.md).
+- [ ] **Up-to-Date Documentation**: Ensure [README.md](README.md) is updated with any new feature details, setup instructions, or environment variables.
+- [ ] **Checklist & Policy Updates (GEMINI.md)**: Proactively identify any new architectural decisions, workflows, or testing patterns established in the conversation that should be documented in [GEMINI.md](GEMINI.md). Always prompt and ask the user before performing updates to [GEMINI.md](GEMINI.md).
 
 ---
 
