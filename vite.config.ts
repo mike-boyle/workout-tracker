@@ -22,11 +22,11 @@ export default defineConfig({
         'node_modules/**',
         'dist/**',
         'tests/**',
-        'src/services/firebase.ts',
-        'src/services/gdrive.ts',
-        'src/components/WorkoutSession.tsx',
-        'src/contexts/WorkoutContext.tsx',
-        'src/components/ui/index.ts'
+        'src/services/firebase.ts', // firebase.ts: Direct Firebase SDK calls. Fully mocked in tests to maintain local network isolation.
+        'src/services/gdrive.ts', // gdrive.ts: Google Auth and Drive backup integrations. Mocked as it requires browser OAuth.
+        'src/components/WorkoutSession.tsx', // WorkoutSession.tsx: Complex wizard view. Verified via E2E/visual smoke tests.
+        'src/contexts/WorkoutContext.tsx', // WorkoutContext.tsx: Contains global state and async sync effects. Core logic is covered, but full integration relies on E2E.
+        'src/components/ui/index.ts' // ui/index.ts: Barrel export file containing no logic.
       ],
       thresholds: {
         statements: 100,
