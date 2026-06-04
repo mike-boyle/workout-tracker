@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ExerciseInfo, SetLog } from '../../types';
+import { Flex, Heading, Text, Card } from '../ui';
 
 interface ExerciseCardProps {
   exInfo: ExerciseInfo;
@@ -24,17 +25,17 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   const isWeighted = exInfo.type === 'weighted';
 
   return (
-    <div className="glass-panel" style={{ padding: '16px' }}>
-      <div className="flex justify-between items-start" style={{ marginBottom: '12px' }}>
+    <Card style={{ padding: '16px' }}>
+      <Flex justify="between" align="start" style={{ marginBottom: '12px' }}>
         <div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
+          <Heading level={3} style={{ fontSize: '1.1rem', fontWeight: '600' }}>
             {idx + 1}. {exInfo.name}
-          </h3>
-          <span className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+          </Heading>
+          <Text color="muted" size="xs" style={{ textTransform: 'uppercase' }}>
             {exInfo.type}
-          </span>
+          </Text>
         </div>
-      </div>
+      </Flex>
 
       {/* Header Row */}
       <div
@@ -45,27 +46,27 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
           marginBottom: '4px',
         }}
       >
-        <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: '600' }}>
+        <Text color="secondary" size="xs" weight="semibold">
           Set
-        </span>
-        <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: '600' }}>
+        </Text>
+        <Text color="secondary" size="xs" weight="semibold">
           Previous
-        </span>
+        </Text>
         {isWeighted && (
-          <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: '600' }}>
+          <Text color="secondary" size="xs" weight="semibold">
             Weight
-          </span>
+          </Text>
         )}
-        <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: '600' }}>
+        <Text color="secondary" size="xs" weight="semibold">
           Reps
-        </span>
-        <span className="text-secondary" style={{ fontSize: '0.8rem', fontWeight: '600' }}>
+        </Text>
+        <Text color="secondary" size="xs" weight="semibold">
           Style
-        </span>
+        </Text>
       </div>
 
       {/* Set Rows */}
-      <div className="flex flex-col">
+      <Flex direction="column">
         {sets.map((set, setIdx) => {
           const prevLog = getPreviousLog(exInfo.id, setIdx);
 
@@ -74,11 +75,11 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
               key={setIdx}
               className={`compact-set-row ${isWeighted ? 'weighted' : 'bodyweight'}`}
             >
-              <span className="text-secondary" style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+              <Text color="secondary" size="sm" weight="medium">
                 {setIdx + 1}
-              </span>
+              </Text>
 
-              <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+              <Text color="muted" size="sm">
                 {prevLog ? (
                   <>
                     {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
@@ -88,7 +89,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 ) : (
                   '--'
                 )}
-              </span>
+              </Text>
 
               {isWeighted && (
                 <input
@@ -108,7 +109,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 onChange={(e) => handleInputChange(exInfo.id, setIdx, 'reps', e.target.value)}
               />
 
-              <div className="flex items-center">
+              <Flex align="center">
                 <label
                   className="flex items-center gap-2"
                   style={{
@@ -125,15 +126,15 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
                     }
                     style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                   />
-                  <span className="text-secondary" style={{ fontSize: '0.8rem' }}>
+                  <Text color="secondary" size="xs">
                     {isWeighted ? 'Weighted' : 'Assisted'}
-                  </span>
+                  </Text>
                 </label>
-              </div>
+              </Flex>
             </div>
           );
         })}
-      </div>
-    </div>
+      </Flex>
+    </Card>
   );
 };

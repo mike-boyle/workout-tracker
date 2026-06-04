@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
 import { workouts, getScheduleForProgram } from '../data/schedule';
 import type { ScheduleDay } from '../types';
+import { Flex, Heading, Text, Card, Badge } from './ui';
 
 export const History: React.FC = () => {
   const { state, startNewCycle, loadCycleLogs } = useWorkout();
@@ -53,51 +54,39 @@ export const History: React.FC = () => {
   };
 
   return (
-    <div
-      className="animate-fade-in"
-      style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}
-    >
+    <Flex direction="column" gap={8} className="animate-fade-in">
       {/* Header section */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-        }}
-      >
+      <Flex justify="between" align="center" wrap="wrap" gap={4}>
         <div>
-          <h2 style={{ fontSize: '1.6rem' }}>Cycles Tracker History</h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+          <Heading level={2} style={{ fontSize: '1.6rem' }}>
+            Cycles Tracker History
+          </Heading>
+          <Text color="secondary" size="sm">
             Browse and review your workout history across all training cycles
-          </p>
+          </Text>
         </div>
 
         <button className="btn btn-primary" onClick={handleStartNewCycle}>
           Start New Cycle Early
         </button>
-      </div>
+      </Flex>
 
       {/* Cycle List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <Flex direction="column" gap={6}>
         {Array.from({ length: state.currentCycle }, (_, i) => i + 1).map((cNum) => {
           const stats = getCycleStats(cNum);
           const isExpanded = expandedCycle === cNum;
           const isActive = cNum === state.currentCycle;
 
           return (
-            <div key={cNum} className="glass-panel" style={{ padding: '24px' }}>
+            <Card key={cNum} style={{ padding: '24px' }}>
               {/* Cycle Card Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '16px',
-                  cursor: 'pointer',
-                }}
+              <Flex
+                justify="between"
+                align="center"
+                wrap="wrap"
+                gap={4}
+                style={{ cursor: 'pointer' }}
                 onClick={() => {
                   const nextExpanded = isExpanded ? null : cNum;
                   setExpandedCycle(nextExpanded);
@@ -107,78 +96,64 @@ export const History: React.FC = () => {
                 }}
               >
                 <div style={{ flex: '1 1 200px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '4px',
-                    }}
-                  >
-                    <h3 style={{ fontSize: '1.3rem', margin: 0 }}>Cycle {cNum}</h3>
+                  <Flex align="center" gap={4} style={{ marginBottom: '4px' }}>
+                    <Heading level={3} style={{ fontSize: '1.3rem', margin: 0 }}>
+                      Cycle {cNum}
+                    </Heading>
                     {isActive ? (
-                      <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
+                      <Badge variant="purple" style={{ fontSize: '0.7rem' }}>
                         Active Cycle
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                      <Badge variant="green" style={{ fontSize: '0.7rem' }}>
                         Completed
-                      </span>
+                      </Badge>
                     )}
-                  </div>
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                  </Flex>
+                  <Text color="muted" size="sm" style={{ display: 'block' }}>
                     {stats.progressPercent}% Complete • {stats.completedCount} Workouts Logged
-                  </p>
+                  </Text>
                 </div>
 
                 {/* Mini Stats Panel */}
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ textAlign: 'center', minWidth: '70px' }}>
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: '1.2rem',
-                        fontWeight: '700',
-                        color: 'var(--color-cyan)',
-                      }}
-                    >
+                <Flex gap={4}>
+                  <Flex
+                    direction="column"
+                    align="center"
+                    style={{ minWidth: '70px', textAlign: 'center' }}
+                  >
+                    <Text color="cyan" size="1.2rem" weight="bold" style={{ display: 'block' }}>
                       {stats.completedCount}
-                    </span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                    </Text>
+                    <Text color="muted" size="xs">
                       DONE
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'center', minWidth: '70px' }}>
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: '1.2rem',
-                        fontWeight: '700',
-                        color: 'var(--color-yellow)',
-                      }}
-                    >
+                    </Text>
+                  </Flex>
+                  <Flex
+                    direction="column"
+                    align="center"
+                    style={{ minWidth: '70px', textAlign: 'center' }}
+                  >
+                    <Text color="yellow" size="1.2rem" weight="bold" style={{ display: 'block' }}>
                       {stats.skippedCount}
-                    </span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                    </Text>
+                    <Text color="muted" size="xs">
                       SKIPPED
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'center', minWidth: '70px' }}>
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: '1.2rem',
-                        fontWeight: '700',
-                        color: 'var(--color-purple)',
-                      }}
-                    >
+                    </Text>
+                  </Flex>
+                  <Flex
+                    direction="column"
+                    align="center"
+                    style={{ minWidth: '70px', textAlign: 'center' }}
+                  >
+                    <Text color="purple" size="1.2rem" weight="bold" style={{ display: 'block' }}>
                       {stats.remainingCount}
-                    </span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                    </Text>
+                    <Text color="muted" size="xs">
                       LEFT
-                    </span>
-                  </div>
-                </div>
+                    </Text>
+                  </Flex>
+                </Flex>
 
                 {/* Expand Toggle Chevron */}
                 <span
@@ -192,7 +167,7 @@ export const History: React.FC = () => {
                 >
                   ▶
                 </span>
-              </div>
+              </Flex>
 
               {/* Progress bar */}
               <div
@@ -223,56 +198,53 @@ export const History: React.FC = () => {
                   const cycleLogs = state.loadedCycles[cNum] || [];
 
                   if (isCycleLoading) {
-                    const spinnerStyle = `
-                    @keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                    }
-                  `;
                     return (
-                      <div
+                      <Flex
+                        direction="column"
+                        align="center"
+                        justify="center"
+                        gap={4}
                         className="animate-fade-in"
                         style={{
                           marginTop: '24px',
                           paddingTop: '40px',
                           paddingBottom: '40px',
                           borderTop: '1px solid var(--color-border)',
-                          textAlign: 'center',
-                          color: 'var(--color-text-muted)',
                         }}
                       >
-                        <style>{spinnerStyle}</style>
                         <div
+                          className="animate-spin"
                           style={{
                             border: '3px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
                             borderTop: '3px solid var(--color-cyan)',
                             borderRadius: '50%',
                             width: '32px',
                             height: '32px',
-                            animation: 'spin 1.2s linear infinite',
                             margin: '0 auto 12px auto',
                           }}
                         />
-                        <p style={{ fontSize: '0.9rem' }}>Loading cycle history...</p>
-                      </div>
+                        <Text color="muted" size="sm">
+                          Loading cycle history...
+                        </Text>
+                      </Flex>
                     );
                   }
 
                   return (
-                    <div
+                    <Flex
+                      direction="column"
+                      gap={6}
                       className="animate-fade-in"
                       style={{
                         marginTop: '24px',
                         paddingTop: '24px',
                         borderTop: '1px solid var(--color-border)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '24px',
                       }}
                     >
                       {getPhases().map((phase) => (
                         <div key={phase.num}>
-                          <h4
+                          <Heading
+                            level={4}
                             style={{
                               fontSize: '1.1rem',
                               borderLeft: '3px solid var(--color-cyan)',
@@ -282,9 +254,9 @@ export const History: React.FC = () => {
                             }}
                           >
                             Phase {phase.num} ({phase.name})
-                          </h4>
+                          </Heading>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <Flex direction="column" gap={4}>
                             {phase.weeks.map((weekNum) => {
                               const weekDays = getScheduleForProgram(
                                 state.activeProgramId || 'p90x'
@@ -293,16 +265,16 @@ export const History: React.FC = () => {
                                 weekNum === 4 || weekNum === 8 || weekNum === 13;
 
                               return (
-                                <div
+                                <Card
                                   key={weekNum}
                                   style={{
                                     background: 'hsla(var(--hue-base), 25%, 12%, 0.2)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '8px',
                                     padding: '12px 16px',
+                                    borderRadius: '8px',
                                   }}
                                 >
-                                  <h5
+                                  <Heading
+                                    level={5}
                                     style={{
                                       margin: '0 0 10px 0',
                                       fontSize: '0.9rem',
@@ -312,16 +284,10 @@ export const History: React.FC = () => {
                                     }}
                                   >
                                     Week {weekNum} {isRecoveryWeek ? '(Recovery)' : ''}
-                                  </h5>
+                                  </Heading>
 
                                   {/* Days List */}
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      gap: '8px',
-                                    }}
-                                  >
+                                  <Flex direction="column" gap={2}>
                                     {weekDays.map((dayInfo) => {
                                       const log = cycleLogs.find(
                                         (l) =>
@@ -337,50 +303,40 @@ export const History: React.FC = () => {
                                       const isSkipped = log && log.skipped;
 
                                       let statusBadge = (
-                                        <span className="badge" style={{ fontSize: '0.65rem' }}>
-                                          Unlogged
-                                        </span>
+                                        <Badge style={{ fontSize: '0.65rem' }}>Unlogged</Badge>
                                       );
                                       if (dayInfo.workoutId === 'rest') {
                                         statusBadge = (
-                                          <span
-                                            className="badge badge-purple"
+                                          <Badge
+                                            variant="purple"
                                             style={{
                                               fontSize: '0.65rem',
                                               background: 'hsla(266, 100%, 64%, 0.15)',
-                                              border: '1px solid var(--color-purple)',
+                                              borderColor: 'var(--color-purple)',
                                             }}
                                           >
                                             Rest Day
-                                          </span>
+                                          </Badge>
                                         );
                                       } else if (isCompleted) {
                                         statusBadge = (
-                                          <span
-                                            className="badge badge-green"
-                                            style={{ fontSize: '0.65rem' }}
-                                          >
+                                          <Badge variant="green" style={{ fontSize: '0.65rem' }}>
                                             ✓ Done
-                                          </span>
+                                          </Badge>
                                         );
                                       } else if (isSkipped) {
                                         statusBadge = (
-                                          <span
-                                            className="badge badge-yellow"
-                                            style={{ fontSize: '0.65rem' }}
-                                          >
+                                          <Badge variant="yellow" style={{ fontSize: '0.65rem' }}>
                                             Skipped
-                                          </span>
+                                          </Badge>
                                         );
                                       }
 
                                       return (
-                                        <div
+                                        <Card
+                                          hoverable
                                           key={dayInfo.dayNumber}
-                                          className="glass-panel-hover"
                                           style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
                                             padding: '10px 12px',
                                             borderRadius: '6px',
                                             border:
@@ -394,87 +350,73 @@ export const History: React.FC = () => {
                                           }}
                                           onClick={() => handleDayClick(cNum, dayInfo)}
                                         >
-                                          <div
-                                            style={{
-                                              display: 'flex',
-                                              justifyContent: 'space-between',
-                                              alignItems: 'center',
-                                            }}
-                                          >
-                                            <div
-                                              style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '10px',
-                                              }}
-                                            >
-                                              <span
-                                                style={{
-                                                  fontSize: '0.8rem',
-                                                  fontWeight: '600',
-                                                  color: 'var(--color-text-secondary)',
-                                                  minWidth: '50px',
-                                                }}
+                                          <Flex justify="between" align="center">
+                                            <Flex align="center" gap={4}>
+                                              <Text
+                                                color="secondary"
+                                                size="sm"
+                                                weight="semibold"
+                                                style={{ minWidth: '50px' }}
                                               >
                                                 Day {dayInfo.dayNumber}
-                                              </span>
-                                              <span
-                                                style={{ fontSize: '0.85rem', fontWeight: '500' }}
-                                              >
+                                              </Text>
+                                              <Text size="sm" weight="medium">
                                                 {workoutDef?.name || 'Rest'}
-                                              </span>
-                                            </div>
+                                              </Text>
+                                            </Flex>
                                             {statusBadge}
-                                          </div>
+                                          </Flex>
 
                                           {/* Log details excerpt */}
                                           {log && log.comments && (
-                                            <div
+                                            <Text
+                                              color="muted"
+                                              size="xs"
                                               style={{
-                                                fontSize: '0.75rem',
-                                                color: 'var(--color-text-muted)',
+                                                display: 'block',
                                                 marginTop: '6px',
                                                 paddingLeft: '60px',
                                                 fontStyle: 'italic',
                                               }}
                                             >
                                               Notes: {log.comments}
-                                            </div>
+                                            </Text>
                                           )}
 
                                           {/* Exercise Logging Info */}
                                           {isCompleted &&
                                             log.exercises &&
                                             Object.keys(log.exercises).length > 0 && (
-                                              <div
+                                              <Text
+                                                color="cyan"
+                                                size="xs"
                                                 style={{
-                                                  fontSize: '0.75rem',
-                                                  color: 'var(--color-cyan)',
+                                                  display: 'block',
                                                   marginTop: '4px',
                                                   paddingLeft: '60px',
                                                 }}
                                               >
                                                 Logged: {Object.keys(log.exercises).length}{' '}
                                                 Exercises
-                                              </div>
+                                              </Text>
                                             )}
-                                        </div>
+                                        </Card>
                                       );
                                     })}
-                                  </div>
-                                </div>
+                                  </Flex>
+                                </Card>
                               );
                             })}
-                          </div>
+                          </Flex>
                         </div>
                       ))}
-                    </div>
+                    </Flex>
                   );
                 })()}
-            </div>
+            </Card>
           );
         })}
-      </div>
-    </div>
+      </Flex>
+    </Flex>
   );
 };

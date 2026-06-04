@@ -2,6 +2,7 @@ import React from 'react';
 import { ExerciseCard } from './ExerciseCard';
 import { exercises as allExercises } from '../../data/schedule';
 import type { WorkoutInfo, SetLog } from '../../types';
+import { Flex } from '../ui';
 
 interface ResistanceSheetViewProps {
   workoutDef: WorkoutInfo;
@@ -22,7 +23,7 @@ export const ResistanceSheetView: React.FC<ResistanceSheetViewProps> = ({
   getPreviousLog,
 }) => {
   return (
-    <div className="flex flex-col gap-4">
+    <Flex direction="column" gap={4}>
       {workoutDef.exercises.map((exId, idx) => {
         const exInfo = allExercises.find((e) => e.id === exId);
         if (!exInfo) return null;
@@ -40,6 +41,6 @@ export const ResistanceSheetView: React.FC<ResistanceSheetViewProps> = ({
           />
         );
       })}
-    </div>
+    </Flex>
   );
 };

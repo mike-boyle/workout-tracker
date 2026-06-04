@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWorkout } from '../../contexts/WorkoutContext';
+import { Flex, Heading, Text, Card } from '../ui';
 
 export const AdherenceCard: React.FC = () => {
   const { state, startNewCycle } = useWorkout();
@@ -25,121 +26,86 @@ export const AdherenceCard: React.FC = () => {
   const showStartNextCyclePrompt = isCycleCompleted && state.selectedCycle === state.currentCycle;
 
   return (
-    <div className="flex flex-col gap-6">
+    <Flex direction="column" gap={6}>
       {/* Stats Summary Panel */}
-      <div
-        className="glass-panel flex justify-between items-center flex-wrap gap-6"
-        style={{ padding: '24px' }}
-      >
-        <div style={{ flex: '1 1 300px' }}>
-          <h2 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>
-            Cycle {state.selectedCycle} Adherence
-          </h2>
-          <div
-            style={{
-              background: 'hsla(var(--hue-base), 25%, 8%, 0.5)',
-              borderRadius: '9999px',
-              height: '12px',
-              width: '100%',
-              overflow: 'hidden',
-              border: '1px solid var(--color-border)',
-            }}
-          >
+      <Card style={{ padding: '24px' }}>
+        <Flex justify="between" align="center" wrap="wrap" gap={6}>
+          <div style={{ flex: '1 1 300px' }}>
+            <Heading level={2} style={{ fontSize: '1.8rem', marginBottom: '8px' }}>
+              Cycle {state.selectedCycle} Adherence
+            </Heading>
             <div
               style={{
-                background: 'var(--gradient-primary)',
-                height: '100%',
-                width: `${progressPercent}%`,
+                background: 'hsla(var(--hue-base), 25%, 8%, 0.5)',
                 borderRadius: '9999px',
-                transition: 'width var(--transition-slow)',
+                height: '12px',
+                width: '100%',
+                overflow: 'hidden',
+                border: '1px solid var(--color-border)',
               }}
-            />
+            >
+              <div
+                style={{
+                  background: 'var(--gradient-primary)',
+                  height: '100%',
+                  width: `${progressPercent}%`,
+                  borderRadius: '9999px',
+                  transition: 'width var(--transition-slow)',
+                }}
+              />
+            </div>
+            <Flex justify="between" className="text-secondary" style={{ marginTop: '8px' }}>
+              <Text size="sm">{progressPercent}% Complete</Text>
+              <Text size="sm">
+                {selectedCycleLogs.length} / {totalDays} Days Tracked
+              </Text>
+            </Flex>
           </div>
-          <div
-            className="flex justify-between text-secondary"
-            style={{
-              fontSize: '0.85rem',
-              marginTop: '8px',
-            }}
-          >
-            <span>{progressPercent}% Complete</span>
-            <span>
-              {selectedCycleLogs.length} / {totalDays} Days Tracked
-            </span>
-          </div>
-        </div>
 
-        <div className="flex gap-4">
-          <div style={{ textAlign: 'center', minWidth: '80px' }}>
-            <span
-              className="text-cyan"
-              style={{
-                display: 'block',
-                fontSize: '1.8rem',
-                fontWeight: '700',
-              }}
+          <Flex gap={4}>
+            <Flex
+              direction="column"
+              align="center"
+              style={{ minWidth: '80px', textAlign: 'center' }}
             >
-              {completedCount}
-            </span>
-            <span
-              className="text-secondary"
-              style={{
-                fontSize: '0.75rem',
-                textTransform: 'uppercase',
-              }}
+              <Text color="cyan" size="1.8rem" weight="bold" style={{ display: 'block' }}>
+                {completedCount}
+              </Text>
+              <Text color="secondary" size="xs" style={{ textTransform: 'uppercase' }}>
+                Workouts
+              </Text>
+            </Flex>
+            <Flex
+              direction="column"
+              align="center"
+              style={{ minWidth: '80px', textAlign: 'center' }}
             >
-              Workouts
-            </span>
-          </div>
-          <div style={{ textAlign: 'center', minWidth: '80px' }}>
-            <span
-              className="text-yellow"
-              style={{
-                display: 'block',
-                fontSize: '1.8rem',
-                fontWeight: '700',
-              }}
+              <Text color="yellow" size="1.8rem" weight="bold" style={{ display: 'block' }}>
+                {skippedCount}
+              </Text>
+              <Text color="secondary" size="xs" style={{ textTransform: 'uppercase' }}>
+                Skipped
+              </Text>
+            </Flex>
+            <Flex
+              direction="column"
+              align="center"
+              style={{ minWidth: '80px', textAlign: 'center' }}
             >
-              {skippedCount}
-            </span>
-            <span
-              className="text-secondary"
-              style={{
-                fontSize: '0.75rem',
-                textTransform: 'uppercase',
-              }}
-            >
-              Skipped
-            </span>
-          </div>
-          <div style={{ textAlign: 'center', minWidth: '80px' }}>
-            <span
-              className="text-purple"
-              style={{
-                display: 'block',
-                fontSize: '1.8rem',
-                fontWeight: '700',
-              }}
-            >
-              {totalDays - selectedCycleLogs.length}
-            </span>
-            <span
-              className="text-secondary"
-              style={{
-                fontSize: '0.75rem',
-                textTransform: 'uppercase',
-              }}
-            >
-              Remaining
-            </span>
-          </div>
-        </div>
-      </div>
+              <Text color="purple" size="1.8rem" weight="bold" style={{ display: 'block' }}>
+                {totalDays - selectedCycleLogs.length}
+              </Text>
+              <Text color="secondary" size="xs" style={{ textTransform: 'uppercase' }}>
+                Remaining
+              </Text>
+            </Flex>
+          </Flex>
+        </Flex>
+      </Card>
 
       {/* Cycle Completion Prompt */}
       {showStartNextCyclePrompt && (
-        <div
-          className="glass-panel"
+        <Card
           style={{
             padding: '24px',
             border: '1px solid var(--color-cyan)',
@@ -147,13 +113,13 @@ export const AdherenceCard: React.FC = () => {
             textAlign: 'center',
           }}
         >
-          <h2 className="text-cyan" style={{ marginBottom: '8px' }}>
+          <Heading level={2} color="cyan" style={{ marginBottom: '8px' }}>
             🎉 Congratulations! Cycle Complete!
-          </h2>
-          <p className="text-secondary" style={{ marginBottom: '16px' }}>
+          </Heading>
+          <Text variant="p" color="secondary" style={{ marginBottom: '16px' }}>
             You completed all 13 weeks of this training cycle. Ready to start another round of
             muscle confusion?
-          </p>
+          </Text>
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -163,8 +129,8 @@ export const AdherenceCard: React.FC = () => {
           >
             Start Cycle {state.currentCycle + 1}
           </button>
-        </div>
+        </Card>
       )}
-    </div>
+    </Flex>
   );
 };

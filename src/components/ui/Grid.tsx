@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
   columns?: number | string;
-  gap?: 1 | 2 | 4 | 6 | 8 | number;
+  gap?: 1 | 2 | 4 | 6 | 8 | number | string;
   align?: 'center' | 'start' | 'end' | 'stretch';
 }
 

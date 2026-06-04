@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { logAnalyticsEvent } from '../services/firebase';
+import { Flex, Text, Card } from './ui';
 
 export const RestTimer: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
@@ -98,13 +99,9 @@ export const RestTimer: React.FC = () => {
   };
 
   return (
-    <div
-      className="glass-panel"
+    <Card
       style={{
         padding: '16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         border:
           secondsLeft > 0 && isActive
             ? '1px solid var(--color-cyan)'
@@ -113,59 +110,57 @@ export const RestTimer: React.FC = () => {
         transition: 'all var(--transition-normal)',
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <span
-          style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: '500' }}
-        >
-          ⏱️ Rest Timer
-        </span>
-        <span
-          style={{
-            fontSize: '1.6rem',
-            fontWeight: '700',
-            fontFamily: 'monospace',
-            color: secondsLeft > 0 ? 'var(--color-cyan)' : 'var(--color-text-muted)',
-          }}
-        >
-          {formatTime(secondsLeft)}
-        </span>
-      </div>
+      <Flex justify="between" align="center" style={{ width: '100%' }}>
+        <Flex direction="column" gap={1}>
+          <Text color="secondary" size="0.8rem" weight="medium">
+            ⏱️ Rest Timer
+          </Text>
+          <Text
+            color={secondsLeft > 0 ? 'cyan' : 'muted'}
+            size="1.6rem"
+            weight="bold"
+            style={{ fontFamily: 'monospace' }}
+          >
+            {formatTime(secondsLeft)}
+          </Text>
+        </Flex>
 
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <button
-          className="btn btn-secondary"
-          onClick={() => addTime(30)}
-          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-        >
-          +30s
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={() => addTime(60)}
-          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-        >
-          +60s
-        </button>
+        <Flex gap={2} align="center">
+          <button
+            className="btn btn-secondary"
+            onClick={() => addTime(30)}
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+          >
+            +30s
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => addTime(60)}
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+          >
+            +60s
+          </button>
 
-        {secondsLeft > 0 && (
-          <>
-            <button
-              className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'}`}
-              onClick={toggleTimer}
-              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-            >
-              {isActive ? 'Pause' : 'Start'}
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={resetTimer}
-              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-            >
-              Reset
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+          {secondsLeft > 0 && (
+            <>
+              <button
+                className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={toggleTimer}
+                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+              >
+                {isActive ? 'Pause' : 'Start'}
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={resetTimer}
+                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+              >
+                Reset
+              </button>
+            </>
+          )}
+        </Flex>
+      </Flex>
+    </Card>
   );
 };

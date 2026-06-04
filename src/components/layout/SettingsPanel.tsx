@@ -1,32 +1,36 @@
 import React from 'react';
 import { useWorkout } from '../../contexts/WorkoutContext';
 import { PROGRAMS } from '../../data/schedule';
+import { Flex, Heading, Text, Card } from '../ui';
 
 export const SettingsPanel: React.FC = () => {
   const { state, user, syncStatus, errorMsg, login, logout, resetDatabase, switchProgram } =
     useWorkout();
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '20px', marginBottom: '20px' }}>
-      <h3 style={{ marginBottom: '12px' }}>Backup & Cloud Storage Settings</h3>
-      <p
-        className="text-secondary"
+    <Card className="animate-fade-in" style={{ padding: '20px', marginBottom: '20px' }}>
+      <Heading level={3} style={{ marginBottom: '12px' }}>
+        Backup & Cloud Storage Settings
+      </Heading>
+      <Text
+        variant="p"
+        color="secondary"
+        size="sm"
         style={{
-          fontSize: '0.9rem',
           marginBottom: '16px',
         }}
       >
         Configure client-side backup to keep your data safe. Syncing with Firebase allows automatic,
         silent background updates across devices.
-      </p>
+      </Text>
 
-      <div className="flex gap-2 items-center" style={{ marginBottom: '20px' }}>
+      <Flex gap={2} align="center" style={{ marginBottom: '20px' }}>
         {user ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-secondary" style={{ fontSize: '0.9rem' }}>
+          <Flex direction="column" gap={2}>
+            <Text color="secondary" size="sm">
               Signed in as: <strong>{user.email}</strong>
-            </span>
-            <div className="flex gap-2 items-center">
+            </Text>
+            <Flex gap={2} align="center">
               <button className="btn btn-secondary" onClick={logout}>
                 Sign Out
               </button>
@@ -41,8 +45,8 @@ export const SettingsPanel: React.FC = () => {
                   ⚠️ Sync Error
                 </span>
               )}
-            </div>
-          </div>
+            </Flex>
+          </Flex>
         ) : (
           <button
             className="btn btn-primary"
@@ -52,11 +56,13 @@ export const SettingsPanel: React.FC = () => {
             {syncStatus === 'linking' ? 'Connecting...' : 'Connect Google Account'}
           </button>
         )}
-      </div>
+      </Flex>
 
       {/* Workout Program Selector */}
       <div style={{ marginBottom: '20px' }}>
-        <h4 style={{ fontSize: '0.95rem', marginBottom: '8px' }}>Select Workout Program</h4>
+        <Heading level={4} style={{ fontSize: '0.95rem', marginBottom: '8px' }}>
+          Select Workout Program
+        </Heading>
         <select
           id="program-select"
           className="input-field"
@@ -88,13 +94,13 @@ export const SettingsPanel: React.FC = () => {
         }}
       />
 
-      <div className="flex flex-col gap-2">
-        <h4 className="text-red" style={{ fontSize: '0.95rem' }}>
+      <Flex direction="column" gap={2}>
+        <Heading level={4} color="red" style={{ fontSize: '0.95rem' }}>
           Danger Zone
-        </h4>
-        <p className="text-secondary" style={{ fontSize: '0.8rem' }}>
+        </Heading>
+        <Text color="secondary" size="0.8rem">
           Wipe all local and cycle logs and reset database to Day 1. This cannot be undone.
-        </p>
+        </Text>
         <button
           className="btn btn-danger"
           style={{ padding: '6px 12px', fontSize: '0.85rem', alignSelf: 'flex-start' }}
@@ -110,7 +116,7 @@ export const SettingsPanel: React.FC = () => {
         >
           Reset Database
         </button>
-      </div>
-    </div>
+      </Flex>
+    </Card>
   );
 };

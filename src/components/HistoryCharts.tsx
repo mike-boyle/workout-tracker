@@ -15,6 +15,7 @@ import {
   type TooltipItem,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { Flex, Heading, Text, Card } from './ui';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -213,128 +214,121 @@ export const HistoryCharts: React.FC = () => {
   const isWeightedExercise = selectedExercise?.type === 'weighted';
 
   return (
-    <div
-      className="glass-panel animate-fade-in"
-      style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}
-    >
-      <h2>Strength & Progression Analytics</h2>
+    <Card className="animate-fade-in" style={{ padding: '24px' }}>
+      <Flex direction="column" gap={6}>
+        <Heading level={2}>Strength & Progression Analytics</Heading>
 
-      {/* Dropdowns */}
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        <div className="input-group" style={{ flex: '1 1 200px' }}>
-          <label className="input-label">Select Workout Routine</label>
-          <select
-            className="input-field"
-            value={selectedWorkoutId}
-            onChange={(e) => setSelectedWorkoutId(e.target.value)}
-          >
-            {resistanceWorkouts.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="input-group" style={{ flex: '1 1 250px' }}>
-          <label className="input-label">Select Exercise</label>
-          <select
-            className="input-field"
-            value={selectedExerciseId}
-            onChange={(e) => setSelectedExerciseId(e.target.value)}
-            disabled={exerciseOptions.length === 0}
-          >
-            {exerciseOptions.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Metric Toggle for weighted exercise */}
-      {isWeightedExercise && hasData && (
-        <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-start' }}>
-          <button
-            className={`btn ${chartMetric === 'reps' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setChartMetric('reps')}
-            style={{ padding: '6px 14px', fontSize: '0.85rem' }}
-          >
-            Reps Graph
-          </button>
-          <button
-            className={`btn ${chartMetric === 'weight' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setChartMetric('weight')}
-            style={{ padding: '6px 14px', fontSize: '0.85rem' }}
-          >
-            Weight Graph
-          </button>
-        </div>
-      )}
-
-      {/* Line Chart Grid */}
-      <div style={{ height: '350px', position: 'relative', width: '100%' }}>
-        {isHistoryLoading ? (
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-            }}
-          >
-            <style>{`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}</style>
-            <div
-              style={{
-                border: '3px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
-                borderTop: '3px solid var(--color-cyan)',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                animation: 'spin 1.2s linear infinite',
-                margin: '0 auto 12px auto',
-              }}
-            />
-            <p style={{ fontWeight: '500' }}>Loading progression analytics...</p>
-          </div>
-        ) : hasData ? (
-          <Line data={data} options={options} />
-        ) : (
-          <div
-            style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-              border: '1px dashed var(--color-border)',
-              borderRadius: '12px',
-            }}
-          >
-            <span style={{ fontSize: '2.5rem', marginBottom: '8px' }}>📈</span>
-            <p style={{ fontWeight: '500' }}>No workout data logged yet</p>
-            <p
-              style={{
-                fontSize: '0.85rem',
-                maxWidth: '300px',
-                textAlign: 'center',
-                marginTop: '4px',
-              }}
+        {/* Dropdowns */}
+        <Flex gap={4} wrap="wrap">
+          <div className="input-group" style={{ flex: '1 1 200px' }}>
+            <label className="input-label">Select Workout Routine</label>
+            <select
+              className="input-field"
+              value={selectedWorkoutId}
+              onChange={(e) => setSelectedWorkoutId(e.target.value)}
             >
-              Complete the "{selectedWorkout?.name}" routine on the Dashboard to generate charts.
-            </p>
+              {resistanceWorkouts.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div className="input-group" style={{ flex: '1 1 250px' }}>
+            <label className="input-label">Select Exercise</label>
+            <select
+              className="input-field"
+              value={selectedExerciseId}
+              onChange={(e) => setSelectedExerciseId(e.target.value)}
+              disabled={exerciseOptions.length === 0}
+            >
+              {exerciseOptions.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Flex>
+
+        {/* Metric Toggle for weighted exercise */}
+        {isWeightedExercise && hasData && (
+          <Flex gap={2} align="center" style={{ alignSelf: 'flex-start' }}>
+            <button
+              className={`btn ${chartMetric === 'reps' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setChartMetric('reps')}
+              style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+            >
+              Reps Graph
+            </button>
+            <button
+              className={`btn ${chartMetric === 'weight' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setChartMetric('weight')}
+              style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+            >
+              Weight Graph
+            </button>
+          </Flex>
         )}
-      </div>
-    </div>
+
+        {/* Line Chart Grid */}
+        <div style={{ height: '350px', position: 'relative', width: '100%' }}>
+          {isHistoryLoading ? (
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              gap={3}
+              style={{ height: '100%' }}
+              className="text-secondary"
+            >
+              <div
+                className="animate-spin"
+                style={{
+                  border: '3px solid hsla(var(--hue-base), 15%, 25%, 0.2)',
+                  borderTop: '3px solid var(--color-cyan)',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  margin: '0 auto 12px auto',
+                }}
+              />
+              <Text weight="medium">Loading progression analytics...</Text>
+            </Flex>
+          ) : hasData ? (
+            <Line data={data} options={options} />
+          ) : (
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              gap={2}
+              style={{
+                height: '100%',
+                border: '1px dashed var(--color-border)',
+                borderRadius: '12px',
+              }}
+              className="text-muted"
+            >
+              <Text size="2.5rem" style={{ marginBottom: '8px' }}>
+                📈
+              </Text>
+              <Text weight="medium">No workout data logged yet</Text>
+              <Text
+                size="sm"
+                style={{
+                  maxWidth: '300px',
+                  textAlign: 'center',
+                  marginTop: '4px',
+                }}
+              >
+                Complete the "{selectedWorkout?.name}" routine on the Dashboard to generate charts.
+              </Text>
+            </Flex>
+          )}
+        </div>
+      </Flex>
+    </Card>
   );
 };

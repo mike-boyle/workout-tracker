@@ -5,7 +5,7 @@ export interface FlexProps extends React.HTMLAttributes<HTMLDivElement> {
   align?: 'center' | 'start' | 'end' | 'stretch' | 'baseline';
   justify?: 'center' | 'start' | 'end' | 'between' | 'around' | 'evenly';
   wrap?: 'wrap' | 'nowrap' | 'wrap-reverse';
-  gap?: 1 | 2 | 4 | 6 | 8 | number;
+  gap?: 1 | 2 | 4 | 6 | 8 | number | string;
   inline?: boolean;
 }
 

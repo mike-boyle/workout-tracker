@@ -1,6 +1,7 @@
 import React from 'react';
 import { DayCard } from './DayCard';
 import type { ScheduleDay, WorkoutLog } from '../../types';
+import { Flex, Grid, Card, Heading } from '../ui';
 
 interface Phase {
   num: number;
@@ -23,8 +24,9 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
 }) => {
   return (
     <div className="phase-section" style={{ marginBottom: '32px' }}>
-      <h2
-        className="text-primary"
+      <Heading
+        level={2}
+        color="primary"
         style={{
           fontSize: '1.4rem',
           borderLeft: '3px solid var(--color-purple)',
@@ -33,34 +35,29 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
         }}
       >
         Phase {phase.num} ({phase.name})
-      </h2>
+      </Heading>
 
-      <div className="flex flex-col" style={{ gap: '20px' }}>
+      <Flex direction="column" gap={4}>
         {phase.weeks.map((weekNum) => {
           // Filter days in schedule matching this week
           const weekDays = schedule.filter((d) => d.weekNumber === weekNum);
           const isRecoveryWeek = weekNum === 4 || weekNum === 8 || weekNum === 13;
 
           return (
-            <div key={weekNum} className="glass-panel" style={{ padding: '16px' }}>
-              <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
-                <h3
+            <Card key={weekNum} style={{ padding: '16px' }}>
+              <Flex justify="between" align="center" style={{ marginBottom: '12px' }}>
+                <Heading
+                  level={3}
                   style={{
                     fontSize: '1rem',
                     color: isRecoveryWeek ? 'var(--color-yellow)' : 'var(--color-text-primary)',
                   }}
                 >
                   Week {weekNum} {isRecoveryWeek ? ' (Recovery / Deload)' : ''}
-                </h3>
-              </div>
+                </Heading>
+              </Flex>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                  gap: '10px',
-                }}
-              >
+              <Grid columns="repeat(auto-fit, minmax(130px, 1fr))" gap="10px">
                 {weekDays.map((dayInfo) => {
                   const log = getLogForDay(dayInfo.weekNumber, dayInfo.dayOfWeek);
                   return (
@@ -72,11 +69,11 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
                     />
                   );
                 })}
-              </div>
-            </div>
+              </Grid>
+            </Card>
           );
         })}
-      </div>
+      </Flex>
     </div>
   );
 };

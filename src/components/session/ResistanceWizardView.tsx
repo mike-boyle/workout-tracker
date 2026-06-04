@@ -2,6 +2,7 @@ import React from 'react';
 import { generateWizardSteps } from '../../utils/wizard';
 import { exercises as allExercises } from '../../data/schedule';
 import type { WorkoutInfo, SetLog } from '../../types';
+import { Flex, Heading, Text, Card, Badge } from '../ui';
 
 interface ResistanceWizardViewProps {
   workoutDef: WorkoutInfo;
@@ -47,33 +48,24 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
   const progressPercent = ((stepIndex + 1) / totalSteps) * 100;
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
+    <Card className="animate-fade-in" style={{ padding: '24px' }}>
       {/* Progress Indicator */}
-      <div
-        className="flex justify-between items-center flex-wrap gap-2"
-        style={{ marginBottom: '12px' }}
-      >
-        <span
-          className="text-secondary"
-          style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-          }}
-        >
+      <Flex justify="between" align="center" wrap="wrap" gap={2} style={{ marginBottom: '12px' }}>
+        <Text color="secondary" size="sm" weight="semibold">
           Step {stepIndex + 1} of {totalSteps}
-        </span>
-        <div className="flex gap-2 items-center">
-          <span className="badge badge-purple">
+        </Text>
+        <Flex gap={2} align="center">
+          <Badge variant="purple">
             {exInfo.setCount > 1 ? `Set ${currentStep.setIndex + 1}` : 'Single Set'}
-          </span>
+          </Badge>
           {prevLog && (
-            <span className="badge badge-cyan">
+            <Badge variant="cyan">
               Last: {prevLog.weight > 0 ? `${prevLog.weight} lbs x ` : ''}
               {prevLog.reps} reps{prevLog.assisted ? ' (Asst)' : ''}
-            </span>
+            </Badge>
           )}
-        </div>
-      </div>
+        </Flex>
+      </Flex>
 
       <div
         style={{
@@ -97,23 +89,20 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
 
       {/* Exercise Info */}
       <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+        <Heading level={3} style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
           {exInfo.name}
-        </h3>
-        <span
-          className="text-muted"
-          style={{
-            fontSize: '0.8rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}
+        </Heading>
+        <Text
+          color="muted"
+          size="xs"
+          style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
         >
           {exInfo.type}
-        </span>
+        </Text>
       </div>
 
       {/* Input Fields */}
-      <div className="flex items-center flex-wrap gap-4" style={{ marginBottom: '24px' }}>
+      <Flex align="center" wrap="wrap" gap={4} style={{ marginBottom: '24px' }}>
         {exInfo.type === 'weighted' && (
           <div className="input-group" style={{ flex: '1 1 200px' }}>
             <label className="input-label">Weight (lbs)</label>
@@ -152,8 +141,10 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
           />
         </div>
 
-        <div
-          className="flex flex-col gap-1 items-start"
+        <Flex
+          direction="column"
+          gap={1}
+          align="start"
           style={{
             alignSelf: 'flex-end',
             paddingBottom: '6px',
@@ -180,13 +171,15 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
               }
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
-            {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+            <Text color="secondary" size="sm">
+              {exInfo.type === 'bodyweight' ? 'Assisted' : 'Weighted'}
+            </Text>
           </label>
-        </div>
-      </div>
+        </Flex>
+      </Flex>
 
       {/* Navigation Controls */}
-      <div className="flex justify-between gap-4" style={{ marginTop: '32px' }}>
+      <Flex justify="between" gap={4} style={{ marginTop: '32px' }}>
         <button
           className="btn btn-secondary"
           onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
@@ -208,7 +201,7 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
             Finish ✓
           </button>
         )}
-      </div>
-    </div>
+      </Flex>
+    </Card>
   );
 };

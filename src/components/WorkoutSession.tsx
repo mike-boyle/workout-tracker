@@ -5,6 +5,7 @@ import { RestTimer } from './RestTimer';
 import { ResistanceSheetView } from './session/ResistanceSheetView';
 import { ResistanceWizardView } from './session/ResistanceWizardView';
 import type { SetLog } from '../types';
+import { Flex, Heading, Text, Card, Badge } from './ui';
 
 export const WorkoutSession: React.FC = () => {
   const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
@@ -87,13 +88,15 @@ export const WorkoutSession: React.FC = () => {
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
     return (
-      <div className="glass-panel animate-fade-in" style={{ padding: '32px', textAlign: 'center' }}>
-        <h2 style={{ marginBottom: '16px' }}>Rest Day</h2>
-        <p className="text-secondary" style={{ marginBottom: '24px' }}>
+      <Card style={{ padding: '32px', textAlign: 'center' }}>
+        <Heading level={2} style={{ marginBottom: '16px' }}>
+          Rest Day
+        </Heading>
+        <Text variant="p" color="secondary" style={{ marginBottom: '24px' }}>
           No formal workout scheduled for Week {state.selectedWeek} Day {state.selectedDay}. Rest,
           stretch, or do some light activity.
-        </p>
-        <div className="flex justify-center gap-4">
+        </Text>
+        <Flex justify="center" gap={4}>
           <button
             className="btn btn-primary"
             onClick={() => {
@@ -111,8 +114,8 @@ export const WorkoutSession: React.FC = () => {
           >
             Back to Dashboard
           </button>
-        </div>
-      </div>
+        </Flex>
+      </Card>
     );
   }
 
@@ -182,7 +185,7 @@ export const WorkoutSession: React.FC = () => {
   const isResistance = workoutDef.type === 'resistance';
 
   return (
-    <div className="flex flex-col gap-6">
+    <Flex direction="column" gap={6}>
       {/* Sticky Header Container */}
       <div
         style={{
@@ -196,7 +199,7 @@ export const WorkoutSession: React.FC = () => {
           background: 'var(--color-bg-base)',
         }}
       >
-        <div className="flex justify-between items-center flex-wrap gap-4">
+        <Flex justify="between" align="center" wrap="wrap" gap={4}>
           <div>
             <button
               className="btn btn-secondary"
@@ -207,13 +210,13 @@ export const WorkoutSession: React.FC = () => {
             >
               ← Back
             </button>
-            <h2>{workoutDef.name}</h2>
-            <p className="text-secondary">
+            <Heading level={2}>{workoutDef.name}</Heading>
+            <Text variant="p" color="secondary">
               Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
               ROUTINE
-            </p>
+            </Text>
           </div>
-          <div className="flex gap-2 items-center">
+          <Flex gap={2} align="center">
             {isResistance && (
               <button
                 className="btn btn-secondary"
@@ -230,8 +233,8 @@ export const WorkoutSession: React.FC = () => {
             <button className="btn btn-danger" onClick={handleSkip}>
               Skip Day
             </button>
-          </div>
-        </div>
+          </Flex>
+        </Flex>
 
         {/* Embedded Rest Timer for lifting inside the sticky header */}
         {isResistance && (
@@ -242,16 +245,19 @@ export const WorkoutSession: React.FC = () => {
       </div>
 
       {/* Inner Non-Sticky Contents */}
-      <div className="animate-fade-in flex flex-col gap-6">
+      <Flex direction="column" gap={6} className="animate-fade-in">
         {/* Non-resistance Workout Details */}
         {!isResistance && (
-          <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-            <span className="badge badge-purple" style={{ marginBottom: '12px' }}>
+          <Card style={{ padding: '32px', textAlign: 'center' }}>
+            <Badge variant="purple" style={{ marginBottom: '12px' }}>
               {workoutDef.type} Routine
-            </span>
-            <h3 style={{ marginBottom: '12px' }}>Ready to push play?</h3>
-            <p
-              className="text-secondary"
+            </Badge>
+            <Heading level={3} style={{ marginBottom: '12px' }}>
+              Ready to push play?
+            </Heading>
+            <Text
+              variant="p"
+              color="secondary"
               style={{
                 marginBottom: '24px',
                 maxWidth: '600px',
@@ -260,12 +266,9 @@ export const WorkoutSession: React.FC = () => {
             >
               Grab your water, get your heart rate monitor, and start the workout video. Complete
               the entire session and mark it finished.
-            </p>
+            </Text>
             {workoutDef.abRipper && (
-              <div
-                className="flex justify-center items-center gap-2"
-                style={{ marginBottom: '24px' }}
-              >
+              <Flex justify="center" align="center" gap={2} style={{ marginBottom: '24px' }}>
                 <input
                   type="checkbox"
                   id="ab-ripper-nonres"
@@ -276,12 +279,12 @@ export const WorkoutSession: React.FC = () => {
                 <label htmlFor="ab-ripper-nonres" style={{ cursor: 'pointer', fontWeight: '500' }}>
                   Completed Ab Ripper X (+15 mins)
                 </label>
-              </div>
+              </Flex>
             )}
             <button className="btn btn-primary" onClick={handleSave} style={{ minWidth: '200px' }}>
               Mark Workout Completed
             </button>
-          </div>
+          </Card>
         )}
 
         {/* Resistance Exercise Views */}
@@ -307,63 +310,65 @@ export const WorkoutSession: React.FC = () => {
           ))}
 
         {/* General Comments and Ab Ripper */}
-        <div className="glass-panel flex flex-col gap-4" style={{ padding: '20px' }}>
-          {workoutDef.abRipper && isResistance && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="ab-ripper-cb"
-                checked={abRipperCompleted}
-                onChange={(e) => setAbRipperCompleted(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-              />
-              <label htmlFor="ab-ripper-cb" style={{ cursor: 'pointer', fontWeight: '500' }}>
-                Completed Ab Ripper X (+15 mins)
-              </label>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2 items-start">
-            <label className="input-label">Workout Comments / Notes</label>
-            <div className="flex gap-4 items-center flex-wrap">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setTempComments(comments);
-                  setIsCommentModalOpen(true);
-                }}
-                style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-              >
-                Add/Edit Comments
-              </button>
-              {comments && (
-                <span className="text-green" style={{ fontSize: '0.85rem', fontWeight: '500' }}>
-                  ✓ Comment added
-                </span>
-              )}
-            </div>
-            {comments && (
-              <div
-                className="text-secondary"
-                style={{
-                  fontSize: '0.85rem',
-                  background: 'hsla(var(--hue-base), 25%, 8%, 0.2)',
-                  border: '1px dashed var(--color-border)',
-                  borderRadius: '6px',
-                  padding: '8px 12px',
-                  width: '100%',
-                  maxWidth: '500px',
-                  whiteSpace: 'pre-wrap',
-                  marginTop: '4px',
-                }}
-              >
-                <strong>Preview:</strong> {comments}
-              </div>
+        <Card style={{ padding: '20px' }}>
+          <Flex direction="column" gap={4}>
+            {workoutDef.abRipper && isResistance && (
+              <Flex align="center" gap={2}>
+                <input
+                  type="checkbox"
+                  id="ab-ripper-cb"
+                  checked={abRipperCompleted}
+                  onChange={(e) => setAbRipperCompleted(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="ab-ripper-cb" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                  Completed Ab Ripper X (+15 mins)
+                </label>
+              </Flex>
             )}
-          </div>
-        </div>
-      </div>
+
+            <Flex direction="column" gap={2} align="start" style={{ width: '100%' }}>
+              <label className="input-label">Workout Comments / Notes</label>
+              <Flex gap={4} align="center" wrap="wrap">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setTempComments(comments);
+                    setIsCommentModalOpen(true);
+                  }}
+                  style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                >
+                  Add/Edit Comments
+                </button>
+                {comments && (
+                  <Text color="green" size="sm" weight="medium">
+                    ✓ Comment added
+                  </Text>
+                )}
+              </Flex>
+              {comments && (
+                <div
+                  className="text-secondary"
+                  style={{
+                    fontSize: '0.85rem',
+                    background: 'hsla(var(--hue-base), 25%, 8%, 0.2)',
+                    border: '1px dashed var(--color-border)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    width: '100%',
+                    maxWidth: '500px',
+                    whiteSpace: 'pre-wrap',
+                    marginTop: '4px',
+                  }}
+                >
+                  <strong>Preview:</strong> {comments}
+                </div>
+              )}
+            </Flex>
+          </Flex>
+        </Card>
+      </Flex>
 
       {/* Sticky Footer Container */}
       <div
@@ -378,7 +383,7 @@ export const WorkoutSession: React.FC = () => {
           background: 'var(--color-bg-base)',
         }}
       >
-        <div className="flex gap-4">
+        <Flex gap={4}>
           <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
             Save Workout Data
           </button>
@@ -391,7 +396,7 @@ export const WorkoutSession: React.FC = () => {
           >
             Cancel
           </button>
-        </div>
+        </Flex>
       </div>
 
       {/* Comments Modal Overlay */}
@@ -415,8 +420,7 @@ export const WorkoutSession: React.FC = () => {
           }}
           onClick={() => setIsCommentModalOpen(false)}
         >
-          <div
-            className="glass-panel flex flex-col gap-6"
+          <Card
             style={{
               width: '100%',
               maxWidth: '500px',
@@ -427,51 +431,57 @@ export const WorkoutSession: React.FC = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div>
-              <h3 className="text-primary" style={{ fontSize: '1.25rem', marginBottom: '6px' }}>
-                Workout Comments / Notes
-              </h3>
-              <p className="text-secondary" style={{ fontSize: '0.85rem' }}>
-                Add details about how the workout felt, changes in weight/reps, or general notes.
-              </p>
-            </div>
+            <Flex direction="column" gap={6}>
+              <div>
+                <Heading
+                  level={3}
+                  color="primary"
+                  style={{ fontSize: '1.25rem', marginBottom: '6px' }}
+                >
+                  Workout Comments / Notes
+                </Heading>
+                <Text variant="p" color="secondary" size="sm">
+                  Add details about how the workout felt, changes in weight/reps, or general notes.
+                </Text>
+              </div>
 
-            <div className="input-group">
-              <textarea
-                className="input-field"
-                rows={5}
-                placeholder="e.g. standard pushups felt easier today, increased curl weight..."
-                value={tempComments}
-                onChange={(e) => setTempComments(e.target.value)}
-                style={{ resize: 'vertical' }}
-                autoFocus
-              />
-            </div>
+              <div className="input-group">
+                <textarea
+                  className="input-field"
+                  rows={5}
+                  placeholder="e.g. standard pushups felt easier today, increased curl weight..."
+                  value={tempComments}
+                  onChange={(e) => setTempComments(e.target.value)}
+                  style={{ resize: 'vertical' }}
+                  autoFocus
+                />
+              </div>
 
-            <div className="flex gap-4 justify-end">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setIsCommentModalOpen(false);
-                }}
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  setComments(tempComments);
-                  setIsCommentModalOpen(false);
-                }}
-              >
-                Save Comment
-              </button>
-            </div>
-          </div>
+              <Flex gap={4} justify="end">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setIsCommentModalOpen(false);
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setComments(tempComments);
+                    setIsCommentModalOpen(false);
+                  }}
+                >
+                  Save Comment
+                </button>
+              </Flex>
+            </Flex>
+          </Card>
         </div>
       )}
-    </div>
+    </Flex>
   );
 };

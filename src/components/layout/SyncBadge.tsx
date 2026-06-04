@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWorkout } from '../../contexts/WorkoutContext';
+import { Flex, Text } from '../ui';
 
 export const SyncBadge: React.FC = () => {
   const { user, syncStatus, errorMsg, login } = useWorkout();
@@ -13,7 +14,7 @@ export const SyncBadge: React.FC = () => {
             : syncStatus === 'error'
               ? 'btn-warning'
               : 'btn-secondary'
-        } flex items-center gap-2`}
+        }`}
         onClick={syncStatus === 'error' ? login : undefined}
         disabled={syncStatus === 'linking' || syncStatus === 'syncing'}
         style={{
@@ -37,39 +38,41 @@ export const SyncBadge: React.FC = () => {
                 : 'Connecting...'
         }
       >
-        {syncStatus === 'synced' && (
-          <>
-            <span className="text-green">☁️</span>
-            <span className="text-secondary" style={{ fontSize: '0.8rem' }}>
-              Synced
-            </span>
-          </>
-        )}
-        {syncStatus === 'error' && (
-          <>
-            <span className="text-red">⚠️</span>
-            <span className="text-red" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-              Sync Paused
-            </span>
-          </>
-        )}
-        {(syncStatus === 'syncing' || syncStatus === 'linking') && (
-          <>
-            <span className="animate-spin" style={{ display: 'inline-block' }}>
-              🔄
-            </span>
-            <span className="text-secondary" style={{ fontSize: '0.8rem' }}>
-              Syncing...
-            </span>
-          </>
-        )}
+        <Flex align="center" gap={2} inline>
+          {syncStatus === 'synced' && (
+            <>
+              <Text color="green">☁️</Text>
+              <Text color="secondary" size="0.8rem">
+                Synced
+              </Text>
+            </>
+          )}
+          {syncStatus === 'error' && (
+            <>
+              <Text color="red">⚠️</Text>
+              <Text color="red" size="0.8rem" weight="semibold">
+                Sync Paused
+              </Text>
+            </>
+          )}
+          {(syncStatus === 'syncing' || syncStatus === 'linking') && (
+            <>
+              <span className="animate-spin" style={{ display: 'inline-block' }}>
+                🔄
+              </span>
+              <Text color="secondary" size="0.8rem">
+                Syncing...
+              </Text>
+            </>
+          )}
+        </Flex>
       </button>
     );
   }
 
   return (
     <button
-      className="btn btn-secondary flex items-center gap-2"
+      className="btn btn-secondary"
       onClick={login}
       disabled={syncStatus === 'linking'}
       style={{
@@ -78,10 +81,12 @@ export const SyncBadge: React.FC = () => {
       }}
       title="Connect Cloud Backup (Firebase)"
     >
-      <span>☁️</span>
-      <span className="text-secondary" style={{ fontSize: '0.8rem' }}>
-        {syncStatus === 'linking' ? 'Connecting...' : 'Backup'}
-      </span>
+      <Flex align="center" gap={2} inline>
+        <span>☁️</span>
+        <Text color="secondary" size="0.8rem">
+          {syncStatus === 'linking' ? 'Connecting...' : 'Backup'}
+        </Text>
+      </Flex>
     </button>
   );
 };

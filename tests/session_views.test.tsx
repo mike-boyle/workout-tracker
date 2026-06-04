@@ -84,13 +84,14 @@ describe('ExerciseCard Component', () => {
 
   it('renders previous logs in different configurations', () => {
     const handleInputChange = vi.fn();
-    
+
     // Test cases for getPreviousLog returning various formats
-    const getPreviousLog = vi.fn()
+    const getPreviousLog = vi
+      .fn()
       .mockReturnValueOnce({ reps: 10, weight: 25, assisted: false }) // first set wtd
-      .mockReturnValueOnce({ reps: 8, weight: 0, assisted: true })  // second set bodyweight assisted
+      .mockReturnValueOnce({ reps: 8, weight: 0, assisted: true }) // second set bodyweight assisted
       .mockReturnValueOnce({ reps: 12, weight: 10, assisted: true }) // wtd assisted
-      .mockReturnValue(null);                                         // default
+      .mockReturnValue(null); // default
 
     const sets = [
       { reps: 0, weight: 0, assisted: false },
@@ -150,9 +151,9 @@ describe('ResistanceWizardView Component', () => {
   };
 
   const mockFormData = {
-    'cb_standard_pushup': [
+    cb_standard_pushup: [
       { reps: 12, weight: 0, assisted: false },
-      { reps: 14, weight: 0, assisted: false }
+      { reps: 14, weight: 0, assisted: false },
     ],
   };
 
@@ -215,7 +216,7 @@ describe('ResistanceWizardView Component', () => {
     );
 
     expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
-    
+
     // Back button is enabled on step 1
     const prevBtnActive = screen.getByText('← Previous');
     expect(prevBtnActive).not.toBeDisabled();
@@ -232,7 +233,7 @@ describe('ResistanceWizardView Component', () => {
     const handleInputChange = vi.fn();
     const getPreviousLog = vi.fn(() => ({ reps: 8, weight: 20, assisted: false }));
     const setCurrentStepIndex = vi.fn();
-    
+
     const mockWeightedWorkoutDef: WorkoutInfo = {
       id: 'shoulders_and_arms',
       name: 'Shoulders & Arms',
@@ -243,7 +244,7 @@ describe('ResistanceWizardView Component', () => {
     render(
       <ResistanceWizardView
         workoutDef={mockWeightedWorkoutDef}
-        formData={{ 'sa_alt_shoulder_press': [{ reps: 8, weight: 25, assisted: false }] }}
+        formData={{ sa_alt_shoulder_press: [{ reps: 8, weight: 25, assisted: false }] }}
         currentStepIndex={0}
         setCurrentStepIndex={setCurrentStepIndex}
         handleInputChange={handleInputChange}
