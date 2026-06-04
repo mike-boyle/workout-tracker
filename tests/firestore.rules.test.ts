@@ -31,7 +31,7 @@ describe('Firestore Security Rules', () => {
     currentCycle: 1,
     currentWeek: 1,
     currentDay: 1,
-    gdriveLinked: false,
+
     lastUpdated: serverTimestamp(),
   });
 

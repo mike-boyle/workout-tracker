@@ -53,7 +53,7 @@ export const SettingsPanel: React.FC = () => {
             onClick={login}
             disabled={syncStatus === 'linking' || syncStatus === 'syncing'}
           >
-            {syncStatus === 'linking' ? 'Connecting...' : 'Connect Google Account'}
+            {syncStatus === 'linking' ? 'Connecting...' : 'Sign In with Google'}
           </button>
         )}
       </Flex>
