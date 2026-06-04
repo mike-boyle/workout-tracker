@@ -4,16 +4,27 @@ service cloud.firestore {
     
     // Secure user metadata settings documents
     match /users/{userId}/metadata/{settingsId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId
+        // Cap metadata settings payload to 20KB
+        && request.resource.size < 1024 * 20;
     }
 
     // Secure user cycle documents and nested subcollections
     match /users/{userId}/cycles/{cycleId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId
+        // Cap parent cycle document payload to 20KB
+        && request.resource.size < 1024 * 20;
 
       // Secure individual workout logs in the subcollection
       match /logs/{logId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null && request.auth.uid == userId
+          // 1. Cap individual log document payload size to 10KB (plenty for 1 day's log)
+          && request.resource.size < 1024 * 10
+          // 2. Prevent unreasonably long comments (e.g. max 2000 characters)
+          && (request.resource.data.comments == null || request.resource.data.comments.size() < 2000);
       }
     }
   }
