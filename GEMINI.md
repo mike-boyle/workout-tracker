@@ -43,9 +43,9 @@ When executing multi-faceted or complex features using subagents:
    * Agent names must represent their feature (e.g., `[Google Drive Integrator]`).
    * Every subagent works in a clean, isolated branch.
 3. **PR Creation & Signature Prefix**: When complete, open a PR targeting the `main` branch.
-   * **Signature Prefix**: All PR descriptions and comments must be prefixed with the agent's name/role (e.g., `[Google Drive Integrator]: Added backup sync`).
+   * **Signature Prefix**: All PR comments must be prefixed with the agent's name/role (e.g., `[Google Drive Integrator]: Added backup sync`).
 4. **Self-Correction Loop**: Subagents poll their PR status and comments on GitHub, resolve feedback, and fix any merge conflicts with `main`.
-5. **The Distinguished Engineer Pattern**: A critic agent reviews open PRs directly on GitHub, posts review feedback, and merges PRs on GitHub once code quality, testing, and design standards are met.
+5. **The Software Architect Pattern**: A critic agent reviews open PRs directly on GitHub, posts review feedback, and merges PRs on GitHub once code quality, testing, and design standards are met.
 
 ---
 
@@ -82,6 +82,7 @@ We enforce automated test verification locally to prevent regressions from being
   - Run full-flow browser E2E tests to verify workout logging wizard, skip calculations, multi-cycle rollover logic, and history tracking.
   - **Automation**: Verified automatically before any push to the remote repository via the pre-push hook (`npm run test:e2e`).
   - **Manual command**: `npm run test:e2e` (or `npx playwright test --ui` for visual browser interactive mode).
+* **Test-Driven Development (TDD)**: Practicing TDD is highly encouraged to ensure that code interfaces are clean, modular, and highly testable. Before writing implementation code for a new feature, write the corresponding test assertions first, then implement the code to satisfy the tests.
 * **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
 
 ---
@@ -97,5 +98,35 @@ Before committing and pushing code to the remote repository, ensure the followin
 - [ ] **No Focus Tags**: Ensure no `describe.only`, `test.only`, or `it.only` test filters are committed.
 - [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
 - [ ] **Up-to-Date Documentation**: Ensure [README.md](file:///c:/Users/Mike/dev/p90x/README.md) is updated with any new feature details, setup instructions, or environment variables.
+
+---
+
+## 6. Software Stack & Core Technologies
+
+This project is built using a modern, type-safe web stack optimized for rapid frontend interactions and reliable offline data synchronization:
+
+### Core Frontend Stack
+* **React 19**: Responsive view layer utilizing functional component architectures.
+* **TypeScript**: Strict compile-time typing to prevent runtime exceptions.
+* **Vite**: Ultra-fast module bundler and hot-reloading development environment.
+* **Vanilla CSS**: Curated, custom styles utilizing global CSS variables for design system consistency.
+
+### Data Persistence & Backend Integration
+* **IndexedDB & Local Storage**: Workout logs, current progress, and user states are stored client-side using segmented, high-performance local IndexedDB storage (`src/services/storage.ts`) for seamless offline workouts.
+* **Firebase SDK (v12)**: Used for cloud features when the user connects:
+  - **Firebase Auth**: Identifies users securely via Google OAuth.
+  - **Firestore**: Synchronizes workout cycles, history, and user metadata to the cloud for multi-device sync and backups.
+  - **Firebase Analytics**: Tracks screen flows, cycle rollovers, and core workout logging events to evaluate feature usage.
+
+### Testing & Verification Tools
+* **Vitest**: Executes unit and component tests (e.g. state reducers, components) with lightning-fast execution times.
+* **Playwright**: Simulates real browser environments to run complete user flows (E2E) over multiple training cycles.
+* **Mock Service Worker (MSW)**: Intercepts all network requests at the API layer during unit/integration tests to ensure no real network traffic escapes to Google/Firebase servers, keeping the test environment fully isolated, deterministic, and fast.
+
+### Code Quality & Standards
+* **ESLint**: Standardized coding conventions with strict warning-as-error builds.
+* **Prettier**: Code formatter to enforce styling compliance before committing.
+* **Husky**: Automated Git hooks running pre-commit checks (unit tests) and pre-push checks (selective E2E tests).
+
 
 
