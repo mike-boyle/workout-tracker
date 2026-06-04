@@ -98,6 +98,7 @@ Before committing and pushing code to the remote repository, ensure the followin
 - [ ] **No Focus Tags**: Ensure no `describe.only`, `test.only`, or `it.only` test filters are committed.
 - [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
 - [ ] **Up-to-Date Documentation**: Ensure [README.md](file:///c:/Users/Mike/dev/p90x/README.md) is updated with any new feature details, setup instructions, or environment variables.
+- [ ] **Checklist & Policy Updates (GEMINI.md)**: Proactively identify any new architectural decisions, workflows, or testing patterns established in the conversation that should be documented in [GEMINI.md](file:///c:/Users/Mike/dev/p90x/GEMINI.md). Always prompt and ask the user before performing updates to [GEMINI.md](file:///c:/Users/Mike/dev/p90x/GEMINI.md).
 
 ---
 
