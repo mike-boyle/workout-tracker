@@ -111,6 +111,20 @@ We enforce automated test verification locally to prevent regressions from being
 - **Test-Driven Development (TDD)**: Practicing TDD is highly encouraged to ensure that code interfaces are clean, modular, and highly testable. Before writing implementation code for a new feature, write the corresponding test assertions first, then implement the code to satisfy the tests.
 - **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
 
+### Accessible Selector Priorities (Testing Library & Playwright)
+
+To ensure that both unit/integration tests (Vitest + React Testing Library) and E2E tests (Playwright) reflect the actual user experience and promote accessible layouts, always follow the Testing Library query priority recommendations:
+
+1. **Top Priority - Accessible to Everyone**:
+   - Query interactive controls (like buttons, links) by their ARIA role and accessible name: `screen.getByRole('button', { name: 'Save' })` or `page.getByRole('button', { name: 'Save' })`.
+   - Prefer `getByLabelText` or `page.getByLabel()` for form fields (ensuring inputs are bound to `<label htmlFor="...">` tags).
+   - Use `getByText` or `page.getByText()` for non-interactive elements (headings, labels, paragraphs, spans).
+2. **Avoid CSS Class & Layout Selectors**:
+   - Never query elements using styling/layout class names like `page.locator('.logo-section p')` or `page.locator('.glass-panel-hover')` if role-based or text-based queries are possible.
+   - For custom interactive components (like clickable dashboard cards or expandable summaries), supply a semantic `role="button"` and an `aria-label`/`aria-expanded` tag to make them discoverable via accessibility tree lookups.
+3. **Use Exact Matches to Resolve Ambiguity**:
+   - In lists or cards that might contain partial matches (e.g. a status badge "Skipped" vs a notes log comment "Notes: Skipped"), use precise regex or exact matching constraints: `getByText('Skipped', { exact: true })` to prevent Playwright/Testing Library strict-mode locator resolution violations.
+
 ---
 
 ## 5. Developer Pre-Push Checklist
