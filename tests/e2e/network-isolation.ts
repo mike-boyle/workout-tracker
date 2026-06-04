@@ -44,6 +44,9 @@ export function setupStrictNetworkIsolation(): void {
         route.fulfill({
           status: 200,
           contentType: 'application/json',
+          headers: {
+            'access-control-allow-origin': '*',
+          },
           body: JSON.stringify({
             projectId: 'workout-tracker-498019',
             appId: '1:414005593916:web:be8aabf5acc97bcd244039',
