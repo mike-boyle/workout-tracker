@@ -13,7 +13,9 @@ fi
 # Check if any changed files match source code, tests, configs, or public assets
 if [ -n "$files" ]; then
   if echo "$files" | grep -qE '^src/|^public/|^tests/|^index\.html|^playwright\.config\.ts|^package\.json|^vite\.config\.ts'; then
-    echo "Code changes detected. Running Playwright E2E tests..."
+    echo "Code changes detected. Running visual regression tests..."
+    npm run test:visual || exit 1
+    echo "Running Playwright E2E tests..."
     npm run test:e2e
     exit $?
   else

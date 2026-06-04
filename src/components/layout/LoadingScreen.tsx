@@ -1,9 +1,12 @@
 import React from 'react';
+import { Flex, Heading, Text } from '../ui';
 
 export const LoadingScreen: React.FC = () => {
   return (
-    <div
-      className="flex flex-col items-center justify-center"
+    <Flex
+      direction="column"
+      align="center"
+      justify="center"
       style={{
         height: '100vh',
         background: 'var(--color-bg-base)',
@@ -21,10 +24,12 @@ export const LoadingScreen: React.FC = () => {
           marginBottom: '16px',
         }}
       />
-      <h3 className="text-primary">Loading Workout Tracker...</h3>
-      <p className="text-secondary" style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+      <Heading level={3} color="primary">
+        Loading Workout Tracker...
+      </Heading>
+      <Text variant="p" color="secondary" size="sm" style={{ marginTop: '4px' }}>
         Preparing database storage
-      </p>
-    </div>
+      </Text>
+    </Flex>
   );
 };

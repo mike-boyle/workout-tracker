@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',
-    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'tests/e2e/**'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'tests/e2e/**', 'tests/visual/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
@@ -25,7 +25,8 @@ export default defineConfig({
         'src/services/firebase.ts',
         'src/services/gdrive.ts',
         'src/components/WorkoutSession.tsx',
-        'src/contexts/WorkoutContext.tsx'
+        'src/contexts/WorkoutContext.tsx',
+        'src/components/ui/index.ts'
       ],
       thresholds: {
         statements: 100,

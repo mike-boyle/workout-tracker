@@ -4,6 +4,7 @@ import { getScheduleForProgram } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 import { AdherenceCard } from './dashboard/AdherenceCard';
 import { PhaseSection } from './dashboard/PhaseSection';
+import { Flex, Heading, Text } from './ui';
 
 export const Dashboard: React.FC = () => {
   const { state } = useWorkout();
@@ -40,29 +41,25 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in flex flex-col gap-8">
+    <Flex direction="column" gap={8} className="animate-fade-in">
       {/* Dashboard & Cycle Selector Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
+      <Flex justify="between" align="center" wrap="wrap" gap={4}>
         <div>
-          <h2 style={{ fontSize: '1.6rem' }}>Calendar Dashboard</h2>
-          <p className="text-secondary" style={{ fontSize: '0.9rem' }}>
+          <Heading level={2} style={{ fontSize: '1.6rem' }}>
+            Calendar Dashboard
+          </Heading>
+          <Text variant="p" color="secondary" size="sm">
             {state.selectedCycle === state.currentCycle
               ? `You are currently on Cycle ${state.currentCycle}, Week ${state.currentWeek}, Day ${state.currentDay}`
               : `Reviewing historical data for Cycle ${state.selectedCycle}`}
-          </p>
+          </Text>
         </div>
 
-        <div className="flex gap-4 items-center">
-          <div className="flex gap-2 items-center">
-            <span
-              className="text-secondary"
-              style={{
-                fontSize: '0.9rem',
-                fontWeight: '500',
-              }}
-            >
+        <Flex gap={4} align="center">
+          <Flex gap={2} align="center">
+            <Text color="secondary" size="sm" weight="medium">
               View Cycle:
-            </span>
+            </Text>
             <select
               className="input-field"
               style={{
@@ -83,7 +80,7 @@ export const Dashboard: React.FC = () => {
                 </option>
               ))}
             </select>
-          </div>
+          </Flex>
           <a
             href="#/history"
             className="btn btn-secondary flex items-center"
@@ -95,8 +92,8 @@ export const Dashboard: React.FC = () => {
           >
             Manage Cycles
           </a>
-        </div>
-      </div>
+        </Flex>
+      </Flex>
 
       {/* Adherence and completion prompts */}
       <AdherenceCard />
@@ -111,6 +108,6 @@ export const Dashboard: React.FC = () => {
           handleDayClick={handleDayClick}
         />
       ))}
-    </div>
+    </Flex>
   );
 };
