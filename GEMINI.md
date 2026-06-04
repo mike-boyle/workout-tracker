@@ -84,3 +84,18 @@ We enforce automated test verification locally to prevent regressions from being
   - **Manual command**: `npm run test:e2e` (or `npx playwright test --ui` for visual browser interactive mode).
 * **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
 
+---
+
+## 5. Developer Pre-Push Checklist
+
+Before committing and pushing code to the remote repository, ensure the following checklist is completed:
+
+- [ ] **Prettier Formatting**: Run `npm run format` to format all changed files with Prettier.
+- [ ] **Type-Safety & Zero-Lint Warnings**: Run `npm run build` to confirm there are zero TypeScript compilation errors and zero ESLint warnings (warnings are treated as hard errors).
+- [ ] **Unit Tests & 100% Coverage**: Run `npm run test:coverage` to verify all Vitest tests pass and that coverage meets the 100% threshold for covered modules.
+- [ ] **Playwright E2E Tests**: Run `npm run test:e2e` to verify all end-to-end user flows (workout logging, cycle rollover, history, analytics) pass without regression.
+- [ ] **No Focus Tags**: Ensure no `describe.only`, `test.only`, or `it.only` test filters are committed.
+- [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
+- [ ] **Up-to-Date Documentation**: Ensure [README.md](file:///c:/Users/Mike/dev/p90x/README.md) is updated with any new feature details, setup instructions, or environment variables.
+
+
