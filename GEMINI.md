@@ -91,6 +91,12 @@ If a linter rule must be suppressed:
 2. **Documented**: Accompany the suppression with an adjacent comment explaining exactly why the rule is being disabled and how safety is maintained.
 3. **Form**: Use `// eslint-disable-next-line <rule-name> -- <explanation>`. Avoid generic `/* eslint-disable */` comments.
 
+### Environment Privacy & Path Portability Policy
+
+- **No Absolute Paths**: All file paths, references, and documentation links must use project-relative paths (e.g. `firebase/firestore.rules`). Do not use absolute paths (e.g. `file:///c:/Users/...`) that leak local folder structures or details of the developer's filesystem.
+- **No System-Specific Details**: Do not commit configuration files, comments, or documentation containing details about the developer's PC name, specific OS environment variables, user directory names, or other personal/system metadata.
+- **No Secrets**: Never commit API keys, authentication credentials, private tokens, or secrets. Always use environment variables managed via `.env` files (which are git-ignored) or runtime configurations.
+
 ---
 
 ## 4. Testing Strategy & Git Hooks
@@ -111,7 +117,7 @@ We enforce automated test verification locally to prevent regressions from being
   - **Manual command**: `npm run test:e2e` (or `npx playwright test --ui` for visual browser interactive mode).
 - **Firestore Security Rules Tests**:
   - Run unit tests for database security permissions, collection locks, and field validation constraints using `@firebase/rules-unit-testing`.
-  - **Automation**: Verified automatically in `.husky/pre-commit` _only if_ the security rules file ([firestore.rules](file:///c:/Users/Mike/dev/p90x/firebase/firestore.rules)) or the rules test file ([firestore.rules.test.ts](file:///c:/Users/Mike/dev/p90x/tests/firestore.rules.test.ts)) has staged changes. This limits friction for general commits while ensuring strict validation before pushing rules.
+  - **Automation**: Verified automatically in `.husky/pre-commit` _only if_ the security rules file ([firestore.rules](firebase/firestore.rules)) or the rules test file ([firestore.rules.test.ts](tests/firestore.rules.test.ts)) has staged changes. This limits friction for general commits while ensuring strict validation before pushing rules.
   - **Manual command**: `npm run test:rules`
   - **Dependency**: Requires **Java (JDK 21 or higher)** to run the Firebase Emulator Suite.
 - **Test-Driven Development (TDD)**: Practicing TDD is highly encouraged to ensure that code interfaces are clean, modular, and highly testable. Before writing implementation code for a new feature, write the corresponding test assertions first, then implement the code to satisfy the tests.
@@ -185,7 +191,7 @@ This project is built using a modern, type-safe web stack optimized for rapid fr
 - **Firebase SDK (v12)**: Used for cloud features when the user connects:
   - **Firebase Auth**: Identifies users securely via Google OAuth.
   - **Firestore**: Synchronizes workout cycles, history, and user metadata to the cloud for multi-device sync and backups.
-    - _Security Rules_: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](file:///c:/Users/Mike/dev/p90x/firebase/firestore.rules). These local rules must be synced with the Firebase Console (either via manual console upload or using the Firebase CLI) whenever access patterns or schema requirements change.
+    - _Security Rules_: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](firebase/firestore.rules). These local rules must be synced with the Firebase Console (either via manual console upload or using the Firebase CLI) whenever access patterns or schema requirements change.
   - **Local Emulator Integration**:
     - Supports running Firestore and Auth locally during interactive development.
     - **Activation**: Set the environment variable `VITE_USE_FIREBASE_EMULATOR=true` when starting the development server (`npm run dev`).
