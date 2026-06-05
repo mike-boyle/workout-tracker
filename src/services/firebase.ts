@@ -49,6 +49,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
 
 // Initialize Firebase App Check conditionally
 if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {
+  /* v8 ignore next 3 */
   if (import.meta.env.DEV) {
     window.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
   }

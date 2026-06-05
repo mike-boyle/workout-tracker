@@ -1,8 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { saveFirebaseCycle, loadFirebaseCycle } from '../src/services/firebase';
+import {
+  saveFirebaseCycle,
+  loadFirebaseCycle,
+  signInWithGoogle,
+  signOutUser,
+  listenForAuthChanges,
+  saveFirebaseMetadata,
+  loadFirebaseMetadata,
+  logAnalyticsEvent,
+} from '../src/services/firebase';
 import { getDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore/lite';
 import type { QuerySnapshot, DocumentSnapshot } from 'firebase/firestore/lite';
 import type { WorkoutLog } from '../src/types';
+import { signInWithPopup, signOut, onAuthStateChanged, type UserCredential } from 'firebase/auth';
 
 // Unmock the firebase service so we test the actual implementation
 vi.unmock('../src/services/firebase');
@@ -112,8 +122,22 @@ describe('Firebase Service - Cycles storage and migration', () => {
     expect(mockBatch.commit).toHaveBeenCalled();
   });
 
+  it('should not write logs if logs array is empty', async () => {
+    await saveFirebaseCycle('user123', 1, [], 'p90x');
+    expect(setDoc).toHaveBeenCalled();
+    expect(writeBatch).not.toHaveBeenCalled();
+  });
+
   it('should load sorted logs from subcollection when not empty', async () => {
     const docs = [
+      {
+        data: () => ({
+          id: 'log-w2d1',
+          cycle: 1,
+          week: 2,
+          day: 1,
+        }),
+      },
       {
         data: () => ({
           id: 'log-w1d2',
@@ -143,10 +167,11 @@ describe('Firebase Service - Cycles storage and migration', () => {
       expect.objectContaining({ path: 'users/user123/cycles/p90x_cycle_1/logs' })
     );
 
-    // Check sorted order: w1d1 should be first
-    expect(logs.length).toBe(2);
+    // Check sorted order: w1d1 should be first, then w1d2, then w2d1
+    expect(logs.length).toBe(3);
     expect(logs[0].id).toBe('log-w1d1');
     expect(logs[1].id).toBe('log-w1d2');
+    expect(logs[2].id).toBe('log-w2d1');
   });
 
   it('should fallback to legacy document and migrate data to subcollection', async () => {
@@ -187,6 +212,19 @@ describe('Firebase Service - Cycles storage and migration', () => {
     expect(logs).toEqual(legacyLogs);
   });
 
+  it('should return empty array if legacy document logs are not an array or empty', async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({
+      empty: true,
+    } as unknown as QuerySnapshot);
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ logs: 'not-an-array' }),
+    } as unknown as DocumentSnapshot);
+
+    const logs = await loadFirebaseCycle('user123', 1, 'p90x');
+    expect(logs).toEqual([]);
+  });
+
   it('should return empty array if both subcollection and legacy doc are empty', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({
       empty: true,
@@ -197,5 +235,64 @@ describe('Firebase Service - Cycles storage and migration', () => {
 
     const logs = await loadFirebaseCycle('user123', 1, 'p90x');
     expect(logs).toEqual([]);
+  });
+
+  it('should call signInWithPopup on signInWithGoogle', async () => {
+    vi.mocked(signInWithPopup).mockResolvedValueOnce({} as unknown as UserCredential);
+    await signInWithGoogle();
+    expect(signInWithPopup).toHaveBeenCalled();
+  });
+
+  it('should call signOut on signOutUser', async () => {
+    vi.mocked(signOut).mockResolvedValueOnce();
+    await signOutUser();
+    expect(signOut).toHaveBeenCalled();
+  });
+
+  it('should call onAuthStateChanged on listenForAuthChanges', () => {
+    const cb = vi.fn();
+    listenForAuthChanges(cb);
+    expect(onAuthStateChanged).toHaveBeenCalledWith(undefined, cb);
+  });
+
+  it('should call setDoc to save user metadata settings', async () => {
+    const metadata = { version: 1, currentCycle: 1, currentWeek: 1, currentDay: 1 };
+    await saveFirebaseMetadata('user123', metadata);
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'users/user123/metadata/settings' }),
+      expect.objectContaining({
+        version: 1,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        lastUpdated: 'mocked-timestamp',
+      })
+    );
+  });
+
+  it('should load metadata if settings doc exists', async () => {
+    const metadata = { version: 1, currentCycle: 1, currentWeek: 1, currentDay: 1 };
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => true,
+      data: () => metadata,
+    } as unknown as DocumentSnapshot);
+    const result = await loadFirebaseMetadata('user123');
+    expect(getDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'users/user123/metadata/settings' })
+    );
+    expect(result).toEqual(metadata);
+  });
+
+  it('should return null if settings doc does not exist', async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => false,
+    } as unknown as DocumentSnapshot);
+    const result = await loadFirebaseMetadata('user123');
+    expect(result).toBeNull();
+  });
+
+  it('should not log analytics event if analytics is not supported/initialized', () => {
+    logAnalyticsEvent('test_event', { param: 'value' });
+    // Should not throw, should execute cleanly
   });
 });

@@ -1,11 +1,14 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import { clearLocalState, db } from '../src/services/storage';
+import * as storage from '../src/services/storage';
 import { generateWizardSteps } from '../src/utils/wizard';
 import { saveFirebaseCycle, listenForAuthChanges } from '../src/services/firebase';
+import * as firebase from '../src/services/firebase';
 import type { User } from 'firebase/auth';
+import type { UserMetadata, WorkoutLog } from '../src/types';
 
 // Mock config to enable sync in tests
 vi.mock('../src/config', async (importOriginal) => {
@@ -94,6 +97,7 @@ describe('Workout Context & Reducer', () => {
     store = {};
     localStorage.clear();
     vi.restoreAllMocks();
+    vi.clearAllMocks();
 
     // Mock IndexedDB database calls to run in-memory during tests
     vi.spyOn(db, 'get').mockImplementation(async (key: string) => store[key] || null);
@@ -291,7 +295,7 @@ describe('Workout Context & Reducer', () => {
     // Clear mock history after initialization sync
     vi.mocked(saveFirebaseCycle).mockClear();
 
-    // Complete workout to trigger sync
+    // Complete workout 1 to trigger sync
     const btnComplete = screen.getByTestId('btn-complete');
     await act(async () => {
       btnComplete.click();
@@ -304,12 +308,663 @@ describe('Workout Context & Reducer', () => {
 
     // Verify saveFirebaseCycle was called exactly once for the changed log
     expect(saveFirebaseCycle).toHaveBeenCalledTimes(1);
-    const calls = vi.mocked(saveFirebaseCycle).mock.calls;
-    const passedLogs = calls[0][2];
+    let calls = vi.mocked(saveFirebaseCycle).mock.calls;
+    let passedLogs = calls[0][2];
     expect(passedLogs.length).toBe(1);
     expect(passedLogs[0].id).toBe('cycle_1_week_1_day_1');
 
+    // Clear mock history of saveFirebaseCycle again
+    vi.mocked(saveFirebaseCycle).mockClear();
+
+    // Complete workout 2 (now on Day 2) to trigger another sync
+    await act(async () => {
+      btnComplete.click();
+    });
+
+    // Advance fake timers to trigger sync
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    // Verify saveFirebaseCycle was called exactly once for the second changed log
+    // and standard_pushup log was compared and skipped because it did not change (covers line 255 of WorkoutContext.tsx)
+    expect(saveFirebaseCycle).toHaveBeenCalledTimes(1);
+    calls = vi.mocked(saveFirebaseCycle).mock.calls;
+    passedLogs = calls[0][2];
+    expect(passedLogs.length).toBe(1);
+    expect(passedLogs[0].id).toBe('cycle_1_week_1_day_2');
+
     vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should handle loadLocalState rejection on mount', async () => {
+    vi.spyOn(storage, 'loadLocalState').mockRejectedValueOnce(
+      new Error('Failed to load local state')
+    );
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+
+    expect(await screen.findByTestId('cycle')).toHaveTextContent('1');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to load initial local state:',
+      expect.any(Error)
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle error when clearLocalState rejects in resetDatabase', async () => {
+    vi.spyOn(storage, 'clearLocalState').mockRejectedValueOnce(
+      new Error('Failed to clear database')
+    );
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+    const btn = await screen.findByTestId('btn-reset');
+    await act(async () => {
+      btn.click();
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to clear database:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle saveLocalMetadata rejection gracefully', async () => {
+    vi.spyOn(storage, 'saveLocalMetadata').mockRejectedValueOnce(new Error('Save metadata error'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+    const btn = await screen.findByTestId('btn-skip');
+    await act(async () => {
+      btn.click();
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to save metadata:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle saveLocalState rejection gracefully', async () => {
+    vi.spyOn(storage, 'saveLocalState').mockRejectedValueOnce(new Error('Save state error'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+    const btn = await screen.findByTestId('btn-skip');
+    await act(async () => {
+      btn.click();
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to save cycle 1 logs:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle loadCycleLogs rejection gracefully', async () => {
+    vi.spyOn(storage, 'loadLocalCycleLogs').mockRejectedValueOnce(
+      new Error('Load cycle logs error')
+    );
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestLoadLogs = () => {
+      const { state, loadCycleLogs } = useWorkout();
+      React.useEffect(() => {
+        if (!state.loading) {
+          loadCycleLogs(2);
+        }
+      }, [state.loading, loadCycleLogs]);
+
+      if (state.loadingCycles[2] === false) {
+        return <div data-testid="finished" />;
+      }
+      return <div data-testid="loading" />;
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLoadLogs />
+      </WorkoutProvider>
+    );
+
+    await screen.findByTestId('finished');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to load logs for cycle 2:',
+      expect.any(Error)
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should retry firebase sync on permission-denied', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.spyOn(firebase, 'listenForAuthChanges').mockImplementation((cb) => {
+      authCallback = cb;
+      return () => {};
+    });
+
+    vi.spyOn(firebase, 'saveFirebaseMetadata')
+      .mockResolvedValueOnce(Promise.resolve()) // login migration succeeds
+      .mockRejectedValueOnce(new Error('permission-denied')); // auto-sync fails
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    renderWithProvider();
+
+    const btn = await screen.findByTestId('btn-skip');
+
+    vi.useFakeTimers();
+
+    // Simulate login and sync active
+    await act(async () => {
+      if (authCallback) {
+        authCallback({ uid: 'user123' } as User);
+      }
+    });
+
+    // Complete skipDay to trigger sync changes
+    await act(async () => {
+      btn.click();
+    });
+
+    // Advance 2s for debounce sync trigger
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Sync rate limit hit. Retrying in 60 seconds...',
+      expect.any(Error)
+    );
+
+    // Mock success for the retry
+    vi.spyOn(firebase, 'saveFirebaseMetadata').mockResolvedValue(Promise.resolve());
+
+    // Advance 60s for the retry timeout
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60500);
+    });
+
+    expect(firebase.saveFirebaseMetadata).toHaveBeenCalledTimes(3);
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should handle other errors on firebase sync', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.spyOn(firebase, 'listenForAuthChanges').mockImplementation((cb) => {
+      authCallback = cb;
+      return () => {};
+    });
+
+    vi.spyOn(firebase, 'saveFirebaseMetadata')
+      .mockResolvedValueOnce(Promise.resolve()) // login migration succeeds
+      .mockRejectedValueOnce(new Error('Some other error')); // auto-sync fails
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+    const btn = await screen.findByTestId('btn-skip');
+
+    vi.useFakeTimers();
+
+    // Simulate login and sync active
+    await act(async () => {
+      if (authCallback) {
+        authCallback({ uid: 'user123' } as User);
+      }
+    });
+
+    // Complete skipDay to trigger sync changes
+    await act(async () => {
+      btn.click();
+    });
+
+    // Advance 2s for debounce sync trigger
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Firebase auto-sync failed:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should pull cloud metadata and active logs on auth login and load them', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.spyOn(firebase, 'listenForAuthChanges').mockImplementation((cb) => {
+      authCallback = cb;
+      return () => {};
+    });
+
+    const cloudMeta = {
+      version: 1,
+      currentCycle: 2,
+      currentWeek: 2,
+      currentDay: 2,
+      cycleStats: {},
+      activeProgramId: 'p90x',
+    };
+    const cloudLogs = [
+      {
+        id: 'log1',
+        cycle: 2,
+        week: 2,
+        day: 2,
+        workoutId: 'chest',
+        dateCompleted: '2026-06-04',
+        skipped: false,
+        exercises: {},
+        abRipperCompleted: false,
+        comments: '',
+      },
+    ];
+
+    vi.spyOn(firebase, 'loadFirebaseMetadata').mockResolvedValueOnce(cloudMeta);
+    vi.spyOn(firebase, 'loadFirebaseCycle').mockResolvedValueOnce(cloudLogs);
+
+    renderWithProvider();
+
+    await screen.findByTestId('loading');
+
+    await act(async () => {
+      if (authCallback) {
+        authCallback({ uid: 'user123' } as User);
+      }
+    });
+
+    expect(await screen.findByTestId('cycle')).toHaveTextContent('2');
+    expect(screen.getByTestId('week')).toHaveTextContent('2');
+    expect(screen.getByTestId('logs-count')).toHaveTextContent('1');
+  });
+
+  it('should handle error when initial cloud sync fails', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.spyOn(firebase, 'listenForAuthChanges').mockImplementation((cb) => {
+      authCallback = cb;
+      return () => {};
+    });
+
+    vi.spyOn(firebase, 'loadFirebaseMetadata').mockRejectedValueOnce(
+      new Error('Cloud load failed')
+    );
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderWithProvider();
+    await screen.findByTestId('loading');
+
+    await act(async () => {
+      if (authCallback) {
+        authCallback({ uid: 'user123' } as User);
+      }
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Initial cloud sync failed:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should fetch cycle logs from Firebase if local logs are empty and user is logged in', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.spyOn(firebase, 'listenForAuthChanges').mockImplementation((cb) => {
+      authCallback = cb;
+      return () => {};
+    });
+
+    const mockLogs: WorkoutLog[] = [
+      {
+        id: 'mock-log-1',
+        cycle: 2,
+        week: 1,
+        day: 1,
+        workoutId: 'chest',
+        dateCompleted: '2026-06-05',
+        skipped: false,
+        exercises: {},
+        abRipperCompleted: false,
+        comments: '',
+      },
+    ];
+    vi.spyOn(firebase, 'loadFirebaseCycle').mockResolvedValueOnce(mockLogs);
+    vi.spyOn(storage, 'saveLocalState').mockResolvedValue(Promise.resolve());
+
+    const TestLoadBtn = () => {
+      const { state, loadCycleLogs } = useWorkout();
+      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      return (
+        <div>
+          <button data-testid="load-btn" onClick={() => loadCycleLogs(2)}>
+            Load
+          </button>
+          <div data-testid="status">
+            {state.loadingCycles[2] ? 'loading' : state.loadedCycles[2] ? 'loaded' : 'idle'}
+          </div>
+          <div data-testid="logs-count">{state.loadedCycles[2]?.length || 0}</div>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLoadBtn />
+      </WorkoutProvider>
+    );
+
+    await screen.findByText('idle');
+
+    // Login user
+    await act(async () => {
+      if (authCallback) {
+        authCallback({ uid: 'user123' } as User);
+      }
+    });
+
+    // Trigger loadCycleLogs
+    const btn = screen.getByTestId('load-btn');
+    await act(async () => {
+      btn.click();
+    });
+
+    await screen.findByText('loaded');
+    expect(screen.getByTestId('logs-count')).toHaveTextContent('1');
+    expect(firebase.loadFirebaseCycle).toHaveBeenCalledWith('user123', 2, 'p90x');
+    expect(storage.saveLocalState).toHaveBeenCalledWith(expect.any(Object), 2, mockLogs, 'p90x');
+  });
+
+  it('should initialize metadata.programs when switching program if it is missing', async () => {
+    vi.spyOn(storage, 'loadLocalState').mockResolvedValue({
+      metadata: {
+        version: 1,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleTimestamps: {},
+        cycleStats: {},
+        activeProgramId: 'p90x',
+      } as UserMetadata,
+      logs: [],
+    });
+
+    const TestSwitch = () => {
+      const { state, switchProgram, setSelectedDay } = useWorkout();
+      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      return (
+        <div>
+          <span data-testid="program">{state.activeProgramId}</span>
+          <button data-testid="sel-btn" onClick={() => setSelectedDay(1, 1, 2)}>
+            Select Cycle 2
+          </button>
+          <button data-testid="switch-btn" onClick={() => switchProgram('classic')}>
+            Switch
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestSwitch />
+      </WorkoutProvider>
+    );
+
+    await screen.findByTestId('program');
+
+    // Select cycle 2 (which is not loaded in loadedCycles) to hit saveLocalMetadata
+    await act(async () => {
+      screen.getByTestId('sel-btn').click();
+    });
+
+    await act(async () => {
+      screen.getByTestId('switch-btn').click();
+    });
+
+    expect(screen.getByTestId('program')).toHaveTextContent('classic');
+  });
+
+  it('should switch program and save local state if active cycle logs are loaded', async () => {
+    vi.spyOn(storage, 'loadLocalState').mockResolvedValue({
+      metadata: {
+        version: 1,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleTimestamps: {},
+        cycleStats: {},
+        activeProgramId: 'p90x',
+      } as UserMetadata,
+      logs: [
+        {
+          id: 'log-1',
+          cycle: 1,
+          week: 1,
+          day: 1,
+          workoutId: 'chest_and_back',
+          dateCompleted: '2026-06-05',
+          skipped: false,
+          exercises: {},
+          abRipperCompleted: false,
+          comments: '',
+        },
+      ],
+    });
+
+    const TestSwitch = () => {
+      const { state, switchProgram } = useWorkout();
+      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      return (
+        <div>
+          <span data-testid="program">{state.activeProgramId}</span>
+          <button data-testid="switch-btn" onClick={() => switchProgram('classic')}>
+            Switch
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestSwitch />
+      </WorkoutProvider>
+    );
+
+    await screen.findByTestId('program');
+
+    const saveSpy = vi.spyOn(storage, 'saveLocalState');
+
+    await act(async () => {
+      screen.getByTestId('switch-btn').click();
+    });
+
+    expect(saveSpy).toHaveBeenCalled();
+    expect(screen.getByTestId('program')).toHaveTextContent('classic');
+  });
+
+  it('should reset database and log analytics on logout if previously logged in', async () => {
+    let authCallback: ((user: User | null) => void) | null = null;
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      authCallback = callback as (user: User | null) => void;
+      callback({ uid: 'mock-user-123' } as unknown as User);
+      return () => {};
+    });
+
+    const TestComponent = () => {
+      const { state } = useWorkout();
+      if (state.loading) return <div>Loading...</div>;
+      return <div data-testid="cycle">{state.currentCycle}</div>;
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestComponent />
+      </WorkoutProvider>
+    );
+
+    expect(authCallback).not.toBeNull();
+
+    await act(async () => {
+      if (authCallback) {
+        (authCallback as (user: User | null) => void)(null);
+      }
+    });
+
+    expect(screen.getByTestId('cycle')).toHaveTextContent('1');
+  });
+
+  it('should handle Google login failure gracefully', async () => {
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      callback(null);
+      return () => {};
+    });
+    vi.spyOn(firebase, 'signInWithGoogle').mockRejectedValueOnce(new Error('Auth failed'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestLogin = () => {
+      const { login, syncStatus, errorMsg } = useWorkout();
+      return (
+        <div>
+          <span data-testid="status">{syncStatus}</span>
+          <span data-testid="error">{errorMsg}</span>
+          <button data-testid="btn" onClick={login}>
+            Login
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLogin />
+      </WorkoutProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('btn').click();
+    });
+
+    expect(screen.getByTestId('status')).toHaveTextContent('error');
+    expect(screen.getByTestId('error')).toHaveTextContent('Auth failed');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle Google logout failure gracefully', async () => {
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      callback({ uid: 'mock-user-123' } as unknown as User);
+      return () => {};
+    });
+    vi.spyOn(firebase, 'signOutUser').mockRejectedValueOnce(new Error('Logout failed'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestLogout = () => {
+      const { logout, syncStatus, errorMsg } = useWorkout();
+      return (
+        <div>
+          <span data-testid="status">{syncStatus}</span>
+          <span data-testid="error">{errorMsg}</span>
+          <button data-testid="btn" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLogout />
+      </WorkoutProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status')).toHaveTextContent('synced');
+    });
+
+    await act(async () => {
+      screen.getByTestId('btn').click();
+    });
+
+    expect(screen.getByTestId('status')).toHaveTextContent('error');
+    expect(screen.getByTestId('error')).toHaveTextContent('Logout failed');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should cover fallback branches in WorkoutContext functions', async () => {
+    vi.spyOn(storage, 'loadLocalState').mockResolvedValue({
+      metadata: {
+        version: 1,
+        currentCycle: 1,
+        currentWeek: 15,
+        currentDay: 1,
+        cycleTimestamps: {},
+        cycleStats: {},
+        activeProgramId: '',
+        programs: {
+          p90x: {
+            currentCycle: 1,
+            currentWeek: 15,
+            currentDay: 1,
+          },
+        },
+      } as unknown as UserMetadata,
+      logs: [],
+    });
+
+    const TestFallback = () => {
+      const {
+        state,
+        completeWorkout,
+        skipDay,
+        startNewCycle,
+        fastForwardToDay,
+        switchProgram,
+        setSelectedDay,
+      } = useWorkout();
+
+      if (state.loading) return <div data-testid="loading">Loading...</div>;
+
+      const triggerAll = async () => {
+        completeWorkout({}, false, '');
+        skipDay('plyometrics');
+        startNewCycle();
+        fastForwardToDay(1, 4);
+        setSelectedDay(1, 1);
+        await switchProgram('classic');
+      };
+
+      return (
+        <div>
+          <span data-testid="program">{state.activeProgramId}</span>
+          <button data-testid="btn" onClick={triggerAll}>
+            Trigger
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestFallback />
+      </WorkoutProvider>
+    );
+
+    await screen.findByTestId('program');
+
+    await act(async () => {
+      screen.getByTestId('btn').click();
+    });
+
+    expect(screen.getByTestId('program')).toHaveTextContent('classic');
+  });
+
+  it('should throw error when useWorkout is used outside WorkoutProvider', () => {
+    const TestComponent = () => {
+      useWorkout();
+      return null;
+    };
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => render(<TestComponent />)).toThrow(
+      'useWorkout must be used within a WorkoutProvider'
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });
 
