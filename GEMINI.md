@@ -117,6 +117,17 @@ We enforce automated test verification locally to prevent regressions from being
 - **Test-Driven Development (TDD)**: Practicing TDD is highly encouraged to ensure that code interfaces are clean, modular, and highly testable. Before writing implementation code for a new feature, write the corresponding test assertions first, then implement the code to satisfy the tests.
 - **Formatting**: Ensure files conform to Prettier styling by running `npm run format` prior to committing.
 
+### Code Coverage Practices & V8 Ignore Patterns
+
+To maintain 100% statement, branch, function, and line coverage without writing verbose, highly convoluted tests for unreachable defensive branches:
+
+1. **Environment-Specific Branch Coverage**:
+   - Environment stubs (such as stubbing `import.meta.env.DEV` to verify debugging or emulator setup paths) can result in split coverage metrics across different test executions due to Vite's module caching.
+   - For environment-specific conditions and defensive logic fallbacks (e.g. `|| 'unknown'` or optional parameter checks) that cannot be cleanly reached, use targeted `/* v8 ignore next */` or `/* v8 ignore start/stop */` tags.
+2. **Global State Pollution & Cleanup**:
+   - JSDOM does not reload/reset the global `window` state (like `window.location.hash` or custom global properties) between tests.
+   - Proactively reset modified global properties in a `beforeEach` hook of the relevant describe block (e.g. `window.location.hash = ''`) to ensure tests run in isolation and prevent order-dependent failures.
+
 ### Accessible Selector Priorities (Testing Library & Playwright)
 
 To ensure that both unit/integration tests (Vitest + React Testing Library) and E2E tests (Playwright) reflect the actual user experience and promote accessible layouts, always follow the Testing Library query priority recommendations:
