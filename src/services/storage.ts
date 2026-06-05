@@ -8,9 +8,7 @@ export const INITIAL_METADATA: UserMetadata = {
   currentCycle: 1,
   currentWeek: 1,
   currentDay: 1,
-  gdriveLinked: false,
-  metadataFileId: undefined,
-  cycleFileIds: {},
+
   cycleTimestamps: {},
   cycleStats: {},
   activeProgramId: 'p90x',
@@ -123,15 +121,15 @@ export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
       currentCycle: typeof state.currentCycle === 'number' ? state.currentCycle : 1,
       currentWeek: typeof state.currentWeek === 'number' ? state.currentWeek : 1,
       currentDay: typeof state.currentDay === 'number' ? state.currentDay : 1,
-      gdriveLinked: !!state.gdriveLinked,
-      metadataFileId: localStorage.getItem('workout_tracker_gdrive_file_id') || undefined,
-      cycleFileIds: {},
+
       cycleTimestamps: {},
       cycleStats: {},
     };
 
-    // Clean up GDrive old file ID from localStorage
+    // Clean up GDrive old local storage keys
     localStorage.removeItem('workout_tracker_gdrive_file_id');
+    localStorage.removeItem('workout_tracker_gdrive_access_token');
+    localStorage.removeItem('workout_tracker_gdrive_token_expires_at');
 
     // Group logs by cycle
     const logs = Array.isArray(state.logs) ? state.logs : [];
@@ -326,6 +324,8 @@ export async function clearLocalState(): Promise<void> {
   await db.clear();
   localStorage.removeItem('workout_tracker_state');
   localStorage.removeItem('workout_tracker_gdrive_file_id');
+  localStorage.removeItem('workout_tracker_gdrive_access_token');
+  localStorage.removeItem('workout_tracker_gdrive_token_expires_at');
 }
 
 /**

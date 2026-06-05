@@ -54,14 +54,6 @@ type WorkoutAction =
   | { type: 'SKIP_DAY'; payload: { workoutId: string } }
   | { type: 'SET_SELECTED_DAY'; payload: { week: number; day: number; cycle?: number } }
   | { type: 'START_NEW_CYCLE' }
-  | { type: 'LINK_GDRIVE'; payload: boolean }
-  | {
-      type: 'SYNC_GDRIVE_DATA';
-      payload: {
-        metadata: UserMetadata;
-        activeCycleLogs: WorkoutLog[];
-      };
-    }
   | {
       type: 'SYNC_FIREBASE_DATA';
       payload: {
@@ -90,8 +82,7 @@ interface WorkoutContextType {
   skipDay: (workoutId: string) => void;
   setSelectedDay: (week: number, day: number, cycle?: number) => void;
   startNewCycle: () => void;
-  linkGoogleDrive: (linked: boolean) => void;
-  syncGoogleDriveData: (metadata: UserMetadata, activeCycleLogs: WorkoutLog[]) => void;
+
   resetDatabase: () => void;
   loadCycleLogs: (cycleNum: number) => Promise<void>;
   switchProgram: (programId: string) => Promise<void>;
@@ -103,9 +94,7 @@ const INITIAL_STATE: ExtendedState = {
   currentCycle: 1,
   currentWeek: 1,
   currentDay: 1,
-  gdriveLinked: false,
-  metadataFileId: undefined,
-  cycleFileIds: {},
+
   cycleTimestamps: {},
   cycleStats: {},
   activeProgramId: 'p90x',
@@ -464,30 +453,6 @@ function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedSt
       };
     }
 
-    case 'LINK_GDRIVE': {
-      return {
-        ...state,
-        gdriveLinked: action.payload,
-      };
-    }
-
-    case 'SYNC_GDRIVE_DATA': {
-      const { metadata, activeCycleLogs } = action.payload;
-      return {
-        ...state,
-        ...metadata,
-        selectedCycle: metadata.currentCycle,
-        selectedWeek: metadata.currentWeek,
-        selectedDay: metadata.currentDay,
-        logs: activeCycleLogs,
-        loadedCycles: {
-          ...state.loadedCycles,
-          [metadata.currentCycle]: activeCycleLogs,
-        },
-        loading: false,
-      };
-    }
-
     case 'SYNC_FIREBASE_DATA': {
       const { metadata, activeCycleLogs } = action.payload;
       return {
@@ -707,7 +672,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
               currentCycle: state.currentCycle,
               currentWeek: state.currentWeek,
               currentDay: state.currentDay,
-              gdriveLinked: false,
               cycleStats: state.cycleStats,
               activeProgramId: state.activeProgramId,
               programs: state.programs,
@@ -753,7 +717,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentCycle: state.currentCycle,
       currentWeek: state.currentWeek,
       currentDay: state.currentDay,
-      gdriveLinked: false, // Turn off GDrive linking as we are now on Firebase
       cycleStats: state.cycleStats,
       activeProgramId: state.activeProgramId,
       programs: state.programs,
@@ -797,7 +760,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentCycle: state.currentCycle,
       currentWeek: state.currentWeek,
       currentDay: state.currentDay,
-      gdriveLinked: false,
       cycleStats: state.cycleStats,
       activeProgramId: state.activeProgramId,
       programs: state.programs,
@@ -900,7 +862,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
           currentCycle: state.currentCycle,
           currentWeek: state.currentWeek,
           currentDay: state.currentDay,
-          gdriveLinked: false,
           cycleStats: state.cycleStats,
           activeProgramId: state.activeProgramId,
           programs: state.programs,
@@ -956,7 +917,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       currentCycle: state.currentCycle,
       currentWeek: state.currentWeek,
       currentDay: state.currentDay,
-      gdriveLinked: false,
       cycleStats: state.cycleStats,
       activeProgramId: state.activeProgramId,
       programs: state.programs,
@@ -1035,18 +995,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     dispatch({ type: 'START_NEW_CYCLE' });
   };
 
-  // Kept for backward compatibility interface matching
-  const linkGoogleDrive = (linked: boolean) => {
-    console.log('Google Drive linking deprecated. Using Firebase.', linked);
-  };
-
-  const syncGoogleDriveData = (metadata: UserMetadata, activeCycleLogs: WorkoutLog[]) => {
-    dispatch({
-      type: 'SYNC_GDRIVE_DATA',
-      payload: { metadata, activeCycleLogs },
-    });
-  };
-
   const fastForwardToDay = (week: number, day: number) => {
     logAnalyticsEvent('fast_forward_to_day', {
       from_week: state.currentWeek,
@@ -1074,8 +1022,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         skipDay,
         setSelectedDay,
         startNewCycle,
-        linkGoogleDrive,
-        syncGoogleDriveData,
+
         resetDatabase,
         loadCycleLogs,
         switchProgram,

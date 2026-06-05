@@ -25,7 +25,7 @@ const TestConsumer: React.FC = () => {
     setSelectedDay,
     startNewCycle,
     resetDatabase,
-    syncGoogleDriveData,
+
     fastForwardToDay,
   } = useWorkout();
 
@@ -74,40 +74,6 @@ const TestConsumer: React.FC = () => {
 
       <button data-testid="btn-fast-forward" onClick={() => fastForwardToDay(1, 4)}>
         Fast Forward
-      </button>
-
-      <button
-        data-testid="btn-sync"
-        onClick={() =>
-          syncGoogleDriveData(
-            {
-              version: 1,
-              currentCycle: 1,
-              currentWeek: 1,
-              currentDay: 3,
-              gdriveLinked: true,
-              cycleFileIds: {},
-              cycleTimestamps: {},
-              cycleStats: {},
-            },
-            [
-              {
-                id: 'cycle_1_week_1_day_1',
-                cycle: 1,
-                week: 1,
-                day: 1,
-                workoutId: 'chest_and_back',
-                dateCompleted: new Date().toISOString(),
-                skipped: false,
-                exercises: {},
-                abRipperCompleted: false,
-                comments: 'Remote log',
-              },
-            ]
-          )
-        }
-      >
-        Sync
       </button>
     </div>
   );
@@ -305,21 +271,6 @@ describe('Workout Context & Reducer', () => {
     expect(screen.getByTestId('sel-day').textContent).toBe('4');
     expect(screen.getByTestId('logs-count').textContent).toBe('3');
     expect(screen.getByTestId('cycle-1-logs-count').textContent).toBe('3');
-  });
-
-  it('should sync remote data and advance pointer if remote is further ahead', async () => {
-    renderWithProvider();
-    expect(await screen.findByTestId('cycle')).toHaveTextContent('1');
-
-    const btnSync = screen.getByTestId('btn-sync');
-    await act(async () => {
-      btnSync.click();
-    });
-
-    expect(screen.getByTestId('logs-count').textContent).toBe('1');
-    // Sync payload sets remote progress to Cycle 1, Week 1, Day 3
-    expect(screen.getByTestId('day').textContent).toBe('3');
-    expect(screen.getByTestId('sel-day').textContent).toBe('3');
   });
 
   it('should incrementally sync only the modified log when completing a workout', async () => {

@@ -2,7 +2,7 @@
 
 🚀 **[Live Demo / Hosted Application](https://mike-boyle.github.io/workout-tracker/)**
 
-A premium, client-side React web application designed to track workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using a high-performance **IndexedDB** key-value store and syncs securely to Google Drive via OAuth for cloud backup.
+A premium, client-side React web application designed to track workouts over multiple 13-week (91-day) cycles. Hosted on GitHub Pages, the application stores data locally in the browser using a high-performance **IndexedDB** key-value store and syncs securely to Firebase for cloud backup.
 
 ---
 
@@ -12,11 +12,10 @@ A premium, client-side React web application designed to track workouts over mul
 2. [Tech Stack](#tech-stack)
 3. [Project Directory Layout](#project-directory-layout)
 4. [Data Schemas](#data-schemas)
-5. [Google Drive Backup Sync Flow](#google-drive-backup-sync-flow)
-6. [Design System & Aesthetics](#design-system--aesthetics)
-7. [Testing Strategy](#testing-strategy)
-8. [Vercel React Best Practices Checklist](#vercel-react-best-practices-checklist)
-9. [Setup & Development Commands](#setup--development-commands)
+5. [Design System & Aesthetics](#design-system--aesthetics)
+6. [Testing Strategy](#testing-strategy)
+7. [Vercel React Best Practices Checklist](#vercel-react-best-practices-checklist)
+8. [Setup & Development Commands](#setup--development-commands)
 
 ---
 
@@ -32,7 +31,7 @@ A premium, client-side React web application designed to track workouts over mul
 4. **Fast-Forward & Day Skips:** Track days 1–91 manually or use the fast-forward option to skip ahead to a specific day, which automatically creates back-filled skipped logs for intermediate days.
 5. **Historical Analytics:** Visual progress charts (using Chart.js) tracking strength and endurance progression across multiple 91-day cycles.
 6. **Robust Client-Side Database:** Stores user data using IndexedDB, featuring automatic migrations to cleanly upgrade older localStorage database schemas.
-7. **Cloud Backup Integration:** Secure client-side OAuth2 connection via Google Identity Services (GIS) to sync and backup your metadata and cycle logs to your Google Drive App Data folder.
+7. **Cloud Backup Integration:** Secure client-side authentication via Google Sign-In to sync and backup your metadata and cycle logs to Firestore in the cloud.
 
 ---
 
@@ -45,7 +44,7 @@ A premium, client-side React web application designed to track workouts over mul
 - **Charts:** Chart.js with standard React wrappers (`react-chartjs-2`)
 - **Unit Testing:** Vitest + React Testing Library + JSDOM
 - **E2E Testing:** Playwright
-- **Authentication/Storage:** Google Identity Services (GIS) & Google Client Library (`gapi`) for Google Drive App Data folder backup integration
+- **Authentication/Storage:** Google Sign-In and Firebase Firestore for cloud backup integration
 
 ---
 
@@ -72,7 +71,7 @@ workout-tracker/
 │   │   └── schedule.ts      # Extracted P90X Classic schedule & exercises DB
 │   ├── services/
 │   │   ├── storage.ts       # IndexedDB wrapper, migrations & backup validations
-│   │   └── gdrive.ts        # Google Drive API auth & file sync module
+│   │   └── firebase.ts      # Firebase Auth & Firestore sync service
 │   ├── index.css            # Premium dark-mode glassmorphic styles
 │   ├── utils/
 │   │   └── wizard.ts        # Exercise ordering & wizard step generator
@@ -83,7 +82,6 @@ workout-tracker/
 │   └── main.tsx             # React DOM entry point
 ├── tests/
 │   ├── components.test.tsx  # React component tests for logger / dashboard
-│   ├── gdrive.test.ts       # Google Drive client and flow unit tests
 │   ├── setup.ts             # Vitest test environment initialization
 │   ├── storage.test.ts      # Unit tests for IndexedDB and migrations
 │   ├── workout.test.tsx     # State transition, skips, and cycle unit tests
@@ -157,9 +155,6 @@ export interface UserMetadata {
   currentCycle: number;
   currentWeek: number; // 1-13
   currentDay: number; // 1-7
-  gdriveLinked: boolean;
-  metadataFileId?: string;
-  cycleFileIds?: { [cycle: number]: string };
   cycleTimestamps?: { [cycle: number]: string };
   cycleStats?: { [cycle: number]: CycleStats };
   activeProgramId?: string;
@@ -173,41 +168,6 @@ export interface UserMetadata {
   };
 }
 ```
-
----
-
-## ☁️ Google Drive Backup Sync Flow
-
-Since the application is serverless, the sync flow runs entirely client-side:
-
-```mermaid
-sequenceDiagram
-    participant User as Gym User
-    participant App as React App (IndexedDB)
-    participant GIS as Google Identity Services SDK
-    participant Drive as Google Drive AppData Folder
-
-    User->>App: Click "Link Google Drive"
-    App->>GIS: Request OAuth 2.0 Token (drive.appdata scope)
-    GIS->>User: Display Google Auth Prompt
-    User->>GIS: Approve permissions
-    GIS->>App: Return Access Token
-    App->>Drive: Query for 'workout-tracker-data.json'
-    alt File exists
-        Drive->>App: Fetch JSON file content
-        App->>App: Merge remote logs with IndexedDB
-    else File does not exist
-        App->>Drive: Create new file 'workout-tracker-data.json'
-    end
-    App->>App: Update gdriveLinked = true in database
-    Note over App,Drive: Auto-Sync on workout completion
-    User->>App: Click "Complete Workout"
-    App->>App: Commit log to IndexedDB
-    App->>Drive: Upload updated UserState JSON
-    Drive->>App: Confirm upload
-```
-
----
 
 ## 🎨 Design System & Aesthetics
 

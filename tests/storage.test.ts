@@ -45,7 +45,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 4,
       currentDay: 2,
-      gdriveLinked: true,
     };
     const mockLogs: WorkoutLog[] = [
       {
@@ -90,7 +89,7 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 3,
       currentDay: 1,
-      gdriveLinked: true,
+
       logs: [
         {
           id: 'log_cycle_1',
@@ -133,8 +132,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
 
     // Metadata check
     expect(res.metadata.currentCycle).toBe(2);
-    expect(res.metadata.gdriveLinked).toBe(true);
-    expect(res.metadata.metadataFileId).toBe('remote_metadata_file_123');
 
     // Check cycle stats calculation during migration
     expect(res.metadata.cycleStats?.[1]).toEqual({
@@ -165,7 +162,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 1,
       currentWeek: 1,
       currentDay: 3,
-      gdriveLinked: false,
     };
     expect(validateBackup(validData)).toBe(true);
   });
@@ -198,7 +194,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 3,
       currentDay: 1,
-      gdriveLinked: false,
     };
     store['metadata'] = incompleteMetadata;
 
@@ -280,7 +275,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 3,
       currentDay: 1,
-      gdriveLinked: false,
     };
 
     await saveLocalState(incompleteMetadata, 2, [], 'p90x');
@@ -298,7 +292,7 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 3,
       currentDay: 1,
-      gdriveLinked: false,
+
       programs: {
         p90x: {
           currentCycle: 2,
@@ -334,7 +328,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: undefined,
       currentWeek: undefined,
       currentDay: undefined,
-      gdriveLinked: false,
     } as unknown as UserMetadata;
 
     await saveLocalState(incompleteMetadata, 2, [], 'p90x');
@@ -345,7 +338,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
 
   it('should fallback to default values in migrateLocalStorageToIndexedDB if properties are missing', async () => {
     const legacyState = {
-      gdriveLinked: false,
       logs: [],
     };
     localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
@@ -422,7 +414,6 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: undefined,
       currentWeek: undefined,
       currentDay: undefined,
-      gdriveLinked: false,
     } as unknown as UserMetadata;
     store['metadata'] = incompleteMetadata;
 

@@ -53,9 +53,7 @@ export interface UserMetadata {
   currentCycle: number;
   currentWeek: number; // 1-13
   currentDay: number; // 1-7
-  gdriveLinked: boolean;
-  metadataFileId?: string;
-  cycleFileIds?: { [cycle: number]: string };
+
   cycleTimestamps?: { [cycle: number]: string };
   cycleStats?: { [cycle: number]: CycleStats };
   activeProgramId?: string;
@@ -75,5 +73,4 @@ export interface UserState {
   currentWeek: number; // 1-13
   currentDay: number; // 1-7
   logs: WorkoutLog[];
-  gdriveLinked: boolean;
 }

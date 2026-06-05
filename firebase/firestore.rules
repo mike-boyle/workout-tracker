@@ -20,8 +20,8 @@ service cloud.firestore {
       allow read, delete: if isOwner(userId) && isNotBanned();
       allow create, update: if isOwner(userId) && isNotBanned()
         && request.resource.data.keys().hasOnly([
-             'version', 'currentCycle', 'currentWeek', 'currentDay', 'gdriveLinked',
-             'metadataFileId', 'cycleFileIds', 'cycleTimestamps', 'cycleStats',
+             'version', 'currentCycle', 'currentWeek', 'currentDay',
+             'cycleTimestamps', 'cycleStats',
              'activeProgramId', 'programs', 'lastUpdated'
            ])
         && request.resource.data.version is int
@@ -34,7 +34,7 @@ service cloud.firestore {
         && request.resource.data.currentDay is int
         && request.resource.data.currentDay >= 1
         && request.resource.data.currentDay <= 7
-        && request.resource.data.gdriveLinked is bool
+
         && (!('activeProgramId' in request.resource.data) || (request.resource.data.activeProgramId is string && request.resource.data.activeProgramId.size() < 100))
         && request.resource.data.lastUpdated == request.time
         && (resource == null || request.time > resource.data.lastUpdated + duration.value(2, 's'));
