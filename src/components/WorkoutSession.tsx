@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
 import { workouts, exercises as allExercises, getScheduleForProgram } from '../data/schedule';
+import { assert, assertDefined } from '../utils/assert';
+
 import { RestTimer } from './RestTimer';
 import { ResistanceSheetView } from './session/ResistanceSheetView';
 import { ResistanceWizardView } from './session/ResistanceWizardView';
@@ -30,13 +32,16 @@ export const WorkoutSession: React.FC = () => {
   };
 
   // Find scheduled workout for selected day
-  /* v8 ignore next */
-  const dayInfo = getScheduleForProgram(state.activeProgramId || 'p90x').find(
+  const dayInfo = getScheduleForProgram(state.activeProgramId).find(
     (d) => d.weekNumber === state.selectedWeek && d.dayOfWeek === state.selectedDay
   );
+  assertDefined(
+    dayInfo,
+    `No schedule found for week ${state.selectedWeek} day ${state.selectedDay}`
+  );
 
-  /* v8 ignore next */
-  const workoutDef = workouts.find((w) => w.id === (dayInfo ? dayInfo.workoutId : 'rest'));
+  const workoutDef = workouts.find((w) => w.id === dayInfo.workoutId);
+  assertDefined(workoutDef, `Workout definition not found for id: ${dayInfo.workoutId}`);
 
   const isActiveDay =
     state.currentCycle === state.selectedCycle &&
@@ -68,22 +73,19 @@ export const WorkoutSession: React.FC = () => {
     } else {
       // Initialize fresh inputs structure
       const initialForm: { [exerciseId: string]: SetLog[] } = {};
-      /* v8 ignore start */
-      if (workoutDef && workoutDef.exercises) {
-        workoutDef.exercises.forEach((exId) => {
-          const exInfo = allExercises.find((e) => e.id === exId);
-          const setCount = exInfo ? exInfo.setCount : 1;
+      workoutDef.exercises.forEach((exId) => {
+        const exInfo = allExercises.find((e) => e.id === exId);
+        assertDefined(exInfo, `Exercise definition not found for id: ${exId}`);
+        const setCount = exInfo.setCount;
 
-          initialForm[exId] = Array.from({ length: setCount }, () => ({
-            reps: 0,
-            weight: 0,
-            assisted: false,
-          }));
-        });
-      }
+        initialForm[exId] = Array.from({ length: setCount }, () => ({
+          reps: 0,
+          weight: 0,
+          assisted: false,
+        }));
+      });
       setFormData(initialForm);
-      setAbRipperCompleted(workoutDef ? workoutDef.abRipper : false);
-      /* v8 ignore stop */
+      setAbRipperCompleted(workoutDef.abRipper);
       setComments('');
     }
     setCurrentStepIndex(0);
@@ -115,18 +117,20 @@ export const WorkoutSession: React.FC = () => {
     value: string | number | boolean
   ) => {
     setFormData((prev) => {
-      /* v8 ignore next */
-      const exerciseSets = prev[exerciseId] ? [...prev[exerciseId]] : [];
-      /* v8 ignore next */
-      if (exerciseSets[setIndex]) {
-        exerciseSets[setIndex] = {
-          ...exerciseSets[setIndex],
-          [field]: value,
-        };
-      }
+      const exerciseSets = prev[exerciseId];
+      assertDefined(exerciseSets, `Exercise sets not found for id: ${exerciseId}`);
+      assert(
+        setIndex >= 0 && setIndex < exerciseSets.length,
+        `Set index ${setIndex} out of bounds for exercise: ${exerciseId}`
+      );
+      const updatedSets = [...exerciseSets];
+      updatedSets[setIndex] = {
+        ...updatedSets[setIndex],
+        [field]: value,
+      };
       return {
         ...prev,
-        [exerciseId]: exerciseSets,
+        [exerciseId]: updatedSets,
       };
     });
   };

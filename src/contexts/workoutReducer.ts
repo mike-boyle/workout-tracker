@@ -1,20 +1,15 @@
 import { getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import type { WorkoutLog, CycleStats } from '../types';
 import { INITIAL_STATE, type ExtendedState, type WorkoutAction } from './workoutTypes';
+import { assertDefined } from '../utils/assert';
 
 export function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedState {
   switch (action.type) {
     case 'INITIALIZE_STATE': {
       const { metadata, logs } = action.payload;
-      const activeProg = metadata.activeProgramId || 'p90x';
-      /* v8 ignore start */
-      const progState = (metadata.programs && metadata.programs[activeProg]) || {
-        currentCycle: metadata.currentCycle || 1,
-        currentWeek: metadata.currentWeek || 1,
-        currentDay: metadata.currentDay || 1,
-        cycleStats: metadata.cycleStats || {},
-      };
-      /* v8 ignore stop */
+      const activeProg = metadata.activeProgramId;
+      const progState = metadata.programs[activeProg];
+      assertDefined(progState, `Program state not found for program ID: ${activeProg}`);
       return {
         ...state,
         ...metadata,
@@ -22,7 +17,7 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         currentCycle: progState.currentCycle,
         currentWeek: progState.currentWeek,
         currentDay: progState.currentDay,
-        cycleStats: progState.cycleStats || {},
+        cycleStats: progState.cycleStats,
         selectedCycle: progState.currentCycle,
         selectedWeek: progState.currentWeek,
         selectedDay: progState.currentDay,
@@ -85,8 +80,11 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         comments,
       };
 
-      /* v8 ignore next */
-      const currentCycleLogs = state.loadedCycles[state.selectedCycle] || [];
+      const currentCycleLogs = state.loadedCycles[state.selectedCycle];
+      assertDefined(
+        currentCycleLogs,
+        `Logs for cycle ${state.selectedCycle} must be loaded before completing a workout`
+      );
       const filteredLogs = currentCycleLogs.filter(
         (log) =>
           !(
@@ -108,10 +106,9 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
-      /* v8 ignore start */
-      const activeProgId = state.activeProgramId || 'p90x';
-      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
-      /* v8 ignore stop */
+      const activeProgId = state.activeProgramId;
+      const activeProgram = PROGRAMS[activeProgId];
+      assertDefined(activeProgram, `Program definition not found for: ${activeProgId}`);
       const maxWeeks = activeProgram.totalWeeks;
       const daysPerWeek = activeProgram.daysPerWeek;
 
@@ -137,25 +134,18 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         totalDays,
       };
 
-      /* v8 ignore next */
-      const activeProg = state.activeProgramId || 'p90x';
+      const activeProg = state.activeProgramId;
+      const activeProgState = state.programs[activeProg];
+      assertDefined(activeProgState, `Program state not found for: ${activeProg}`);
+
       const updatedPrograms = Object.assign({}, state.programs, {
         [activeProg]: {
           currentCycle: state.currentCycle,
           currentWeek: nextWeek,
           currentDay: nextDay,
-          cycleStats: Object.assign(
-            {},
-            /* v8 ignore start */
-            (state.programs &&
-              state.programs[activeProg] &&
-              state.programs[activeProg].cycleStats) ||
-              {},
-            /* v8 ignore stop */
-            {
-              [state.selectedCycle]: nextStats,
-            }
-          ),
+          cycleStats: Object.assign({}, activeProgState.cycleStats, {
+            [state.selectedCycle]: nextStats,
+          }),
         },
       });
 
@@ -199,8 +189,11 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         comments: 'Skipped',
       };
 
-      /* v8 ignore next */
-      const currentCycleLogs = state.loadedCycles[state.selectedCycle] || [];
+      const currentCycleLogs = state.loadedCycles[state.selectedCycle];
+      assertDefined(
+        currentCycleLogs,
+        `Logs for cycle ${state.selectedCycle} must be loaded before skipping a day`
+      );
       const filteredLogs = currentCycleLogs.filter(
         (log) =>
           !(
@@ -222,10 +215,9 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
       let nextSelWeek = state.selectedWeek;
       let nextSelDay = state.selectedDay;
 
-      /* v8 ignore start */
-      const activeProgId = state.activeProgramId || 'p90x';
-      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
-      /* v8 ignore stop */
+      const activeProgId = state.activeProgramId;
+      const activeProgram = PROGRAMS[activeProgId];
+      assertDefined(activeProgram, `Program definition not found for: ${activeProgId}`);
       const maxWeeks = activeProgram.totalWeeks;
       const daysPerWeek = activeProgram.daysPerWeek;
 
@@ -251,25 +243,18 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         totalDays,
       };
 
-      /* v8 ignore next */
-      const activeProg = state.activeProgramId || 'p90x';
+      const activeProg = state.activeProgramId;
+      const activeProgState = state.programs[activeProg];
+      assertDefined(activeProgState, `Program state not found for: ${activeProg}`);
+
       const updatedPrograms = Object.assign({}, state.programs, {
         [activeProg]: {
           currentCycle: state.currentCycle,
           currentWeek: nextWeek,
           currentDay: nextDay,
-          cycleStats: Object.assign(
-            {},
-            /* v8 ignore start */
-            (state.programs &&
-              state.programs[activeProg] &&
-              state.programs[activeProg].cycleStats) ||
-              {},
-            /* v8 ignore stop */
-            {
-              [state.selectedCycle]: nextStats,
-            }
-          ),
+          cycleStats: Object.assign({}, activeProgState.cycleStats, {
+            [state.selectedCycle]: nextStats,
+          }),
         },
       });
 
@@ -307,35 +292,27 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
 
     case 'START_NEW_CYCLE': {
       const nextCycle = state.currentCycle + 1;
-      /* v8 ignore start */
-      const activeProgId = state.activeProgramId || 'p90x';
-      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
-      /* v8 ignore stop */
+      const activeProgId = state.activeProgramId;
+      const activeProgram = PROGRAMS[activeProgId];
+      assertDefined(activeProgram, `Program definition not found for: ${activeProgId}`);
       const totalDays = activeProgram.totalDays;
       const nextStats: CycleStats = {
         completedCount: 0,
         skippedCount: 0,
         totalDays,
       };
-      /* v8 ignore next */
-      const activeProg = state.activeProgramId || 'p90x';
+      const activeProg = state.activeProgramId;
+      const activeProgState = state.programs[activeProg];
+      assertDefined(activeProgState, `Program state not found for: ${activeProg}`);
+
       const updatedPrograms = Object.assign({}, state.programs, {
         [activeProg]: {
           currentCycle: nextCycle,
           currentWeek: 1,
           currentDay: 1,
-          cycleStats: Object.assign(
-            {},
-            /* v8 ignore start */
-            (state.programs &&
-              state.programs[activeProg] &&
-              state.programs[activeProg].cycleStats) ||
-              {},
-            /* v8 ignore stop */
-            {
-              [nextCycle]: nextStats,
-            }
-          ),
+          cycleStats: Object.assign({}, activeProgState.cycleStats, {
+            [nextCycle]: nextStats,
+          }),
         },
       });
       return {
@@ -386,13 +363,15 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
 
     case 'FAST_FORWARD_TO_DAY': {
       const { week, day } = action.payload;
-      /* v8 ignore next */
-      const currentCycleLogs = state.loadedCycles[state.currentCycle] || [];
+      const currentCycleLogs = state.loadedCycles[state.currentCycle];
+      assertDefined(
+        currentCycleLogs,
+        `Logs for active cycle ${state.currentCycle} must be loaded before fast-forwarding`
+      );
 
-      /* v8 ignore start */
-      const activeProgId = state.activeProgramId || 'p90x';
-      const activeProgram = PROGRAMS[activeProgId] || PROGRAMS.p90x;
-      /* v8 ignore stop */
+      const activeProgId = state.activeProgramId;
+      const activeProgram = PROGRAMS[activeProgId];
+      assertDefined(activeProgram, `Program definition not found for: ${activeProgId}`);
       const daysPerWeek = activeProgram.daysPerWeek;
 
       const intermediateDays: { week: number; day: number }[] = [];
@@ -418,8 +397,8 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
           const dayInfo = schedule.find(
             (sd) => sd.weekNumber === item.week && sd.dayOfWeek === item.day
           );
-          /* v8 ignore next */
-          const workoutId = dayInfo ? dayInfo.workoutId : 'rest';
+          assertDefined(dayInfo, `No schedule day found for week ${item.week} day ${item.day}`);
+          const workoutId = dayInfo.workoutId;
           const logId = `cycle_${state.currentCycle}_week_${item.week}_day_${item.day}`;
 
           newSkipLogs.push({
@@ -445,7 +424,6 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         totalDays: activeProgram.totalDays,
       };
 
-      /* v8 ignore next */
       const isSelectedActiveCycle = state.selectedCycle === state.currentCycle;
 
       return {
@@ -454,7 +432,6 @@ export function workoutReducer(state: ExtendedState, action: WorkoutAction): Ext
         currentDay: day,
         selectedWeek: week,
         selectedDay: day,
-        /* v8 ignore next */
         logs: isSelectedActiveCycle ? nextLogs : state.logs,
         loadedCycles: {
           ...state.loadedCycles,

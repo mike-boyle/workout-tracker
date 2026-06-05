@@ -54,15 +54,15 @@ export interface UserMetadata {
   currentWeek: number; // 1-13
   currentDay: number; // 1-7
 
-  cycleTimestamps?: { [cycle: number]: string };
-  cycleStats?: { [cycle: number]: CycleStats };
-  activeProgramId?: string;
-  programs?: {
+  cycleTimestamps: { [cycle: number]: string };
+  cycleStats: { [cycle: number]: CycleStats };
+  activeProgramId: string;
+  programs: {
     [programId: string]: {
       currentCycle: number;
       currentWeek: number;
       currentDay: number;
-      cycleStats?: { [cycle: number]: CycleStats };
+      cycleStats: { [cycle: number]: CycleStats };
     };
   };
 }

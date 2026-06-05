@@ -174,64 +174,11 @@ describe('Firebase Service - Cycles storage and migration', () => {
     expect(logs[2].id).toBe('log-w2d1');
   });
 
-  it('should fallback to legacy document and migrate data to subcollection', async () => {
-    // 1. Subcollection is empty
+  it('should return empty array if subcollection is empty', async () => {
     vi.mocked(getDocs).mockResolvedValueOnce({
       empty: true,
       forEach: () => {},
     } as unknown as QuerySnapshot);
-
-    // 2. Legacy doc snapshot exists and contains a logs array
-    const legacyLogs = [{ id: 'legacy-log', cycle: 1, week: 1, day: 1 }];
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({ logs: legacyLogs }),
-    } as unknown as DocumentSnapshot);
-
-    const logs = await loadFirebaseCycle('user123', 1, 'p90x');
-
-    // Verify fallback lookup on parent doc
-    expect(getDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user123/cycles/p90x_cycle_1' })
-    );
-
-    // Verify migration writes the logs in batch to subcollection
-    expect(mockBatch.set).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user123/cycles/p90x_cycle_1/logs/legacy-log' }),
-      legacyLogs[0]
-    );
-
-    // Verify it cleans up legacy logs array from parent doc
-    expect(mockBatch.update).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'users/user123/cycles/p90x_cycle_1' }),
-      { logs: 'mocked-delete-field' }
-    );
-    expect(mockBatch.commit).toHaveBeenCalled();
-
-    // Returns migrated logs
-    expect(logs).toEqual(legacyLogs);
-  });
-
-  it('should return empty array if legacy document logs are not an array or empty', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({
-      empty: true,
-    } as unknown as QuerySnapshot);
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => true,
-      data: () => ({ logs: 'not-an-array' }),
-    } as unknown as DocumentSnapshot);
-
-    const logs = await loadFirebaseCycle('user123', 1, 'p90x');
-    expect(logs).toEqual([]);
-  });
-
-  it('should return empty array if both subcollection and legacy doc are empty', async () => {
-    vi.mocked(getDocs).mockResolvedValueOnce({
-      empty: true,
-    } as unknown as QuerySnapshot);
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => false,
-    } as unknown as DocumentSnapshot);
 
     const logs = await loadFirebaseCycle('user123', 1, 'p90x');
     expect(logs).toEqual([]);
@@ -256,7 +203,27 @@ describe('Firebase Service - Cycles storage and migration', () => {
   });
 
   it('should call setDoc to save user metadata settings', async () => {
-    const metadata = { version: 1, currentCycle: 1, currentWeek: 1, currentDay: 1 };
+    const metadata: UserMetadata = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleTimestamps: { 1: '2026-06-05T10:00:00.000Z' },
+      cycleStats: {
+        1: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+      },
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 1,
+          currentWeek: 1,
+          currentDay: 1,
+          cycleStats: {
+            1: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+          },
+        },
+      },
+    };
     await saveFirebaseMetadata('user123', metadata);
     expect(setDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'users/user123/metadata/settings' }),
@@ -271,7 +238,27 @@ describe('Firebase Service - Cycles storage and migration', () => {
   });
 
   it('should load metadata if settings doc exists', async () => {
-    const metadata = { version: 1, currentCycle: 1, currentWeek: 1, currentDay: 1 };
+    const metadata: UserMetadata = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleTimestamps: { 1: '2026-06-05T10:00:00.000Z' },
+      cycleStats: {
+        1: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+      },
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 1,
+          currentWeek: 1,
+          currentDay: 1,
+          cycleStats: {
+            1: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+          },
+        },
+      },
+    };
     vi.mocked(getDoc).mockResolvedValueOnce({
       exists: () => true,
       data: () => metadata,

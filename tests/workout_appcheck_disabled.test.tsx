@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
 import type { User } from 'firebase/auth';
 
@@ -45,5 +45,32 @@ describe('WorkoutContext - App Check Disabled', () => {
 
     const statusEl = await findByTestId('sync-status');
     expect(statusEl.textContent).toBe('idle');
+  });
+
+  it('should not query Firestore in loadCycleLogs if ENABLE_APP_CHECK is false', async () => {
+    let loadCycleFn: ((c: number) => Promise<void>) | null = null;
+    const TestComponent = () => {
+      const { loadCycleLogs, state } = useWorkout();
+      loadCycleFn = loadCycleLogs;
+      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      return null;
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestComponent />
+      </WorkoutProvider>
+    );
+
+    const { loadFirebaseCycle } = await import('../src/services/firebase');
+
+    // Call loadCycleLogs
+    await act(async () => {
+      if (loadCycleFn) {
+        await loadCycleFn(2);
+      }
+    });
+
+    expect(loadFirebaseCycle).not.toHaveBeenCalled();
   });
 });

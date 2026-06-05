@@ -5,6 +5,7 @@ import { Dashboard } from './components/Dashboard';
 import { WorkoutSession } from './components/WorkoutSession';
 import { HistoryCharts } from './components/HistoryCharts';
 import { History } from './components/History';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { logAnalyticsEvent } from './services/firebase';
 
 function AppContent() {
@@ -147,9 +148,11 @@ function AppContent() {
 
 function App() {
   return (
-    <WorkoutProvider>
-      <AppContent />
-    </WorkoutProvider>
+    <ErrorBoundary>
+      <WorkoutProvider>
+        <AppContent />
+      </WorkoutProvider>
+    </ErrorBoundary>
   );
 }
 

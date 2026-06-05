@@ -1,5 +1,6 @@
-import type { UserMetadata, WorkoutLog, CycleStats } from '../types';
+import type { UserMetadata, WorkoutLog } from '../types';
 import { PROGRAMS } from '../data/schedule';
+import { assertDefined } from '../utils/assert';
 
 const CURRENT_VERSION = 1;
 
@@ -14,6 +15,12 @@ export const INITIAL_METADATA: UserMetadata = {
   activeProgramId: 'p90x',
   programs: {
     p90x: {
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleStats: {},
+    },
+    test_workout: {
       currentCycle: 1,
       currentWeek: 1,
       currentDay: 1,
@@ -104,138 +111,65 @@ class WorkoutTrackerDB {
 
 export const db = new WorkoutTrackerDB();
 
-/**
- * Migrates old localStorage data to the new segmented IndexedDB format.
- */
-export async function migrateLocalStorageToIndexedDB(): Promise<boolean> {
-  try {
-    const raw = localStorage.getItem('workout_tracker_state');
-    if (!raw) return false;
+export function ensureMetadataPrograms(metadata: UserMetadata): UserMetadata {
+  let programs = metadata.programs;
+  let changed = false;
 
-    const state = JSON.parse(raw);
-    if (!state || typeof state !== 'object') return false;
-
-    // Migrate metadata
-    const metadata: UserMetadata = {
-      version: typeof state.version === 'number' ? state.version : CURRENT_VERSION,
-      currentCycle: typeof state.currentCycle === 'number' ? state.currentCycle : 1,
-      currentWeek: typeof state.currentWeek === 'number' ? state.currentWeek : 1,
-      currentDay: typeof state.currentDay === 'number' ? state.currentDay : 1,
-
-      cycleTimestamps: {},
-      cycleStats: {},
-    };
-
-    // Clean up GDrive old local storage keys
-    localStorage.removeItem('workout_tracker_gdrive_file_id');
-    localStorage.removeItem('workout_tracker_gdrive_access_token');
-    localStorage.removeItem('workout_tracker_gdrive_token_expires_at');
-
-    // Group logs by cycle
-    const logs = Array.isArray(state.logs) ? state.logs : [];
-    const logsByCycle: { [cycle: number]: WorkoutLog[] } = {};
-
-    logs.forEach((log: WorkoutLog) => {
-      const cycle = typeof log.cycle === 'number' ? log.cycle : 1;
-      if (!logsByCycle[cycle]) {
-        logsByCycle[cycle] = [];
-      }
-      logsByCycle[cycle].push(log);
-    });
-
-    // Save cycle logs to IndexedDB and compute stats
-    const statsMap: { [cycle: number]: CycleStats } = {};
-    for (const cycleStr of Object.keys(logsByCycle)) {
-      const cycleNum = parseInt(cycleStr, 10);
-      const cycleLogs = logsByCycle[cycleNum];
-
-      // Save logs
-      await db.set(`cycle_${cycleNum}_logs`, cycleLogs);
-
-      // Compute stats
-      const completedCount = cycleLogs.filter((l) => !l.skipped).length;
-      const skippedCount = cycleLogs.filter((l) => l.skipped).length;
-      const prog = PROGRAMS.p90x;
-      statsMap[cycleNum] = {
-        completedCount,
-        skippedCount,
-        totalDays: prog.totalDays,
-      };
-
-      // Set timestamp
-      metadata.cycleTimestamps![cycleNum] = new Date().toISOString();
-    }
-
-    metadata.cycleStats = statsMap;
-
-    // Save metadata to IndexedDB
-    await db.set('metadata', metadata);
-
-    // Delete old localStorage key
-    localStorage.removeItem('workout_tracker_state');
-    console.log('Successfully migrated localStorage state to IndexedDB.');
-    return true;
-  } catch (error) {
-    console.error('Failed to migrate localStorage to IndexedDB:', error);
-    return false;
+  if (!programs) {
+    programs = {};
+    changed = true;
   }
+
+  const newPrograms = { ...programs };
+  for (const progId of Object.keys(PROGRAMS)) {
+    if (!newPrograms[progId]) {
+      newPrograms[progId] = {
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleStats: {},
+      };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    return {
+      ...metadata,
+      programs: newPrograms,
+    };
+  }
+
+  return metadata;
 }
 
 /**
  * Loads metadata and active/specified cycle logs.
- * Performs localStorage migration if necessary.
  */
 export async function loadLocalState(selectedCycle?: number): Promise<{
   metadata: UserMetadata;
   logs: WorkoutLog[];
 }> {
-  // Try migration first
-  await migrateLocalStorageToIndexedDB();
-
   let metadata = await db.get<UserMetadata>('metadata');
   if (!metadata) {
     metadata = { ...INITIAL_METADATA };
     await db.set('metadata', metadata);
   }
 
-  // Ensure activeProgramId and programs are present
-  if (!metadata.activeProgramId) {
-    metadata.activeProgramId = 'p90x';
-  }
-  if (!metadata.programs) {
-    metadata.programs = {
-      p90x: {
-        currentCycle: metadata.currentCycle || 1,
-        currentWeek: metadata.currentWeek || 1,
-        currentDay: metadata.currentDay || 1,
-        cycleStats: metadata.cycleStats || {},
-      },
-    };
+  // Ensure all programs are initialized in the loaded metadata
+  const updatedMetadata = ensureMetadataPrograms(metadata);
+  if (updatedMetadata !== metadata) {
+    metadata = updatedMetadata;
     await db.set('metadata', metadata);
   }
 
   const progId = metadata.activeProgramId;
-  const progState = metadata.programs[progId] || {
-    currentCycle: metadata.currentCycle || 1,
-    currentWeek: metadata.currentWeek || 1,
-    currentDay: metadata.currentDay || 1,
-    cycleStats: metadata.cycleStats || {},
-  };
+  const progState = metadata.programs[progId];
+  assertDefined(progState, `Program state not found for program ID: ${progId}`);
   const cycleToLoad = selectedCycle || progState.currentCycle;
 
-  // Load logs: program-prefixed key with legacy fallback
-  const newKey = progId + '_cycle_' + cycleToLoad + '_logs';
-  let logs = await db.get<WorkoutLog[]>(newKey);
-  if (!logs) {
-    const legacyKey = 'cycle_' + cycleToLoad + '_logs';
-    const legacyLogs = await db.get<WorkoutLog[]>(legacyKey);
-    if (legacyLogs) {
-      logs = legacyLogs;
-      await db.set(newKey, logs);
-    } else {
-      logs = [];
-    }
-  }
+  const key = progId + '_cycle_' + cycleToLoad + '_logs';
+  const logs = (await db.get<WorkoutLog[]>(key)) || [];
 
   return { metadata, logs };
 }
@@ -247,19 +181,8 @@ export async function loadLocalCycleLogs(
   cycleNum: number,
   activeProgramId: string = 'p90x'
 ): Promise<WorkoutLog[]> {
-  const newKey = activeProgramId + '_cycle_' + cycleNum + '_logs';
-  let logs = await db.get<WorkoutLog[]>(newKey);
-  if (!logs) {
-    const legacyKey = 'cycle_' + cycleNum + '_logs';
-    const legacyLogs = await db.get<WorkoutLog[]>(legacyKey);
-    if (legacyLogs) {
-      logs = legacyLogs;
-      await db.set(newKey, logs);
-    } else {
-      logs = [];
-    }
-  }
-  return logs;
+  const key = activeProgramId + '_cycle_' + cycleNum + '_logs';
+  return (await db.get<WorkoutLog[]>(key)) || [];
 }
 
 /**
@@ -273,43 +196,29 @@ export async function saveLocalState(
 ): Promise<void> {
   const completedCount = cycleLogs.filter((l) => !l.skipped).length;
   const skippedCount = cycleLogs.filter((l) => l.skipped).length;
-  const prog = PROGRAMS[activeProgramId] || PROGRAMS.p90x;
+  const prog = PROGRAMS[activeProgramId];
+  assertDefined(prog, `Program definition not found for: ${activeProgramId}`);
   const totalDays = prog.totalDays;
 
-  if (!metadata.programs) {
-    metadata.programs = {};
-  }
-  if (!metadata.programs[activeProgramId]) {
-    metadata.programs[activeProgramId] = {
-      currentCycle: metadata.currentCycle || 1,
-      currentWeek: metadata.currentWeek || 1,
-      currentDay: metadata.currentDay || 1,
-      cycleStats: {},
-    };
-  }
-
-  if (!metadata.programs[activeProgramId].cycleStats) {
-    metadata.programs[activeProgramId].cycleStats = {};
-  }
-  metadata.programs[activeProgramId].cycleStats[cycleNum] = {
+  const progState = metadata.programs[activeProgramId];
+  assertDefined(progState, `Program state not found for: ${activeProgramId}`);
+  progState.cycleStats[cycleNum] = {
     completedCount,
     skippedCount,
     totalDays,
   };
 
-  if (!metadata.cycleStats) metadata.cycleStats = {};
   metadata.cycleStats[cycleNum] = {
     completedCount,
     skippedCount,
     totalDays,
   };
 
-  if (!metadata.cycleTimestamps) metadata.cycleTimestamps = {};
   metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
 
   // Save logs and metadata to IndexedDB
-  const newKey = activeProgramId + '_cycle_' + cycleNum + '_logs';
-  await db.set(newKey, cycleLogs);
+  const key = activeProgramId + '_cycle_' + cycleNum + '_logs';
+  await db.set(key, cycleLogs);
   await db.set('metadata', metadata);
 }
 

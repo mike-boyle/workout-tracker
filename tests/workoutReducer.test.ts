@@ -231,6 +231,15 @@ describe('workoutReducer unit tests', () => {
           currentDay: 6,
           cycleStats: {},
           activeProgramId: 'p90x',
+          cycleTimestamps: {},
+          programs: {
+            p90x: {
+              currentCycle: 3,
+              currentWeek: 5,
+              currentDay: 6,
+              cycleStats: {},
+            },
+          },
         },
         activeCycleLogs: [
           {
@@ -431,6 +440,83 @@ describe('workoutReducer unit tests', () => {
     expect(nextState.currentDay).toBe(7);
     expect(nextState.selectedWeek).toBe(13);
     expect(nextState.selectedDay).toBe(7);
+  });
+
+  it('should handle SKIP_DAY when isCompletingActiveDay is false', () => {
+    const state: ExtendedState = {
+      ...INITIAL_STATE,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 2,
+      selectedCycle: 1,
+      selectedWeek: 1,
+      selectedDay: 1,
+      loadedCycles: { 1: [] },
+    };
+
+    const action = {
+      type: 'SKIP_DAY' as const,
+      payload: {
+        workoutId: 'chest_and_back',
+      },
+    };
+
+    const nextState = workoutReducer(state, action);
+
+    expect(nextState.currentCycle).toBe(1);
+    expect(nextState.currentWeek).toBe(1);
+    expect(nextState.currentDay).toBe(2);
+    expect(nextState.selectedWeek).toBe(1);
+    expect(nextState.selectedDay).toBe(1);
+    expect(nextState.loadedCycles[1].length).toBe(1);
+    expect(nextState.loadedCycles[1][0].skipped).toBe(true);
+  });
+
+  it('should handle SET_SELECTED_DAY when changing cycle to an unloaded cycle', () => {
+    const state: ExtendedState = {
+      ...INITIAL_STATE,
+      selectedCycle: 1,
+      loadedCycles: { 1: [] },
+    };
+
+    const action = {
+      type: 'SET_SELECTED_DAY' as const,
+      payload: {
+        week: 1,
+        day: 1,
+        cycle: 3,
+      },
+    };
+
+    const nextState = workoutReducer(state, action);
+    expect(nextState.selectedCycle).toBe(3);
+    expect(nextState.logs).toEqual([]);
+  });
+
+  it('should handle FAST_FORWARD_TO_DAY when selectedCycle is not currentCycle', () => {
+    const state: ExtendedState = {
+      ...INITIAL_STATE,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      selectedCycle: 2,
+      loadedCycles: { 1: [] },
+      logs: [{ id: 'some-other-log' } as WorkoutLog],
+    };
+
+    const action = {
+      type: 'FAST_FORWARD_TO_DAY' as const,
+      payload: {
+        week: 1,
+        day: 3,
+      },
+    };
+
+    const nextState = workoutReducer(state, action);
+    expect(nextState.currentWeek).toBe(1);
+    expect(nextState.currentDay).toBe(3);
+    expect(nextState.logs.length).toBe(1);
+    expect(nextState.logs[0].id).toBe('some-other-log');
   });
 
   it('should return current state for default case', () => {

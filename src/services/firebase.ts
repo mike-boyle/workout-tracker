@@ -17,7 +17,6 @@ import {
   collection,
   getDocs,
   writeBatch,
-  deleteField,
   connectFirestoreEmulator,
 } from 'firebase/firestore/lite';
 import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/analytics';
@@ -174,7 +173,6 @@ export const loadFirebaseCycle = async (
   cycleNum: number,
   programId: string = 'p90x'
 ): Promise<WorkoutLog[]> => {
-  const cycleDocRef = doc(db, 'users', userId, 'cycles', `${programId}_cycle_${cycleNum}`);
   const logsCollectionRef = collection(
     db,
     'users',
@@ -184,37 +182,14 @@ export const loadFirebaseCycle = async (
     'logs'
   );
 
-  // 1. Try to load from new subcollection
   const querySnapshot = await getDocs(logsCollectionRef);
-  if (!querySnapshot.empty) {
-    const logs: WorkoutLog[] = [];
-    querySnapshot.forEach((docSnap) => {
-      logs.push(docSnap.data() as WorkoutLog);
-    });
-    // Sort by week and day to maintain chronological order
-    return logs.sort((a, b) => {
-      if (a.week !== b.week) return a.week - b.week;
-      return a.day - b.day;
-    });
-  }
-
-  // 2. Fallback to legacy document format and migrate on-the-fly
-  const docSnap = await getDoc(cycleDocRef);
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    if (Array.isArray(data.logs) && data.logs.length > 0) {
-      const legacyLogs = data.logs as WorkoutLog[];
-      const batch = writeBatch(db);
-      legacyLogs.forEach((log) => {
-        const logDocRef = doc(logsCollectionRef, log.id);
-        batch.set(logDocRef, log);
-      });
-      // Remove legacy logs array from parent document
-      batch.update(cycleDocRef, { logs: deleteField() });
-      await batch.commit();
-      return legacyLogs;
-    }
-  }
-
-  return [];
+  const logs: WorkoutLog[] = [];
+  querySnapshot.forEach((docSnap) => {
+    logs.push(docSnap.data() as WorkoutLog);
+  });
+  // Sort by week and day to maintain chronological order
+  return logs.sort((a, b) => {
+    if (a.week !== b.week) return a.week - b.week;
+    return a.day - b.day;
+  });
 };

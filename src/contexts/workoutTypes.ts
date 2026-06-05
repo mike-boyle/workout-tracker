@@ -84,6 +84,12 @@ export const INITIAL_STATE: ExtendedState = {
       currentDay: 1,
       cycleStats: {},
     },
+    test_workout: {
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleStats: {},
+    },
   },
   selectedCycle: 1,
   selectedWeek: 1,

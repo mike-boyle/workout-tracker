@@ -6,9 +6,9 @@ import {
   saveLocalMetadata,
   clearLocalState,
   validateBackup,
-  migrateLocalStorageToIndexedDB,
   INITIAL_METADATA,
   db,
+  ensureMetadataPrograms,
 } from '../src/services/storage';
 import type { UserMetadata, WorkoutLog } from '../src/types';
 
@@ -45,6 +45,21 @@ describe('Storage Service (IndexedDB & segmented)', () => {
       currentCycle: 2,
       currentWeek: 4,
       currentDay: 2,
+      cycleTimestamps: { 2: new Date().toISOString() },
+      cycleStats: {
+        2: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+      },
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 2,
+          currentWeek: 4,
+          currentDay: 2,
+          cycleStats: {
+            2: { completedCount: 0, skippedCount: 0, totalDays: 91 },
+          },
+        },
+      },
     };
     const mockLogs: WorkoutLog[] = [
       {
@@ -83,77 +98,48 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     expect(cleared.metadata).toEqual(INITIAL_METADATA);
   });
 
-  it('should migrate old unified localStorage state to IndexedDB', async () => {
-    const legacyState = {
+  it('should backfill missing programs on loadLocalState', async () => {
+    const incompleteMetadata: UserMetadata = {
       version: 1,
-      currentCycle: 2,
-      currentWeek: 3,
+      currentCycle: 1,
+      currentWeek: 1,
       currentDay: 1,
-
-      logs: [
-        {
-          id: 'log_cycle_1',
-          cycle: 1,
-          week: 1,
-          day: 1,
-          workoutId: 'chest_and_back',
-          skipped: false,
-          exercises: {},
+      cycleTimestamps: {},
+      cycleStats: {},
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 1,
+          currentWeek: 1,
+          currentDay: 1,
+          cycleStats: {},
         },
-        {
-          id: 'log_cycle_1_2',
-          cycle: 1,
-          week: 1,
-          day: 2,
-          workoutId: 'plyometrics',
-          skipped: false,
-          exercises: {},
-        },
-        {
-          id: 'log_cycle_2',
-          cycle: 2,
-          week: 2,
-          day: 2,
-          workoutId: 'plyometrics',
-          skipped: true,
-          exercises: {},
-        },
-      ],
+      } as unknown as UserMetadata['programs'],
     };
 
-    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
-    localStorage.setItem('workout_tracker_gdrive_file_id', 'remote_metadata_file_123');
+    await saveLocalMetadata(incompleteMetadata);
 
-    // Run migration via loadLocalState
-    const res = await loadLocalState(2);
+    const loaded = await loadLocalState();
+    expect(loaded.metadata.programs.test_workout).toBeDefined();
+    expect(loaded.metadata.programs.test_workout.currentCycle).toBe(1);
+    expect(loaded.metadata.programs.test_workout.currentWeek).toBe(1);
+    expect(loaded.metadata.programs.test_workout.currentDay).toBe(1);
+  });
 
-    expect(localStorage.getItem('workout_tracker_state')).toBeNull();
-    expect(localStorage.getItem('workout_tracker_gdrive_file_id')).toBeNull();
-
-    // Metadata check
-    expect(res.metadata.currentCycle).toBe(2);
-
-    // Check cycle stats calculation during migration
-    expect(res.metadata.cycleStats?.[1]).toEqual({
-      completedCount: 2,
-      skippedCount: 0,
-      totalDays: 91,
-    });
-    expect(res.metadata.cycleStats?.[2]).toEqual({
-      completedCount: 0,
-      skippedCount: 1,
-      totalDays: 91,
-    });
-
-    // Check loaded logs for active cycle
-    expect(res.logs.length).toBe(1);
-    expect(res.logs[0].id).toBe('log_cycle_2');
-
-    // Verify cycle 1 logs are also saved to store
-    const cycle1Logs = await loadLocalCycleLogs(1);
-    expect(cycle1Logs.length).toBe(2);
-    expect(cycle1Logs[0].id).toBe('log_cycle_1');
-    expect(cycle1Logs[1].id).toBe('log_cycle_1_2');
+  it('should handle undefined/missing programs map in ensureMetadataPrograms', () => {
+    const incomplete = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      cycleTimestamps: {},
+      cycleStats: {},
+      activeProgramId: 'p90x',
+    } as unknown as UserMetadata;
+    const sanitized = ensureMetadataPrograms(incomplete);
+    expect(sanitized.programs).toBeDefined();
+    expect(sanitized.programs.p90x).toBeDefined();
+    expect(sanitized.programs.test_workout).toBeDefined();
   });
 
   it('should validate valid backup data', () => {
@@ -182,266 +168,10 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     );
   });
 
-  it('should return false if JSON.parse fails during migration', async () => {
-    localStorage.setItem('workout_tracker_state', 'invalid-json{');
-    const result = await migrateLocalStorageToIndexedDB();
-    expect(result).toBe(false);
-  });
-
-  it('should initialize activeProgramId and programs if not present in loaded metadata', async () => {
-    const incompleteMetadata = {
-      version: 1,
-      currentCycle: 2,
-      currentWeek: 3,
-      currentDay: 1,
-    };
-    store['metadata'] = incompleteMetadata;
-
-    const res = await loadLocalState();
-    expect(res.metadata.activeProgramId).toBe('p90x');
-    expect(res.metadata.programs?.p90x.currentCycle).toBe(2);
-  });
-
-  it('should fallback to legacy cycle logs if program-specific logs do not exist', async () => {
-    const mockMetadata = {
-      version: 1,
-      currentCycle: 2,
-      activeProgramId: 'p90x',
-      programs: {
-        p90x: { currentCycle: 2, currentWeek: 1, currentDay: 1, cycleStats: {} },
-      },
-    };
-    store['metadata'] = mockMetadata;
-    const legacyLogs = [
-      {
-        id: 'legacy_log_1',
-        cycle: 2,
-        week: 1,
-        day: 1,
-        workoutId: 'plyometrics',
-        skipped: false,
-        exercises: {},
-      },
-    ];
-    store['cycle_2_logs'] = legacyLogs;
-
-    const res = await loadLocalState();
-    expect(res.logs).toEqual(legacyLogs);
-    expect(store['p90x_cycle_2_logs']).toEqual(legacyLogs);
-  });
-
-  it('should fallback to legacy cycle logs in loadLocalCycleLogs', async () => {
-    const legacyLogs = [
-      {
-        id: 'legacy_log_1',
-        cycle: 3,
-        week: 1,
-        day: 1,
-        workoutId: 'plyometrics',
-        skipped: false,
-        exercises: {},
-      },
-    ];
-    store['cycle_3_logs'] = legacyLogs;
-
-    const logs = await loadLocalCycleLogs(3);
-    expect(logs).toEqual(legacyLogs);
-    expect(store['p90x_cycle_3_logs']).toEqual(legacyLogs);
-  });
-
-  it('should return empty logs if neither new logs nor legacy logs exist in loadLocalState', async () => {
-    const mockMetadata = {
-      version: 1,
-      currentCycle: 2,
-      activeProgramId: 'p90x',
-      programs: {
-        p90x: { currentCycle: 2, currentWeek: 1, currentDay: 1, cycleStats: {} },
-      },
-    };
-    store['metadata'] = mockMetadata;
-
-    const res = await loadLocalState();
-    expect(res.logs).toEqual([]);
-  });
-
-  it('should return empty logs if neither new logs nor legacy logs exist in loadLocalCycleLogs', async () => {
-    const logs = await loadLocalCycleLogs(4);
-    expect(logs).toEqual([]);
-  });
-
-  it('should initialize missing metadata fields on saveLocalState', async () => {
-    const incompleteMetadata: UserMetadata = {
-      version: 1,
-      currentCycle: 2,
-      currentWeek: 3,
-      currentDay: 1,
-    };
-
-    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
-    expect(incompleteMetadata.programs).toBeDefined();
-    expect(incompleteMetadata.programs!.p90x).toBeDefined();
-    expect(incompleteMetadata.cycleStats).toBeDefined();
-    expect(incompleteMetadata.cycleStats![2]).toBeDefined();
-    expect(incompleteMetadata.cycleTimestamps).toBeDefined();
-    expect(incompleteMetadata.cycleTimestamps![2]).toBeDefined();
-  });
-
-  it('should initialize cycleStats on saveLocalState if program exists but cycleStats is undefined', async () => {
-    const incompleteMetadata: UserMetadata = {
-      version: 1,
-      currentCycle: 2,
-      currentWeek: 3,
-      currentDay: 1,
-
-      programs: {
-        p90x: {
-          currentCycle: 2,
-          currentWeek: 1,
-          currentDay: 1,
-          cycleStats: undefined as unknown as {
-            [cycle: number]: { completedCount: number; skippedCount: number; totalDays: number };
-          },
-        },
-      },
-    };
-
-    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
-    expect(incompleteMetadata.programs!.p90x.cycleStats).toBeDefined();
-    expect(incompleteMetadata.programs!.p90x.cycleStats[2]).toBeDefined();
-  });
-
-  it('should set totalDays to 7 on saveLocalState for test_workout program', async () => {
-    const metadata = { ...INITIAL_METADATA };
-    await saveLocalState(metadata, 1, [], 'test_workout');
-    expect(metadata.cycleStats?.[1].totalDays).toBe(7);
-  });
-
-  it('should fallback to p90x on saveLocalState when program id is invalid', async () => {
-    const metadata = { ...INITIAL_METADATA };
-    await saveLocalState(metadata, 1, [], 'invalid_program');
-    expect(metadata.cycleStats?.[1].totalDays).toBe(91);
-  });
-
-  it('should fallback to default values in saveLocalState when metadata values are missing', async () => {
-    const incompleteMetadata = {
-      version: 1,
-      currentCycle: undefined,
-      currentWeek: undefined,
-      currentDay: undefined,
-    } as unknown as UserMetadata;
-
-    await saveLocalState(incompleteMetadata, 2, [], 'p90x');
-    expect(incompleteMetadata.programs!.p90x.currentCycle).toBe(1);
-    expect(incompleteMetadata.programs!.p90x.currentWeek).toBe(1);
-    expect(incompleteMetadata.programs!.p90x.currentDay).toBe(1);
-  });
-
-  it('should fallback to default values in migrateLocalStorageToIndexedDB if properties are missing', async () => {
-    const legacyState = {
-      logs: [],
-    };
-    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
-
-    const result = await migrateLocalStorageToIndexedDB();
-    expect(result).toBe(true);
-
-    const res = await loadLocalState(1);
-    expect(res.metadata.version).toBe(1);
-    expect(res.metadata.currentCycle).toBe(1);
-    expect(res.metadata.currentWeek).toBe(1);
-    expect(res.metadata.currentDay).toBe(1);
-  });
-
-  it('should fallback to cycle 1 for logs without cycle during migration', async () => {
-    const legacyState = {
-      version: 1,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      logs: [
-        {
-          id: 'log_no_cycle',
-          week: 1,
-          day: 1,
-          workoutId: 'chest_and_back',
-          skipped: false,
-          exercises: {},
-        },
-      ],
-    };
-    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
-
-    await migrateLocalStorageToIndexedDB();
-
-    const logs = await loadLocalCycleLogs(1);
-    expect(logs).toHaveLength(1);
-    expect(logs[0].id).toBe('log_no_cycle');
-  });
-
-  it('should migrate successfully even if logs is not an array during migration', async () => {
-    const legacyState = {
-      version: 1,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      logs: 'not-an-array',
-    };
-    localStorage.setItem('workout_tracker_state', JSON.stringify(legacyState));
-    const result = await migrateLocalStorageToIndexedDB();
-    expect(result).toBe(true);
-  });
-
-  it('should return false if raw state is null in migrateLocalStorageToIndexedDB', async () => {
-    const result = await migrateLocalStorageToIndexedDB();
-    expect(result).toBe(false);
-  });
-
-  it('should return false if state is not an object in migrateLocalStorageToIndexedDB', async () => {
-    localStorage.setItem('workout_tracker_state', '123');
-    const result = await migrateLocalStorageToIndexedDB();
-    expect(result).toBe(false);
-  });
-
   it('should save metadata using saveLocalMetadata', async () => {
     const mockMetadata = { ...INITIAL_METADATA, currentCycle: 10 };
     await saveLocalMetadata(mockMetadata);
     expect(store['metadata']).toEqual(mockMetadata);
-  });
-
-  it('should fallback to default values in loadLocalState if metadata values are missing/empty', async () => {
-    const incompleteMetadata = {
-      version: 1,
-      currentCycle: undefined,
-      currentWeek: undefined,
-      currentDay: undefined,
-    } as unknown as UserMetadata;
-    store['metadata'] = incompleteMetadata;
-
-    const res = await loadLocalState();
-    expect(res.metadata.activeProgramId).toBe('p90x');
-    expect(res.metadata.programs?.p90x.currentCycle).toBe(1);
-    expect(res.metadata.programs?.p90x.currentWeek).toBe(1);
-    expect(res.metadata.programs?.p90x.currentDay).toBe(1);
-  });
-
-  it('should fallback to default values in loadLocalState when program id is not in programs', async () => {
-    const incompleteMetadata = {
-      version: 1,
-      currentCycle: undefined,
-      currentWeek: undefined,
-      currentDay: undefined,
-      activeProgramId: undefined, // test fallback activeProgramId
-      programs: {
-        other_program: { currentCycle: 1, currentWeek: 1, currentDay: 1, cycleStats: {} },
-      },
-      cycleStats: undefined,
-    } as unknown as UserMetadata;
-    store['metadata'] = incompleteMetadata;
-
-    const res = await loadLocalState();
-    expect(res.metadata.activeProgramId).toBe('p90x');
-    expect(res.metadata.programs?.other_program.currentCycle).toBe(1);
-    expect(res.metadata.programs?.p90x).toBeUndefined();
   });
 
   describe('WorkoutTrackerDB real implementation tests', () => {

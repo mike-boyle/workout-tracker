@@ -119,12 +119,16 @@ We enforce automated test verification locally to prevent regressions from being
 
 ### Code Coverage Practices & V8 Ignore Patterns
 
-To maintain 100% statement, branch, function, and line coverage without writing verbose, highly convoluted tests for unreachable defensive branches:
+To maintain 100% statement, branch, function, and line coverage while preserving high code quality and type safety:
 
-1. **Environment-Specific Branch Coverage**:
-   - Environment stubs (such as stubbing `import.meta.env.DEV` to verify debugging or emulator setup paths) can result in split coverage metrics across different test executions due to Vite's module caching.
-   - For environment-specific conditions and defensive logic fallbacks (e.g. `|| 'unknown'` or optional parameter checks) that cannot be cleanly reached, use targeted `/* v8 ignore next */` or `/* v8 ignore start/stop */` tags.
-2. **Global State Pollution & Cleanup**:
+1. **Prefer Type Assertions Over Silent Fallbacks**:
+   - Do not use silent fallbacks (e.g. `|| 'unknown'` or `|| 'p90x'`) or defensive conditionals to satisfy TypeScript if you expect a value to always be defined at runtime.
+   - Use the type assertion utilities (`assert`, `assertDefined`) from `src/utils/assert.ts` to narrow types and validate invariants. This enables the TypeScript compiler to narrow types cleanly without introducing unreachable defensive branch code.
+   - If an assertion fails, the top-level `ErrorBoundary` will catch the failure and present a recovery screen (Reload Page / Reset Database) to the user.
+2. **Environment-Specific Branch Coverage**:
+   - Environment-specific conditions (such as checking `import.meta.env.DEV` to configure debugging tokens or emulators) cannot be cleanly reached or mocked across all test files due to Vitest module caching.
+   - For environment-specific branches only, use targeted `/* v8 ignore next */` or `/* v8 ignore start/stop */` comments. General defensive code or missing data checks must not use `v8 ignore`.
+3. **Global State Pollution & Cleanup**:
    - JSDOM does not reload/reset the global `window` state (like `window.location.hash` or custom global properties) between tests.
    - Proactively reset modified global properties in a `beforeEach` hook of the relevant describe block (e.g. `window.location.hash = ''`) to ensure tests run in isolation and prevent order-dependent failures.
 
