@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { clearLocalState } from '../services/storage';
+import { Card, Flex, Heading, Text } from './ui';
 
 interface Props {
   children: ReactNode;
@@ -44,11 +45,10 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div
+        <Flex
+          align="center"
+          justify="center"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             minHeight: '100vh',
             padding: '24px',
             background: 'var(--color-bg-base)',
@@ -56,8 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
             fontFamily: 'system-ui, -apple-system, sans-serif',
           }}
         >
-          <div
-            className="glass-panel"
+          <Card
             style={{
               maxWidth: '560px',
               width: '100%',
@@ -67,16 +66,15 @@ export class ErrorBoundary extends Component<Props, State> {
               borderRadius: '12px',
             }}
           >
-            <div
+            <Flex
+              align="center"
+              justify="center"
               style={{
                 width: '64px',
                 height: '64px',
                 background: 'rgba(235, 87, 87, 0.15)',
                 border: '1px solid rgba(235, 87, 87, 0.3)',
                 borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 margin: '0 auto 24px auto',
                 color: 'var(--color-red)',
                 fontSize: '2rem',
@@ -84,8 +82,9 @@ export class ErrorBoundary extends Component<Props, State> {
               }}
             >
               ⚠
-            </div>
-            <h1
+            </Flex>
+            <Heading
+              level={1}
               style={{
                 fontSize: '1.75rem',
                 fontWeight: '700',
@@ -96,10 +95,11 @@ export class ErrorBoundary extends Component<Props, State> {
               }}
             >
               Something Went Wrong
-            </h1>
-            <p
+            </Heading>
+            <Text
+              variant="p"
+              color="secondary"
               style={{
-                color: 'var(--color-text-secondary)',
                 fontSize: '1rem',
                 lineHeight: '1.5',
                 marginBottom: '24px',
@@ -107,7 +107,7 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               The application encountered an unexpected state. This is typically caused by data
               inconsistency or environment issues.
-            </p>
+            </Text>
 
             <div
               style={{
@@ -121,17 +121,18 @@ export class ErrorBoundary extends Component<Props, State> {
                 overflowY: 'auto',
               }}
             >
-              <div
+              <Text
+                variant="div"
+                color="muted"
+                size="sm"
+                weight="semibold"
                 style={{
-                  fontWeight: '600',
-                  fontSize: '0.85rem',
-                  color: 'var(--color-text-muted)',
                   marginBottom: '8px',
                   textTransform: 'uppercase',
                 }}
               >
                 Error Details
-              </div>
+              </Text>
               <pre
                 style={{
                   margin: 0,
@@ -146,14 +147,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </pre>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: '16px',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
+            <Flex gap={4} justify="center" wrap="wrap">
               <button
                 className="btn btn-primary"
                 onClick={() => window.location.reload()}
@@ -168,9 +162,9 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 Reset Database
               </button>
-            </div>
-          </div>
-        </div>
+            </Flex>
+          </Card>
+        </Flex>
       );
     }
 
