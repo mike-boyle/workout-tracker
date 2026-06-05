@@ -170,6 +170,7 @@ Before committing and pushing code to the remote repository, ensure the followin
 - [ ] **No Leftover Debugging Code**: Verify that no `debugger` statements or verbose/temporary `console.log` logs are left in the codebase.
 - [ ] **Up-to-Date Documentation**: Ensure [README.md](README.md) is updated with any new feature details, setup instructions, or environment variables.
 - [ ] **Firebase Analytics Tracking**: Verify that all new UI page/view routes or key interactive workflows (e.g. starting a cycle, completing workouts, toggling settings) have corresponding Firebase Analytics event tracking integrated.
+- [ ] **Firebase Security Rules & Config Deployment**: If there are any modifications to Firebase configuration files or [firestore.rules](firebase/firestore.rules), ensure they are successfully deployed to the Firebase console (`firebase deploy` or `firebase deploy --only firestore`) when pushing changes.
 - [ ] **Checklist & Policy Updates (GEMINI.md)**: Proactively identify any new architectural decisions, workflows, or testing patterns established in the conversation that should be documented in [GEMINI.md](GEMINI.md). Always prompt and ask the user before performing updates to [GEMINI.md](GEMINI.md).
 
 ---
@@ -191,7 +192,7 @@ This project is built using a modern, type-safe web stack optimized for rapid fr
 - **Firebase SDK (v12)**: Used for cloud features when the user connects:
   - **Firebase Auth**: Identifies users securely via Google OAuth.
   - **Firestore**: Synchronizes workout cycles, history, and user metadata to the cloud for multi-device sync and backups.
-    - _Security Rules_: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](firebase/firestore.rules). These local rules must be synced with the Firebase Console (either via manual console upload or using the Firebase CLI) whenever access patterns or schema requirements change.
+    - _Security Rules_: Database security permissions and validation constraints are maintained locally in [firebase/firestore.rules](firebase/firestore.rules). Whenever rules or other Firebase configurations are modified, they must be deployed to the cloud Firebase instance (using `firebase deploy --only firestore` or the appropriate Firebase CLI command) in conjunction with pushing the changes to GitHub.
   - **Local Emulator Integration**:
     - Supports running Firestore and Auth locally during interactive development.
     - **Activation**: Set the environment variable `VITE_USE_FIREBASE_EMULATOR=true` when starting the development server (`npm run dev`).
