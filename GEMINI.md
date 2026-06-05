@@ -126,9 +126,13 @@ To maintain 100% statement, branch, function, and line coverage while preserving
    - Use the type assertion utilities (`assert`, `assertDefined`) from `src/utils/assert.ts` to narrow types and validate invariants. This enables the TypeScript compiler to narrow types cleanly without introducing unreachable defensive branch code.
    - If an assertion fails, the top-level `ErrorBoundary` will catch the failure and present a recovery screen (Reload Page / Reset Database) to the user.
 2. **Environment-Specific Branch Coverage**:
-   - Environment-specific conditions (such as checking `import.meta.env.DEV` to configure debugging tokens or emulators) cannot be cleanly reached or mocked across all test files due to Vitest module caching.
-   - For environment-specific branches only, use targeted `/* v8 ignore next */` or `/* v8 ignore start/stop */` comments. General defensive code or missing data checks must not use `v8 ignore`.
-3. **Global State Pollution & Cleanup**:
+   - Environment-specific conditions (such as checking `import.meta.env.DEV` to configure emulators or debugging features) cannot be cleanly reached or mocked across all test files.
+   - **Recommendation**: Instead of inline environment checks that necessitate `v8 ignore` comments, extract the logic into a separate, testable utility function. Pass the environment flag (e.g., `import.meta.env.DEV`) as a parameter. The calling code remains simple and branchless, while the helper function can be fully covered by passing both `true` and `false` states to it in its own unit tests.
+   - Limit `v8 ignore` strictly to configuration files where helper extraction is technically unfeasible.
+3. **Decompose Hard-to-Test Logic**:
+   - Avoid writing large, monolithic functions that bundle validation, formatting, state mutations, and API calls together.
+   - **Recommendation**: Break down complex code blocks into granular, single-responsibility helper functions. Decomposing logic makes it easy to write direct unit tests covering every edge case without creating complex mock states. This also helps adhere to the 150-line component function and 300-line file soft limits.
+4. **Global State Pollution & Cleanup**:
    - JSDOM does not reload/reset the global `window` state (like `window.location.hash` or custom global properties) between tests.
    - Proactively reset modified global properties in a `beforeEach` hook of the relevant describe block (e.g. `window.location.hash = ''`) to ensure tests run in isolation and prevent order-dependent failures.
 
