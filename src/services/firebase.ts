@@ -23,6 +23,7 @@ import { getAnalytics, logEvent, isSupported, type Analytics } from 'firebase/an
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { FIREBASE_CONFIG, ENABLE_APP_CHECK, RECAPTCHA_SITE_KEY } from '../config';
 import type { UserMetadata, WorkoutLog } from '../types';
+import { configureAppCheckDebugToken } from '../utils/appcheck';
 
 declare global {
   interface Window {
@@ -48,10 +49,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
 
 // Initialize Firebase App Check conditionally
 if (ENABLE_APP_CHECK && RECAPTCHA_SITE_KEY) {
-  /* v8 ignore next 3 */
-  if (import.meta.env.DEV) {
-    window.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
-  }
+  configureAppCheckDebugToken(import.meta.env.DEV, import.meta.env.VITE_APPCHECK_DEBUG_TOKEN);
   try {
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),

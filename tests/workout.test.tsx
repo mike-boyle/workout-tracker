@@ -851,6 +851,122 @@ describe('Workout Context & Reducer', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('should handle Google login failure with non-Error gracefully', async () => {
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      callback(null);
+      return () => {};
+    });
+    vi.spyOn(firebase, 'signInWithGoogle').mockRejectedValueOnce('Raw string error');
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestLogin = () => {
+      const { login, syncStatus, errorMsg } = useWorkout();
+      return (
+        <div>
+          <span data-testid="status">{syncStatus}</span>
+          <span data-testid="error">{errorMsg}</span>
+          <button data-testid="btn" onClick={login}>
+            Login
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLogin />
+      </WorkoutProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('btn').click();
+    });
+
+    expect(screen.getByTestId('status')).toHaveTextContent('error');
+    expect(screen.getByTestId('error')).toHaveTextContent('Raw string error');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle Google logout failure with non-Error gracefully', async () => {
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      callback({ uid: 'mock-user-123' } as unknown as User);
+      return () => {};
+    });
+    vi.spyOn(firebase, 'signOutUser').mockRejectedValueOnce('Raw string logout error');
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestLogout = () => {
+      const { logout, syncStatus, errorMsg } = useWorkout();
+      return (
+        <div>
+          <span data-testid="status">{syncStatus}</span>
+          <span data-testid="error">{errorMsg}</span>
+          <button data-testid="btn" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestLogout />
+      </WorkoutProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status')).toHaveTextContent('synced');
+    });
+
+    await act(async () => {
+      screen.getByTestId('btn').click();
+    });
+
+    expect(screen.getByTestId('status')).toHaveTextContent('error');
+    expect(screen.getByTestId('error')).toHaveTextContent('Raw string logout error');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should log login event only once per session even if auth changes multiple times', async () => {
+    let triggerAuth: ((user: User | null) => void) | null = null;
+    vi.mocked(listenForAuthChanges).mockImplementationOnce((callback) => {
+      triggerAuth = callback;
+      callback(null);
+      return () => {};
+    });
+
+    const TestComponent = () => {
+      useWorkout();
+      return <div>Test</div>;
+    };
+
+    render(
+      <WorkoutProvider>
+        <TestComponent />
+      </WorkoutProvider>
+    );
+
+    await act(async () => {});
+
+    expect(triggerAuth).not.toBeNull();
+    const analyticsSpy = vi.spyOn(firebase, 'logAnalyticsEvent');
+
+    await act(async () => {
+      triggerAuth!({ uid: 'mock-user-123' });
+    });
+
+    expect(analyticsSpy).toHaveBeenCalledWith('login', { method: 'google' });
+    analyticsSpy.mockClear();
+
+    await act(async () => {
+      triggerAuth!({ uid: 'mock-user-123' });
+    });
+
+    expect(analyticsSpy).not.toHaveBeenCalledWith('login', expect.anything());
+  });
+
   it('should throw an error when switching to a program without state', async () => {
     vi.spyOn(storage, 'loadLocalState').mockResolvedValue({
       metadata: {

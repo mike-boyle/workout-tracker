@@ -71,7 +71,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (err) {
       console.error('Google login failed:', err);
       setSyncStatus('error');
-      /* v8 ignore next */
       setErrorMsg(err instanceof Error ? err.message : String(err));
     }
   };
@@ -83,7 +82,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (err) {
       console.error('Sign out failed:', err);
       setSyncStatus('error');
-      /* v8 ignore next */
       setErrorMsg(err instanceof Error ? err.message : String(err));
     }
   };
@@ -107,7 +105,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const unsubscribe = listenForAuthChanges(async (user) => {
       setFirebaseUser(user);
       if (user) {
-        /* v8 ignore next 3 */
         if (!wasLoggedInRef.current) {
           logAnalyticsEvent('login', { method: 'google' });
         }
