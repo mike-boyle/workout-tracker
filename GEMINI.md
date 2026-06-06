@@ -97,6 +97,36 @@ If a linter rule must be suppressed:
 - **No System-Specific Details**: Do not commit configuration files, comments, or documentation containing details about the developer's PC name, specific OS environment variables, user directory names, or other personal/system metadata.
 - **No Secrets**: Never commit API keys, authentication credentials, private tokens, or secrets. Always use environment variables managed via `.env` files (which are git-ignored) or runtime configurations.
 
+### Reference Stability & Context Memoization Policy
+
+To prevent unnecessary re-renders of components and ensure that callbacks can be safely used inside hook dependency arrays (like `useEffect` and `useMemo`) across the project, follow these memoization practices:
+
+1. **Context Provider Memoization**:
+   - Wrap the context `value` object in `useMemo` so that consumers only re-render when actual state changes occur.
+   - Example:
+     ```typescript
+     const contextValue = useMemo(() => ({ state, login }), [state, login]);
+     return <WorkoutContext.Provider value={contextValue}>{children}</WorkoutContext.Provider>;
+     ```
+2. **Callback Reference Stability**:
+   - Wrap all context actions and event handler callbacks passed down to children or contexts in `useCallback`.
+   - To keep callback reference identities stable (i.e. having empty dependency arrays `[]`), utilize the `useRef` state reference pattern to read the latest state values rather than declaring `state` in the callback dependency array.
+
+     ```typescript
+     const stateRef = useRef(state);
+     useEffect(() => {
+       stateRef.current = state;
+     });
+
+     const someAction = useCallback(() => {
+       // Read the latest state from the ref safely without invalidating the stable callback reference
+       const activeCycle = stateRef.current.ui.selectedCycle;
+       dispatch({ type: 'SOME_ACTION', payload: activeCycle });
+     }, []);
+     ```
+3. **Exhaustive Dependencies**:
+   - Never suppress `react-hooks/exhaustive-deps` warnings with `eslint-disable` comments for unstable callbacks. Instead, wrap the callbacks in `useCallback` to guarantee their reference stability, and then safely include them in the dependency array.
+
 ---
 
 ## 4. Testing Strategy & Git Hooks

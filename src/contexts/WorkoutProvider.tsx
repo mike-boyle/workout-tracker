@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useState, useRef, useCallback } from 'react';
+import React, { useReducer, useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog } from '../types';
 import { assertDefined } from '../utils/assert';
@@ -62,7 +62,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
   }, []);
 
-  const login = async () => {
+  const login = useCallback(async () => {
     setSyncStatus('linking');
     try {
       await signInWithGoogle();
@@ -71,9 +71,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setSyncStatus('error');
       setErrorMsg(err instanceof Error ? err.message : String(err));
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     setSyncStatus('syncing');
     try {
       await signOutUser();
@@ -82,7 +82,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setSyncStatus('error');
       setErrorMsg(err instanceof Error ? err.message : String(err));
     }
-  };
+  }, []);
 
   // Reset database helper
   const resetDatabase = useCallback(() => {
@@ -266,90 +266,104 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearTimeout(debounceHandler);
   }, [state.metadata, state.loadedCycles, state.ui.loading, firebaseUser, syncStatus]);
 
-  const loadCycleLogs = async (cycleNum: number) => {
-    if (state.loadedCycles[cycleNum] !== undefined || state.ui.loadingCycles[cycleNum]) {
-      return;
-    }
-
-    dispatch({ type: 'START_LOAD_CYCLE', payload: cycleNum });
-
-    try {
-      // 1. Try local IndexedDB
-      let cycleLogs = await loadLocalCycleLogs(cycleNum, state.metadata.activeProgramId);
-
-      // 2. If Firebase is signed in, App Check is enabled, and we don't have it locally, fetch from Firestore
-      if (cycleLogs.length === 0 && firebaseUser && ENABLE_APP_CHECK) {
-        cycleLogs = await loadFirebaseCycle(
-          firebaseUser.uid,
-          cycleNum,
-          state.metadata.activeProgramId
-        );
-
-        // Save locally for future offline runs
-        const metadataToPersist = state.metadata;
-        await saveLocalState(
-          metadataToPersist,
-          cycleNum,
-          cycleLogs,
-          state.metadata.activeProgramId
-        );
+  const loadCycleLogs = useCallback(
+    async (cycleNum: number) => {
+      if (
+        stateRef.current.loadedCycles[cycleNum] !== undefined ||
+        stateRef.current.ui.loadingCycles[cycleNum]
+      ) {
+        return;
       }
 
-      syncedLogsRef.current[cycleNum] = cycleLogs;
-      dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: cycleLogs } });
-    } catch (error) {
-      console.error('Failed to load logs for cycle ' + cycleNum + ':', error);
-      dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: [] } });
-    }
-  };
+      dispatch({ type: 'START_LOAD_CYCLE', payload: cycleNum });
 
-  const completeWorkout = (
-    exercises: { [exerciseId: string]: SetLog[] },
-    abRipperCompleted: boolean,
-    comments: string
-  ) => {
-    const schedule = getScheduleForProgram(state.metadata.activeProgramId);
-    const dayInfo = schedule.find(
-      (d) => d.weekNumber === state.ui.selectedWeek && d.dayOfWeek === state.ui.selectedDay
-    );
-    assertDefined(
-      dayInfo,
-      `No schedule day found for week ${state.ui.selectedWeek} day ${state.ui.selectedDay}`
-    );
-    const workoutId = dayInfo.workoutId;
+      try {
+        // 1. Try local IndexedDB
+        let cycleLogs = await loadLocalCycleLogs(
+          cycleNum,
+          stateRef.current.metadata.activeProgramId
+        );
 
-    logAnalyticsEvent('complete_workout', {
-      workout_id: workoutId,
-      week: state.ui.selectedWeek,
-      day: state.ui.selectedDay,
-      cycle: state.ui.selectedCycle,
-      ab_ripper_completed: abRipperCompleted,
-      has_comments: comments.trim().length > 0,
-      program_id: state.metadata.activeProgramId,
-    });
+        // 2. If Firebase is signed in, App Check is enabled, and we don't have it locally, fetch from Firestore
+        if (cycleLogs.length === 0 && firebaseUser && ENABLE_APP_CHECK) {
+          cycleLogs = await loadFirebaseCycle(
+            firebaseUser.uid,
+            cycleNum,
+            stateRef.current.metadata.activeProgramId
+          );
 
-    hasPendingChangesRef.current = true;
-    dispatch({
-      type: 'COMPLETE_WORKOUT',
-      payload: { workoutId, exercises, abRipperCompleted, comments },
-    });
-  };
+          // Save locally for future offline runs
+          const metadataToPersist = stateRef.current.metadata;
+          await saveLocalState(
+            metadataToPersist,
+            cycleNum,
+            cycleLogs,
+            stateRef.current.metadata.activeProgramId
+          );
+        }
 
-  const switchProgram = async (programId: string) => {
+        syncedLogsRef.current[cycleNum] = cycleLogs;
+        dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: cycleLogs } });
+      } catch (error) {
+        console.error('Failed to load logs for cycle ' + cycleNum + ':', error);
+        dispatch({ type: 'LOAD_CYCLE_SUCCESS', payload: { cycleNum, logs: [] } });
+      }
+    },
+    [firebaseUser]
+  );
+
+  const completeWorkout = useCallback(
+    (
+      exercises: { [exerciseId: string]: SetLog[] },
+      abRipperCompleted: boolean,
+      comments: string
+    ) => {
+      const schedule = getScheduleForProgram(stateRef.current.metadata.activeProgramId);
+      const dayInfo = schedule.find(
+        (d) =>
+          d.weekNumber === stateRef.current.ui.selectedWeek &&
+          d.dayOfWeek === stateRef.current.ui.selectedDay
+      );
+      assertDefined(
+        dayInfo,
+        `No schedule day found for week ${stateRef.current.ui.selectedWeek} day ${stateRef.current.ui.selectedDay}`
+      );
+      const workoutId = dayInfo.workoutId;
+
+      logAnalyticsEvent('complete_workout', {
+        workout_id: workoutId,
+        week: stateRef.current.ui.selectedWeek,
+        day: stateRef.current.ui.selectedDay,
+        cycle: stateRef.current.ui.selectedCycle,
+        ab_ripper_completed: abRipperCompleted,
+        has_comments: comments.trim().length > 0,
+        program_id: stateRef.current.metadata.activeProgramId,
+      });
+
+      hasPendingChangesRef.current = true;
+      dispatch({
+        type: 'COMPLETE_WORKOUT',
+        payload: { workoutId, exercises, abRipperCompleted, comments },
+      });
+    },
+    []
+  );
+
+  const switchProgram = useCallback(async (programId: string) => {
     logAnalyticsEvent('switch_program', {
-      from_program: state.metadata.activeProgramId,
+      from_program: stateRef.current.metadata.activeProgramId,
       to_program: programId,
     });
 
     hasPendingChangesRef.current = true;
-    const metadataToPersist = state.metadata;
+    const metadataToPersist = stateRef.current.metadata;
 
-    const currentActiveProg = state.metadata.activeProgramId;
-    const selectedCycleLogs = state.loadedCycles[state.ui.selectedCycle];
+    const currentActiveProg = stateRef.current.metadata.activeProgramId;
+    const selectedCycleLogs = stateRef.current.loadedCycles[stateRef.current.ui.selectedCycle];
     if (selectedCycleLogs) {
       await saveLocalState(
         metadataToPersist,
-        state.ui.selectedCycle,
+        stateRef.current.ui.selectedCycle,
         selectedCycleLogs,
         currentActiveProg
       );
@@ -378,69 +392,83 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         logs: targetLogs,
       },
     });
-  };
+  }, []);
 
-  const skipDay = (workoutId: string) => {
+  const skipDay = useCallback((workoutId: string) => {
     logAnalyticsEvent('skip_day', {
       workout_id: workoutId,
-      week: state.ui.selectedWeek,
-      day: state.ui.selectedDay,
-      cycle: state.ui.selectedCycle,
-      program_id: state.metadata.activeProgramId,
+      week: stateRef.current.ui.selectedWeek,
+      day: stateRef.current.ui.selectedDay,
+      cycle: stateRef.current.ui.selectedCycle,
+      program_id: stateRef.current.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
     dispatch({ type: 'SKIP_DAY', payload: { workoutId } });
-  };
+  }, []);
 
   const setSelectedDay = useCallback((week: number, day: number, cycle?: number) => {
     dispatch({ type: 'SET_SELECTED_DAY', payload: { week, day, cycle } });
   }, []);
 
-  const startNewCycle = () => {
+  const startNewCycle = useCallback(() => {
     logAnalyticsEvent('start_new_cycle', {
-      next_cycle: state.metadata.currentCycle + 1,
-      program_id: state.metadata.activeProgramId,
+      next_cycle: stateRef.current.metadata.currentCycle + 1,
+      program_id: stateRef.current.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
     dispatch({ type: 'START_NEW_CYCLE' });
-  };
+  }, []);
 
-  const fastForwardToDay = (week: number, day: number) => {
+  const fastForwardToDay = useCallback((week: number, day: number) => {
     logAnalyticsEvent('fast_forward_to_day', {
-      from_week: state.metadata.currentWeek,
-      from_day: state.metadata.currentDay,
+      from_week: stateRef.current.metadata.currentWeek,
+      from_day: stateRef.current.metadata.currentDay,
       to_week: week,
       to_day: day,
-      cycle: state.metadata.currentCycle,
-      program_id: state.metadata.activeProgramId,
+      cycle: stateRef.current.metadata.currentCycle,
+      program_id: stateRef.current.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
     dispatch({ type: 'FAST_FORWARD_TO_DAY', payload: { week, day } });
-  };
+  }, []);
 
-  return (
-    <WorkoutContext.Provider
-      value={{
-        state,
-        user: firebaseUser,
-        syncStatus,
-        errorMsg,
-        login,
-        logout,
-        completeWorkout,
-        skipDay,
-        setSelectedDay,
-        startNewCycle,
-        resetDatabase,
-        loadCycleLogs,
-        switchProgram,
-        fastForwardToDay,
-      }}
-    >
-      {children}
-    </WorkoutContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      state,
+      user: firebaseUser,
+      syncStatus,
+      errorMsg,
+      login,
+      logout,
+      completeWorkout,
+      skipDay,
+      setSelectedDay,
+      startNewCycle,
+      resetDatabase,
+      loadCycleLogs,
+      switchProgram,
+      fastForwardToDay,
+    }),
+    [
+      state,
+      firebaseUser,
+      syncStatus,
+      errorMsg,
+      login,
+      logout,
+      completeWorkout,
+      skipDay,
+      setSelectedDay,
+      startNewCycle,
+      resetDatabase,
+      loadCycleLogs,
+      switchProgram,
+      fastForwardToDay,
+    ]
   );
+
+  return <WorkoutContext.Provider value={contextValue}>{children}</WorkoutContext.Provider>;
 };

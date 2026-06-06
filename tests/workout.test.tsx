@@ -679,6 +679,11 @@ describe('Workout Context & Reducer', () => {
     expect(screen.getByTestId('logs-count')).toHaveTextContent('1');
     expect(firebase.loadFirebaseCycle).toHaveBeenCalledWith('user123', 2, 'p90x');
     expect(storage.saveLocalState).toHaveBeenCalledWith(expect.any(Object), 2, mockLogs, 'p90x');
+
+    // Click again when already loaded to cover the early return branch
+    await act(async () => {
+      btn.click();
+    });
   });
 
   it('should switch program and save local state if active cycle logs are loaded', async () => {
