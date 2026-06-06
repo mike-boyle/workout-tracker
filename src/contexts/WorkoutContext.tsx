@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from 'react';
 import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog } from '../types';
 import { assertDefined } from '../utils/assert';
@@ -37,6 +45,12 @@ const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  });
+
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
     'idle'
@@ -87,7 +101,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Reset database helper
-  const resetDatabase = () => {
+  const resetDatabase = useCallback(() => {
     hasPendingChangesRef.current = true;
     syncedLogsRef.current = {};
     clearLocalState()
@@ -98,7 +112,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Failed to clear database:', err);
         dispatch({ type: 'RESET_DATABASE' });
       });
-  };
+  }, []);
 
   // Listen for auth changes and pull/push data
   useEffect(() => {
@@ -141,9 +155,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setSyncStatus('synced');
           } else {
             // New Firebase user: migrate local state to Firestore
-            const currentMetadata = state.metadata;
+            const currentMetadata = stateRef.current.metadata;
             await saveFirebaseMetadata(user.uid, currentMetadata);
-            const activeCycleLogs = state.loadedCycles[currentMetadata.currentCycle] || [];
+            const activeCycleLogs =
+              stateRef.current.loadedCycles[currentMetadata.currentCycle] || [];
             await saveFirebaseCycle(
               user.uid,
               currentMetadata.currentCycle,
@@ -171,8 +186,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, []);
+  }, [resetDatabase]);
 
   // Save changes to local database (metadata + selected cycle logs)
   useEffect(() => {

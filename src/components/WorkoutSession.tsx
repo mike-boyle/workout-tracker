@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorkout } from '../contexts/WorkoutContext';
 import { workouts, exercises as allExercises, getScheduleForProgram } from '../data/schedule';
 import { assert, assertDefined } from '../utils/assert';
@@ -8,10 +8,11 @@ import { ResistanceSheetView } from './session/ResistanceSheetView';
 import { ResistanceWizardView } from './session/ResistanceWizardView';
 import { CommentsModal } from './session/CommentsModal';
 import { RestDayView } from './session/RestDayView';
+import { LoadingScreen } from './layout/LoadingScreen';
 import type { SetLog } from '../types';
 import { Flex, Heading, Text, Card, Badge } from './ui';
 
-export const WorkoutSession: React.FC = () => {
+const WorkoutSessionForm: React.FC = () => {
   const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
 
   const isFutureDay =
@@ -48,50 +49,51 @@ export const WorkoutSession: React.FC = () => {
     state.metadata.currentWeek === state.ui.selectedWeek &&
     state.metadata.currentDay === state.ui.selectedDay;
 
-  // Local state for inputs
-  const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
-  const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(true);
-  const [comments, setComments] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>(isActiveDay ? 'wizard' : 'sheet');
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
-
-  // Load existing log if the user is editing a day they already completed
-  useEffect(() => {
-    const existingLog = state.logs.find(
+  // Retrieve existing log if the user is editing a day they already completed
+  const existingLog = useMemo(() => {
+    return state.logs.find(
       (log) =>
         log.cycle === state.ui.selectedCycle &&
         log.week === state.ui.selectedWeek &&
         log.day === state.ui.selectedDay
     );
+  }, [state.logs, state.ui.selectedCycle, state.ui.selectedWeek, state.ui.selectedDay]);
 
+  // Local state for inputs, initialized synchronously based on whether an existing log exists
+  const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>(() => {
     if (existingLog && !existingLog.skipped) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronously loading database log values into local form state when entering a completed session day
-      setFormData(existingLog.exercises);
-      setAbRipperCompleted(existingLog.abRipperCompleted);
-      setComments(existingLog.comments);
-    } else {
-      // Initialize fresh inputs structure
-      const initialForm: { [exerciseId: string]: SetLog[] } = {};
-      workoutDef.exercises.forEach((exId) => {
-        const exInfo = allExercises.find((e) => e.id === exId);
-        assertDefined(exInfo, `Exercise definition not found for id: ${exId}`);
-        const setCount = exInfo.setCount;
-
-        initialForm[exId] = Array.from({ length: setCount }, () => ({
-          reps: 0,
-          weight: 0,
-          assisted: false,
-        }));
-      });
-      setFormData(initialForm);
-      setAbRipperCompleted(workoutDef.abRipper);
-      setComments('');
+      return existingLog.exercises;
     }
-    setCurrentStepIndex(0);
-    setViewMode(isActiveDay ? 'wizard' : 'sheet');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- We only want to reload form data when the active week, day, or workout layout definitions change, not on log updates which would overwrite unsaved user inputs
-  }, [state.ui.selectedWeek, state.ui.selectedDay, workoutDef]);
+    const initialForm: { [exerciseId: string]: SetLog[] } = {};
+    workoutDef.exercises.forEach((exId) => {
+      const exInfo = allExercises.find((e) => e.id === exId);
+      assertDefined(exInfo, `Exercise definition not found for id: ${exId}`);
+      initialForm[exId] = Array.from({ length: exInfo.setCount }, () => ({
+        reps: 0,
+        weight: 0,
+        assisted: false,
+      }));
+    });
+    return initialForm;
+  });
+
+  const [abRipperCompleted, setAbRipperCompleted] = useState<boolean>(() => {
+    if (existingLog && !existingLog.skipped) {
+      return existingLog.abRipperCompleted;
+    }
+    return workoutDef.abRipper;
+  });
+
+  const [comments, setComments] = useState<string>(() => {
+    if (existingLog && !existingLog.skipped) {
+      return existingLog.comments;
+    }
+    return '';
+  });
+
+  const [viewMode, setViewMode] = useState<'sheet' | 'wizard'>(isActiveDay ? 'wizard' : 'sheet');
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState<boolean>(false);
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
     return (
@@ -409,5 +411,19 @@ export const WorkoutSession: React.FC = () => {
         />
       )}
     </Flex>
+  );
+};
+
+export const WorkoutSession: React.FC = () => {
+  const { state } = useWorkout();
+
+  if (state.ui.loading) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <WorkoutSessionForm
+      key={`${state.ui.selectedCycle}_${state.ui.selectedWeek}_${state.ui.selectedDay}`}
+    />
   );
 };

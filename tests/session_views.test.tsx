@@ -264,6 +264,34 @@ describe('ResistanceWizardView Component', () => {
     expect(handleInputChange).toHaveBeenCalledWith('sa_alt_shoulder_press', 0, 'weight', '30');
   });
 
+  it('renders single set exercise and handles falsy weight and reps in wizard mode', () => {
+    const mockSingleSetWorkoutDef: WorkoutInfo = {
+      id: 'legs_and_back',
+      name: 'Legs & Back',
+      type: 'resistance',
+      exercises: ['lb_balanced_lunge'],
+    };
+
+    render(
+      <ResistanceWizardView
+        workoutDef={mockSingleSetWorkoutDef}
+        formData={{ lb_balanced_lunge: [{ reps: 0, weight: 0, assisted: false }] }}
+        currentStepIndex={0}
+        setCurrentStepIndex={vi.fn()}
+        handleInputChange={vi.fn()}
+        getPreviousLog={vi.fn(() => null)}
+        handleSave={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Single Set')).toBeInTheDocument();
+
+    // Inputs should be empty (value = "") because reps and weight are 0
+    const inputs = screen.getAllByPlaceholderText('0') as HTMLInputElement[];
+    expect(inputs[0].value).toBe('');
+    expect(inputs[1].value).toBe('');
+  });
+
   it('returns null for boundary/invalid configurations', () => {
     const handleInputChange = vi.fn();
     const setCurrentStepIndex = vi.fn();
