@@ -230,8 +230,8 @@ export const WorkoutSession: React.FC = () => {
           </Flex>
         </Flex>
 
-        {/* Embedded Rest Timer for lifting inside the sticky header */}
-        {isResistance && (
+        {/* Embedded Rest Timer for lifting inside the sticky header (only in sheet view to keep wizard header compact) */}
+        {isResistance && viewMode === 'sheet' && (
           <div style={{ marginTop: '12px' }}>
             <RestTimer />
           </div>

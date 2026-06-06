@@ -3,6 +3,7 @@ import { generateWizardSteps } from '../../utils/wizard';
 import { exercises as allExercises } from '../../data/schedule';
 import type { WorkoutInfo, SetLog } from '../../types';
 import { Flex, Heading, Text, Card, Badge } from '../ui';
+import { RestTimer } from '../RestTimer';
 
 interface ResistanceWizardViewProps {
   workoutDef: WorkoutInfo;
@@ -177,6 +178,11 @@ export const ResistanceWizardView: React.FC<ResistanceWizardViewProps> = ({
           </label>
         </Flex>
       </Flex>
+
+      {/* Rest Timer */}
+      <div style={{ marginTop: '24px' }}>
+        <RestTimer />
+      </div>
 
       {/* Navigation Controls */}
       <Flex justify="between" gap={4} style={{ marginTop: '32px' }}>
