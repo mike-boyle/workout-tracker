@@ -74,36 +74,34 @@ export const HistoryCharts: React.FC = () => {
 
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('');
 
-  // Auto-select first exercise when workout changes
-  React.useEffect(() => {
-    if (exerciseOptions.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronously initializing default exercise selection to avoid displaying empty charts upon routine switch
-      setSelectedExerciseId(exerciseOptions[0].id);
-    } else {
-      setSelectedExerciseId('');
+  // Derive active exercise ID, falling back to the first exercise of the routine if selection is invalid/unset
+  const activeExerciseId = useMemo(() => {
+    if (selectedExerciseId && exerciseOptions.some((e) => e.id === selectedExerciseId)) {
+      return selectedExerciseId;
     }
-  }, [exerciseOptions]);
+    return exerciseOptions[0]?.id || '';
+  }, [selectedExerciseId, exerciseOptions]);
 
   const selectedExercise = useMemo(() => {
-    return allExercises.find((e) => e.id === selectedExerciseId);
-  }, [selectedExerciseId]);
+    return allExercises.find((e) => e.id === activeExerciseId);
+  }, [activeExerciseId]);
 
   const [chartMetric, setChartMetric] = useState<'reps' | 'weight'>('reps');
 
   // Extract logging data for the selected exercise across all cycles
   const chartDataPoints = useMemo(() => {
-    if (!selectedExerciseId) return [];
+    if (!activeExerciseId) return [];
 
     // Filter logs that have records for this exercise
     return [...allLogs]
-      .filter((log) => !log.skipped && log.exercises[selectedExerciseId])
+      .filter((log) => !log.skipped && log.exercises[activeExerciseId])
       .sort((a, b) => {
         // Sort chronologically
         const progressA = a.cycle * 1000 + a.week * 10 + a.day;
         const progressB = b.cycle * 1000 + b.week * 10 + b.day;
         return progressA - progressB;
       });
-  }, [allLogs, selectedExerciseId]);
+  }, [allLogs, activeExerciseId]);
 
   const hasData = chartDataPoints.length > 0;
 
@@ -119,7 +117,7 @@ export const HistoryCharts: React.FC = () => {
     const metricLabel = chartMetric === 'weight' && isWeighted ? 'Weight (lbs)' : 'Reps';
 
     const dataset1 = chartDataPoints.map((log) => {
-      const set = log.exercises[selectedExerciseId][0];
+      const set = log.exercises[activeExerciseId][0];
       return set ? (chartMetric === 'weight' ? set.weight : set.reps) : 0;
     });
 
@@ -137,7 +135,7 @@ export const HistoryCharts: React.FC = () => {
 
     if (selectedExercise.setCount > 1) {
       const dataset2 = chartDataPoints.map((log) => {
-        const set = log.exercises[selectedExerciseId][1];
+        const set = log.exercises[activeExerciseId][1];
         return set ? (chartMetric === 'weight' ? set.weight : set.reps) : 0;
       });
 
@@ -153,7 +151,7 @@ export const HistoryCharts: React.FC = () => {
     }
 
     return { labels, datasets };
-  }, [chartDataPoints, selectedExercise, selectedExerciseId, chartMetric, hasData]);
+  }, [chartDataPoints, selectedExercise, activeExerciseId, chartMetric, hasData]);
 
   // Chart configuration
   const options: ChartOptions<'line'> = {
@@ -239,7 +237,7 @@ export const HistoryCharts: React.FC = () => {
             <label className="input-label">Select Exercise</label>
             <select
               className="input-field"
-              value={selectedExerciseId}
+              value={activeExerciseId}
               onChange={(e) => setSelectedExerciseId(e.target.value)}
               disabled={exerciseOptions.length === 0}
             >
