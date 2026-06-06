@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
+import { WorkoutProvider } from '../src/contexts/WorkoutProvider';
+import { useWorkout } from '../src/contexts/WorkoutContext';
 import { clearLocalState, db } from '../src/services/storage';
 import * as storage from '../src/services/storage';
 import { generateWizardSteps } from '../src/utils/wizard';

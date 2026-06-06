@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { WorkoutProvider, useWorkout } from './contexts/WorkoutContext';
+import { WorkoutProvider } from './contexts/WorkoutProvider';
+import { useWorkout } from './contexts/WorkoutContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { WorkoutSession } from './components/WorkoutSession';

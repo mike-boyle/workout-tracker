@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
-import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
+import { WorkoutProvider } from '../src/contexts/WorkoutProvider';
+import { useWorkout } from '../src/contexts/WorkoutContext';
 import type { User } from 'firebase/auth';
 
 // 1. Mock config with ENABLE_APP_CHECK: false

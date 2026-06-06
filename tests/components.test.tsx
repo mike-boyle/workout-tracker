@@ -5,7 +5,8 @@ import { RestTimer } from '../src/components/RestTimer';
 import { WorkoutSession } from '../src/components/WorkoutSession';
 import { RestDayView } from '../src/components/session/RestDayView';
 import { CommentsModal } from '../src/components/session/CommentsModal';
-import { WorkoutProvider, useWorkout } from '../src/contexts/WorkoutContext';
+import { WorkoutProvider } from '../src/contexts/WorkoutProvider';
+import { useWorkout } from '../src/contexts/WorkoutContext';
 import { db, clearLocalState } from '../src/services/storage';
 import { workouts } from '../src/data/schedule';
 
