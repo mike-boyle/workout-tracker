@@ -142,6 +142,53 @@ describe('Storage Service (IndexedDB & segmented)', () => {
     expect(sanitized.programs.test_workout).toBeDefined();
   });
 
+  it('should handle missing cycleStats and cycleTimestamps at root and inside program state in ensureMetadataPrograms', () => {
+    const incomplete = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 1,
+          currentWeek: 1,
+          currentDay: 1,
+        },
+      },
+    } as unknown as UserMetadata;
+    const sanitized = ensureMetadataPrograms(incomplete);
+    expect(sanitized.cycleStats).toEqual({});
+    expect(sanitized.cycleTimestamps).toEqual({});
+    expect(sanitized.programs.p90x.cycleStats).toEqual({});
+  });
+
+  it('should handle missing cycleStats and cycleTimestamps in saveLocalState', async () => {
+    const incompleteMetadata = {
+      version: 1,
+      currentCycle: 1,
+      currentWeek: 1,
+      currentDay: 1,
+      activeProgramId: 'p90x',
+      programs: {
+        p90x: {
+          currentCycle: 1,
+          currentWeek: 1,
+          currentDay: 1,
+        },
+      },
+    } as unknown as UserMetadata;
+
+    await saveLocalState(incompleteMetadata, 1, []);
+
+    expect(incompleteMetadata.cycleStats).toBeDefined();
+    expect(incompleteMetadata.cycleStats[1]).toBeDefined();
+    expect(incompleteMetadata.cycleTimestamps).toBeDefined();
+    expect(incompleteMetadata.cycleTimestamps[1]).toBeDefined();
+    expect(incompleteMetadata.programs.p90x.cycleStats).toBeDefined();
+    expect(incompleteMetadata.programs.p90x.cycleStats[1]).toBeDefined();
+  });
+
   it('should validate valid backup data', () => {
     const validData = {
       version: 1,

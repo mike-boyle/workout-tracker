@@ -112,17 +112,26 @@ class WorkoutTrackerDB {
 export const db = new WorkoutTrackerDB();
 
 export function ensureMetadataPrograms(metadata: UserMetadata): UserMetadata {
-  let programs = metadata.programs;
   let changed = false;
+  const normalized = { ...metadata };
 
-  if (!programs) {
-    programs = {};
+  if (!normalized.cycleTimestamps) {
+    normalized.cycleTimestamps = {};
+    changed = true;
+  }
+  if (!normalized.cycleStats) {
+    normalized.cycleStats = {};
+    changed = true;
+  }
+  if (!normalized.programs) {
+    normalized.programs = {};
     changed = true;
   }
 
-  const newPrograms = { ...programs };
+  const newPrograms = { ...normalized.programs };
   for (const progId of Object.keys(PROGRAMS)) {
-    if (!newPrograms[progId]) {
+    const existingProg = newPrograms[progId];
+    if (!existingProg) {
       newPrograms[progId] = {
         currentCycle: 1,
         currentWeek: 1,
@@ -130,14 +139,18 @@ export function ensureMetadataPrograms(metadata: UserMetadata): UserMetadata {
         cycleStats: {},
       };
       changed = true;
+    } else if (!existingProg.cycleStats) {
+      newPrograms[progId] = {
+        ...existingProg,
+        cycleStats: {},
+      };
+      changed = true;
     }
   }
 
   if (changed) {
-    return {
-      ...metadata,
-      programs: newPrograms,
-    };
+    normalized.programs = newPrograms;
+    return normalized;
   }
 
   return metadata;
@@ -202,18 +215,28 @@ export async function saveLocalState(
 
   const progState = metadata.programs[activeProgramId];
   assertDefined(progState, `Program state not found for: ${activeProgramId}`);
+
+  if (!progState.cycleStats) {
+    progState.cycleStats = {};
+  }
   progState.cycleStats[cycleNum] = {
     completedCount,
     skippedCount,
     totalDays,
   };
 
+  if (!metadata.cycleStats) {
+    metadata.cycleStats = {};
+  }
   metadata.cycleStats[cycleNum] = {
     completedCount,
     skippedCount,
     totalDays,
   };
 
+  if (!metadata.cycleTimestamps) {
+    metadata.cycleTimestamps = {};
+  }
   metadata.cycleTimestamps[cycleNum] = new Date().toISOString();
 
   // Save logs and metadata to IndexedDB
