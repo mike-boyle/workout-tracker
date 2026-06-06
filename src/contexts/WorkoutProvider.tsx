@@ -393,9 +393,9 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     dispatch({ type: 'SKIP_DAY', payload: { workoutId } });
   };
 
-  const setSelectedDay = (week: number, day: number, cycle?: number) => {
+  const setSelectedDay = useCallback((week: number, day: number, cycle?: number) => {
     dispatch({ type: 'SET_SELECTED_DAY', payload: { week, day, cycle } });
-  };
+  }, []);
 
   const startNewCycle = () => {
     logAnalyticsEvent('start_new_cycle', {
