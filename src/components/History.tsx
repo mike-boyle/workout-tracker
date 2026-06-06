@@ -4,6 +4,10 @@ import { workouts, getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import type { ScheduleDay } from '../types';
 import { Flex, Heading, Text, Card, Badge } from './ui';
 
+const navigateToSession = (cycleNum: number, weekNumber: number, dayOfWeek: number) => {
+  window.location.hash = `#/session/cycle/${cycleNum}/week/${weekNumber}/day/${dayOfWeek}`;
+};
+
 export const History: React.FC = () => {
   const { state, startNewCycle, loadCycleLogs } = useWorkout();
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
@@ -35,8 +39,7 @@ export const History: React.FC = () => {
   };
 
   const handleDayClick = (cycleNum: number, dayInfo: ScheduleDay) => {
-    // eslint-disable-next-line react-hooks/immutability -- Mutating window.location.hash directly is our lightweight SPA client-side routing mechanism, which is outside React's lifecycle and cannot be done through standard state hooks.
-    window.location.hash = `#/session/cycle/${cycleNum}/week/${dayInfo.weekNumber}/day/${dayInfo.dayOfWeek}`;
+    navigateToSession(cycleNum, dayInfo.weekNumber, dayInfo.dayOfWeek);
   };
 
   const handleStartNewCycle = () => {
