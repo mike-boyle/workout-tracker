@@ -12,14 +12,14 @@ export const Dashboard: React.FC = () => {
   // Helper to find log for a specific day in the selected cycle
   const getLogForDay = (week: number, day: number) => {
     return state.logs.find(
-      (log) => log.cycle === state.selectedCycle && log.week === week && log.day === day
+      (log) => log.cycle === state.ui.selectedCycle && log.week === week && log.day === day
     );
   };
 
-  const schedule = getScheduleForProgram(state.activeProgramId || 'p90x');
+  const schedule = getScheduleForProgram(state.metadata.activeProgramId || 'p90x');
 
   const getPhases = () => {
-    const activeProg = state.activeProgramId || 'p90x';
+    const activeProg = state.metadata.activeProgramId || 'p90x';
     const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
     return program.phases;
   };
@@ -28,7 +28,7 @@ export const Dashboard: React.FC = () => {
     // Mutating window.location.hash directly is our lightweight SPA client-side routing mechanism.
     window.location.hash =
       '#/session/cycle/' +
-      state.selectedCycle +
+      state.ui.selectedCycle +
       '/week/' +
       dayInfo.weekNumber +
       '/day/' +
@@ -44,9 +44,9 @@ export const Dashboard: React.FC = () => {
             Calendar Dashboard
           </Heading>
           <Text variant="p" color="secondary" size="sm">
-            {state.selectedCycle === state.currentCycle
-              ? `You are currently on Cycle ${state.currentCycle}, Week ${state.currentWeek}, Day ${state.currentDay}`
-              : `Reviewing historical data for Cycle ${state.selectedCycle}`}
+            {state.ui.selectedCycle === state.metadata.currentCycle
+              ? `You are currently on Cycle ${state.metadata.currentCycle}, Week ${state.metadata.currentWeek}, Day ${state.metadata.currentDay}`
+              : `Reviewing historical data for Cycle ${state.ui.selectedCycle}`}
           </Text>
         </div>
 
@@ -64,12 +64,12 @@ export const Dashboard: React.FC = () => {
                 background: 'var(--color-bg-surface)',
                 borderColor: 'var(--color-border)',
               }}
-              value={state.selectedCycle}
+              value={state.ui.selectedCycle}
               onChange={(e) => {
                 window.location.hash = `#/dashboard/cycle/${e.target.value}`;
               }}
             >
-              {Array.from({ length: state.currentCycle }, (_, i) => i + 1).map((c) => (
+              {Array.from({ length: state.metadata.currentCycle }, (_, i) => i + 1).map((c) => (
                 <option key={c} value={c}>
                   Cycle {c}
                 </option>

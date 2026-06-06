@@ -15,18 +15,19 @@ export const DayCard: React.FC<DayCardProps> = ({ dayInfo, log, handleDayClick }
   const workoutDef = workouts.find((w) => w.id === dayInfo.workoutId);
 
   const isCurrent =
-    state.currentCycle === state.selectedCycle &&
-    state.currentWeek === dayInfo.weekNumber &&
-    state.currentDay === dayInfo.dayOfWeek;
+    state.metadata.currentCycle === state.ui.selectedCycle &&
+    state.metadata.currentWeek === dayInfo.weekNumber &&
+    state.metadata.currentDay === dayInfo.dayOfWeek;
 
   const isCompleted = log && !log.skipped;
   const isSkipped = log && log.skipped;
   const isFuture =
     !log &&
-    (state.selectedCycle > state.currentCycle ||
-      (state.selectedCycle === state.currentCycle &&
-        (dayInfo.weekNumber > state.currentWeek ||
-          (dayInfo.weekNumber === state.currentWeek && dayInfo.dayOfWeek > state.currentDay))));
+    (state.ui.selectedCycle > state.metadata.currentCycle ||
+      (state.ui.selectedCycle === state.metadata.currentCycle &&
+        (dayInfo.weekNumber > state.metadata.currentWeek ||
+          (dayInfo.weekNumber === state.metadata.currentWeek &&
+            dayInfo.dayOfWeek > state.metadata.currentDay))));
 
   const cardStyle: React.CSSProperties = {
     padding: '12px',

@@ -1,13 +1,9 @@
 import { getScheduleForProgram, PROGRAMS } from '../data/schedule';
 import type { WorkoutLog, CycleStats } from '../types';
-import {
-  INITIAL_PARTITIONED_STATE,
-  type PartitionedState,
-  type WorkoutAction,
-} from './workoutTypes';
+import { INITIAL_STATE, type ExtendedState, type WorkoutAction } from './workoutTypes';
 import { assertDefined } from '../utils/assert';
 
-export function workoutReducer(state: PartitionedState, action: WorkoutAction): PartitionedState {
+export function workoutReducer(state: ExtendedState, action: WorkoutAction): ExtendedState {
   switch (action.type) {
     case 'INITIALIZE_STATE': {
       const { metadata, logs } = action.payload;
@@ -32,6 +28,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           loading: false,
           loadingCycles: state.ui.loadingCycles,
         },
+        logs: logs,
       };
     }
 
@@ -51,6 +48,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
 
     case 'LOAD_CYCLE_SUCCESS': {
       const { cycleNum, logs } = action.payload;
+      const isSelected = cycleNum === state.ui.selectedCycle;
       return {
         ...state,
         loadedCycles: {
@@ -64,6 +62,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
             [cycleNum]: false,
           },
         },
+        logs: isSelected ? logs : state.logs,
       };
     }
 
@@ -177,6 +176,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           selectedWeek: nextSelWeek,
           selectedDay: nextSelDay,
         },
+        logs: nextLogs,
       };
     }
 
@@ -290,12 +290,15 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           selectedWeek: nextSelWeek,
           selectedDay: nextSelDay,
         },
+        logs: nextLogs,
       };
     }
 
     case 'SET_SELECTED_DAY': {
       const { week, day, cycle } = action.payload;
       const targetCycle = cycle !== undefined ? cycle : state.ui.selectedCycle;
+      const hasChangedCycle = targetCycle !== state.ui.selectedCycle;
+      const targetLogs = hasChangedCycle ? state.loadedCycles[targetCycle] || [] : state.logs;
 
       return {
         ...state,
@@ -305,6 +308,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           selectedDay: day,
           selectedCycle: targetCycle,
         },
+        logs: targetLogs,
       };
     }
 
@@ -353,6 +357,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           selectedWeek: 1,
           selectedDay: 1,
         },
+        logs: [],
       };
     }
 
@@ -371,17 +376,19 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           loading: false,
           loadingCycles: state.ui.loadingCycles,
         },
+        logs: activeCycleLogs,
       };
     }
 
     case 'RESET_DATABASE': {
       return {
-        metadata: INITIAL_PARTITIONED_STATE.metadata,
-        loadedCycles: INITIAL_PARTITIONED_STATE.loadedCycles,
+        metadata: INITIAL_STATE.metadata,
+        loadedCycles: INITIAL_STATE.loadedCycles,
         ui: {
-          ...INITIAL_PARTITIONED_STATE.ui,
+          ...INITIAL_STATE.ui,
           loading: false,
         },
+        logs: [],
       };
     }
 
@@ -448,6 +455,8 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
         totalDays: activeProgram.totalDays,
       };
 
+      const isSelectedActiveCycle = state.ui.selectedCycle === state.metadata.currentCycle;
+
       return {
         metadata: {
           ...state.metadata,
@@ -465,6 +474,7 @@ export function workoutReducer(state: PartitionedState, action: WorkoutAction): 
           selectedWeek: week,
           selectedDay: day,
         },
+        logs: isSelectedActiveCycle ? nextLogs : state.logs,
       };
     }
 

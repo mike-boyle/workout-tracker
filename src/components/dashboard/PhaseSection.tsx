@@ -25,7 +25,7 @@ export const PhaseSection: React.FC<PhaseSectionProps> = ({
   handleDayClick,
 }) => {
   const { state } = useWorkout();
-  const activeProg = state.activeProgramId || 'p90x';
+  const activeProg = state.metadata.activeProgramId || 'p90x';
   const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
   const recoveryWeeks = program.recoveryWeeks || [];
 

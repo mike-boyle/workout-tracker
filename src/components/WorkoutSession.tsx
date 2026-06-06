@@ -15,38 +15,38 @@ export const WorkoutSession: React.FC = () => {
   const { state, completeWorkout, skipDay, fastForwardToDay } = useWorkout();
 
   const isFutureDay =
-    state.selectedCycle > state.currentCycle ||
-    (state.selectedCycle === state.currentCycle &&
-      (state.selectedWeek - 1) * 7 + state.selectedDay >
-        (state.currentWeek - 1) * 7 + state.currentDay);
+    state.ui.selectedCycle > state.metadata.currentCycle ||
+    (state.ui.selectedCycle === state.metadata.currentCycle &&
+      (state.ui.selectedWeek - 1) * 7 + state.ui.selectedDay >
+        (state.metadata.currentWeek - 1) * 7 + state.metadata.currentDay);
 
   const handleSkipToThisDay = () => {
     if (
       confirm(
-        `Are you sure you want to skip all workouts up to Week ${state.selectedWeek} Day ${state.selectedDay}?`
+        `Are you sure you want to skip all workouts up to Week ${state.ui.selectedWeek} Day ${state.ui.selectedDay}?`
       )
     ) {
-      fastForwardToDay(state.selectedWeek, state.selectedDay);
+      fastForwardToDay(state.ui.selectedWeek, state.ui.selectedDay);
       window.location.hash = '#/dashboard';
     }
   };
 
   // Find scheduled workout for selected day
-  const dayInfo = getScheduleForProgram(state.activeProgramId).find(
-    (d) => d.weekNumber === state.selectedWeek && d.dayOfWeek === state.selectedDay
+  const dayInfo = getScheduleForProgram(state.metadata.activeProgramId).find(
+    (d) => d.weekNumber === state.ui.selectedWeek && d.dayOfWeek === state.ui.selectedDay
   );
   assertDefined(
     dayInfo,
-    `No schedule found for week ${state.selectedWeek} day ${state.selectedDay}`
+    `No schedule found for week ${state.ui.selectedWeek} day ${state.ui.selectedDay}`
   );
 
   const workoutDef = workouts.find((w) => w.id === dayInfo.workoutId);
   assertDefined(workoutDef, `Workout definition not found for id: ${dayInfo.workoutId}`);
 
   const isActiveDay =
-    state.currentCycle === state.selectedCycle &&
-    state.currentWeek === state.selectedWeek &&
-    state.currentDay === state.selectedDay;
+    state.metadata.currentCycle === state.ui.selectedCycle &&
+    state.metadata.currentWeek === state.ui.selectedWeek &&
+    state.metadata.currentDay === state.ui.selectedDay;
 
   // Local state for inputs
   const [formData, setFormData] = useState<{ [exerciseId: string]: SetLog[] }>({});
@@ -60,9 +60,9 @@ export const WorkoutSession: React.FC = () => {
   useEffect(() => {
     const existingLog = state.logs.find(
       (log) =>
-        log.cycle === state.selectedCycle &&
-        log.week === state.selectedWeek &&
-        log.day === state.selectedDay
+        log.cycle === state.ui.selectedCycle &&
+        log.week === state.ui.selectedWeek &&
+        log.day === state.ui.selectedDay
     );
 
     if (existingLog && !existingLog.skipped) {
@@ -91,13 +91,13 @@ export const WorkoutSession: React.FC = () => {
     setCurrentStepIndex(0);
     setViewMode(isActiveDay ? 'wizard' : 'sheet');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- We only want to reload form data when the active week, day, or workout layout definitions change, not on log updates which would overwrite unsaved user inputs
-  }, [state.selectedWeek, state.selectedDay, workoutDef]);
+  }, [state.ui.selectedWeek, state.ui.selectedDay, workoutDef]);
 
   if (!dayInfo || !workoutDef || workoutDef.id === 'rest') {
     return (
       <RestDayView
-        selectedWeek={state.selectedWeek}
-        selectedDay={state.selectedDay}
+        selectedWeek={state.ui.selectedWeek}
+        selectedDay={state.ui.selectedDay}
         onComplete={() => {
           completeWorkout({}, false, 'Rest completed');
           window.location.hash = '#/dashboard';
@@ -205,9 +205,9 @@ export const WorkoutSession: React.FC = () => {
               ← Back
             </button>
             <Heading level={2}>{workoutDef.name}</Heading>
-            <Text variant="p" color="secondary">
-              Week {state.selectedWeek} • Day {state.selectedDay} • {workoutDef.type.toUpperCase()}{' '}
-              ROUTINE
+            <Text variant="p" color="secondary" style={{ marginTop: '4px' }}>
+              Week {state.ui.selectedWeek} • Day {state.ui.selectedDay} •{' '}
+              {workoutDef.type.toUpperCase()} ROUTINE
             </Text>
           </div>
           <Flex gap={2} align="center">

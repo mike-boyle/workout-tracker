@@ -68,7 +68,7 @@ export const SettingsPanel: React.FC = () => {
         <select
           id="program-select"
           className="input-field"
-          value={state.activeProgramId || 'p90x'}
+          value={state.metadata.activeProgramId || 'p90x'}
           onChange={(e) => switchProgram(e.target.value)}
           style={{
             width: '100%',

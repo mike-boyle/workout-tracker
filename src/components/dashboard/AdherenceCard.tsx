@@ -7,10 +7,10 @@ export const AdherenceCard: React.FC = () => {
   const { state, startNewCycle } = useWorkout();
 
   // Calculate statistics for the selected cycle
-  const selectedCycleLogs = state.logs.filter((log) => log.cycle === state.selectedCycle);
+  const selectedCycleLogs = state.logs.filter((log) => log.cycle === state.ui.selectedCycle);
   const completedCount = selectedCycleLogs.filter((log) => !log.skipped).length;
   const skippedCount = selectedCycleLogs.filter((log) => log.skipped).length;
-  const activeProg = state.activeProgramId || 'p90x';
+  const activeProg = state.metadata.activeProgramId || 'p90x';
   const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
   const totalDays = program.totalDays;
   const progressPercent = Math.round((selectedCycleLogs.length / totalDays) * 100);
@@ -19,15 +19,16 @@ export const AdherenceCard: React.FC = () => {
   const daysPerWeek = program.daysPerWeek;
   const getLogForDay = (week: number, day: number) => {
     return state.logs.find(
-      (log) => log.cycle === state.selectedCycle && log.week === week && log.day === day
+      (log) => log.cycle === state.ui.selectedCycle && log.week === week && log.day === day
     );
   };
   const isCycleCompleted =
-    state.currentWeek === maxWeeks &&
-    state.currentDay === daysPerWeek &&
+    state.metadata.currentWeek === maxWeeks &&
+    state.metadata.currentDay === daysPerWeek &&
     getLogForDay(maxWeeks, daysPerWeek) !== undefined;
 
-  const showStartNextCyclePrompt = isCycleCompleted && state.selectedCycle === state.currentCycle;
+  const showStartNextCyclePrompt =
+    isCycleCompleted && state.ui.selectedCycle === state.metadata.currentCycle;
 
   return (
     <Flex direction="column" gap={6}>
@@ -36,7 +37,7 @@ export const AdherenceCard: React.FC = () => {
         <Flex justify="between" align="center" wrap="wrap" gap={6}>
           <div style={{ flex: '1 1 300px' }}>
             <Heading level={2} style={{ fontSize: '1.8rem', marginBottom: '8px' }}>
-              Cycle {state.selectedCycle} Adherence
+              Cycle {state.ui.selectedCycle} Adherence
             </Heading>
             <div
               style={{
@@ -128,10 +129,10 @@ export const AdherenceCard: React.FC = () => {
             className="btn btn-primary"
             onClick={() => {
               startNewCycle();
-              window.location.hash = `#/dashboard/cycle/${state.currentCycle + 1}`;
+              window.location.hash = `#/dashboard/cycle/${state.metadata.currentCycle + 1}`;
             }}
           >
-            Start Cycle {state.currentCycle + 1}
+            Start Cycle {state.metadata.currentCycle + 1}
           </button>
         </Card>
       )}

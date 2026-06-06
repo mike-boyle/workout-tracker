@@ -302,13 +302,13 @@ describe('WorkoutSession Component View Mode Defaults', () => {
   }> = ({ children, week, day, cycle }) => {
     const { state, setSelectedDay } = useWorkout();
     React.useEffect(() => {
-      if (!state.loading && week !== undefined && day !== undefined) {
+      if (!state.ui.loading && week !== undefined && day !== undefined) {
         setSelectedDay(week, day, cycle);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.loading, week, day, cycle]);
+    }, [state.ui.loading, week, day, cycle]);
 
-    if (state.loading) {
+    if (state.ui.loading) {
       return <div>Loading...</div>;
     }
     return <>{children}</>;

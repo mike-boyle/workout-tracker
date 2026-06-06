@@ -32,17 +32,17 @@ const TestConsumer: React.FC = () => {
     fastForwardToDay,
   } = useWorkout();
 
-  if (state.loading) {
+  if (state.ui.loading) {
     return <div data-testid="loading">Loading...</div>;
   }
 
   return (
     <div>
-      <div data-testid="cycle">{state.currentCycle}</div>
-      <div data-testid="week">{state.currentWeek}</div>
-      <div data-testid="day">{state.currentDay}</div>
-      <div data-testid="sel-week">{state.selectedWeek}</div>
-      <div data-testid="sel-day">{state.selectedDay}</div>
+      <div data-testid="cycle">{state.metadata.currentCycle}</div>
+      <div data-testid="week">{state.metadata.currentWeek}</div>
+      <div data-testid="day">{state.metadata.currentDay}</div>
+      <div data-testid="sel-week">{state.ui.selectedWeek}</div>
+      <div data-testid="sel-day">{state.ui.selectedDay}</div>
       <div data-testid="logs-count">{state.logs.length}</div>
       <div data-testid="cycle-1-logs-count">{state.loadedCycles[1]?.length || 0}</div>
 
@@ -410,12 +410,12 @@ describe('Workout Context & Reducer', () => {
     const TestLoadLogs = () => {
       const { state, loadCycleLogs } = useWorkout();
       React.useEffect(() => {
-        if (!state.loading) {
+        if (!state.ui.loading) {
           loadCycleLogs(2);
         }
-      }, [state.loading, loadCycleLogs]);
+      }, [state.ui.loading, loadCycleLogs]);
 
-      if (state.loadingCycles[2] === false) {
+      if (state.ui.loadingCycles[2] === false) {
         return <div data-testid="finished" />;
       }
       return <div data-testid="loading" />;
@@ -639,14 +639,14 @@ describe('Workout Context & Reducer', () => {
 
     const TestLoadBtn = () => {
       const { state, loadCycleLogs } = useWorkout();
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return (
         <div>
           <button data-testid="load-btn" onClick={() => loadCycleLogs(2)}>
             Load
           </button>
           <div data-testid="status">
-            {state.loadingCycles[2] ? 'loading' : state.loadedCycles[2] ? 'loaded' : 'idle'}
+            {state.ui.loadingCycles[2] ? 'loading' : state.loadedCycles[2] ? 'loaded' : 'idle'}
           </div>
           <div data-testid="logs-count">{state.loadedCycles[2]?.length || 0}</div>
         </div>
@@ -713,10 +713,10 @@ describe('Workout Context & Reducer', () => {
 
     const TestSwitch = () => {
       const { state, switchProgram } = useWorkout();
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return (
         <div>
-          <span data-testid="program">{state.activeProgramId}</span>
+          <span data-testid="program">{state.metadata.activeProgramId}</span>
           <button data-testid="switch-btn" onClick={() => switchProgram('classic')}>
             Switch
           </button>
@@ -752,8 +752,8 @@ describe('Workout Context & Reducer', () => {
 
     const TestComponent = () => {
       const { state } = useWorkout();
-      if (state.loading) return <div>Loading...</div>;
-      return <div data-testid="cycle">{state.currentCycle}</div>;
+      if (state.ui.loading) return <div>Loading...</div>;
+      return <div data-testid="cycle">{state.metadata.currentCycle}</div>;
     };
 
     render(
@@ -990,7 +990,7 @@ describe('Workout Context & Reducer', () => {
       React.useEffect(() => {
         switchProgramFn = switchProgram;
       }, [switchProgram]);
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return null;
     };
 
@@ -1155,7 +1155,7 @@ describe('Workout Wizard View step generation', () => {
         startNewCycleFn = startNewCycle;
         completeWorkoutFn = completeWorkout;
       }, [startNewCycle, completeWorkout]);
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return null;
     };
 

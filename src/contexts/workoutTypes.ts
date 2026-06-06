@@ -1,17 +1,7 @@
 import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog } from '../types';
 
-export interface ExtendedState extends UserMetadata {
-  selectedCycle: number;
-  selectedWeek: number;
-  selectedDay: number;
-  loading: boolean;
-  logs: WorkoutLog[]; // Logs of the selected cycle (for backward compatibility)
-  loadedCycles: { [cycle: number]: WorkoutLog[] };
-  loadingCycles: { [cycle: number]: boolean };
-}
-
-export interface PartitionedState {
+export interface ExtendedState {
   metadata: UserMetadata;
   loadedCycles: { [cycle: number]: WorkoutLog[] };
   ui: {
@@ -21,6 +11,7 @@ export interface PartitionedState {
     loading: boolean;
     loadingCycles: { [cycle: number]: boolean };
   };
+  logs: WorkoutLog[];
 }
 
 export type WorkoutAction =
@@ -81,38 +72,6 @@ export interface WorkoutContextType {
 }
 
 export const INITIAL_STATE: ExtendedState = {
-  version: 1,
-  currentCycle: 1,
-  currentWeek: 1,
-  currentDay: 1,
-
-  cycleTimestamps: {},
-  cycleStats: {},
-  activeProgramId: 'p90x',
-  programs: {
-    p90x: {
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      cycleStats: {},
-    },
-    test_workout: {
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      cycleStats: {},
-    },
-  },
-  selectedCycle: 1,
-  selectedWeek: 1,
-  selectedDay: 1,
-  loading: true,
-  logs: [],
-  loadedCycles: {},
-  loadingCycles: {},
-};
-
-export const INITIAL_PARTITIONED_STATE: PartitionedState = {
   metadata: {
     version: 1,
     currentCycle: 1,
@@ -144,4 +103,5 @@ export const INITIAL_PARTITIONED_STATE: PartitionedState = {
     loading: true,
     loadingCycles: {},
   },
+  logs: [],
 };

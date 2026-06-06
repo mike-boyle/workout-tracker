@@ -1,12 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useState,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog } from '../types';
 import { assertDefined } from '../utils/assert';
@@ -35,7 +27,7 @@ import {
   type ExtendedState,
   type WorkoutAction,
   type WorkoutContextType,
-  INITIAL_PARTITIONED_STATE,
+  INITIAL_STATE,
 } from './workoutTypes';
 import { workoutReducer } from './workoutReducer';
 
@@ -44,7 +36,7 @@ export type { ExtendedState, WorkoutAction, WorkoutContextType };
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(workoutReducer, INITIAL_PARTITIONED_STATE);
+  const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
     'idle'
@@ -53,16 +45,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const wasLoggedInRef = useRef(false);
   const hasPendingChangesRef = useRef(false);
   const syncedLogsRef = useRef<{ [cycle: number]: WorkoutLog[] }>({});
-
-  // Memoize the flattened ExtendedState that we expose to context consumers
-  const exposedState = useMemo<ExtendedState>(() => {
-    return {
-      ...state.metadata,
-      ...state.ui,
-      loadedCycles: state.loadedCycles,
-      logs: state.loadedCycles[state.ui.selectedCycle] || [],
-    };
-  }, [state.metadata, state.ui, state.loadedCycles]);
 
   // Load initial local state on mount
   useEffect(() => {
@@ -444,7 +426,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <WorkoutContext.Provider
       value={{
-        state: exposedState,
+        state,
         user: firebaseUser,
         syncStatus,
         errorMsg,

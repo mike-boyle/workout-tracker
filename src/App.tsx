@@ -25,17 +25,17 @@ function AppContent() {
 
     logAnalyticsEvent('screen_view', {
       screen_name: screenName,
-      cycle: state.selectedCycle,
-      week: state.selectedWeek,
-      day: state.selectedDay,
-      program_id: state.activeProgramId || 'unknown',
+      cycle: state.ui.selectedCycle,
+      week: state.ui.selectedWeek,
+      day: state.ui.selectedDay,
+      program_id: state.metadata.activeProgramId || 'unknown',
     });
   }, [
     currentHash,
-    state.selectedCycle,
-    state.selectedWeek,
-    state.selectedDay,
-    state.activeProgramId,
+    state.ui.selectedCycle,
+    state.ui.selectedWeek,
+    state.ui.selectedDay,
+    state.metadata.activeProgramId,
   ]);
 
   useEffect(() => {
@@ -46,16 +46,16 @@ function AppContent() {
         const match = hash.match(/^#\/dashboard\/cycle\/(\d+)$/);
         if (match) {
           const cycle = parseInt(match[1], 10);
-          if (cycle >= 1 && cycle <= state.currentCycle) {
-            if (state.selectedCycle !== cycle) {
-              setSelectedDay(state.selectedWeek, state.selectedDay, cycle);
+          if (cycle >= 1 && cycle <= state.metadata.currentCycle) {
+            if (state.ui.selectedCycle !== cycle) {
+              setSelectedDay(state.ui.selectedWeek, state.ui.selectedDay, cycle);
             }
             setCurrentHash(hash);
             return;
           }
         }
         // Fallback to active cycle dashboard if hash is just #/dashboard
-        const defaultHash = `#/dashboard/cycle/${state.currentCycle}`;
+        const defaultHash = `#/dashboard/cycle/${state.metadata.currentCycle}`;
         if (window.location.hash !== defaultHash) {
           window.location.hash = defaultHash;
         }
@@ -66,9 +66,9 @@ function AppContent() {
         const match = hash.match(/^#\/history\/cycle\/(\d+)$/);
         if (match) {
           const cycle = parseInt(match[1], 10);
-          if (cycle >= 1 && cycle <= state.currentCycle) {
-            if (state.selectedCycle !== cycle) {
-              setSelectedDay(state.selectedWeek, state.selectedDay, cycle);
+          if (cycle >= 1 && cycle <= state.metadata.currentCycle) {
+            if (state.ui.selectedCycle !== cycle) {
+              setSelectedDay(state.ui.selectedWeek, state.ui.selectedDay, cycle);
             }
             setCurrentHash(hash);
             return;
@@ -85,16 +85,16 @@ function AppContent() {
 
           if (
             cycle >= 1 &&
-            cycle <= state.currentCycle &&
+            cycle <= state.metadata.currentCycle &&
             week >= 1 &&
             week <= 13 &&
             day >= 1 &&
             day <= 7
           ) {
             if (
-              state.selectedCycle !== cycle ||
-              state.selectedWeek !== week ||
-              state.selectedDay !== day
+              state.ui.selectedCycle !== cycle ||
+              state.ui.selectedWeek !== week ||
+              state.ui.selectedDay !== day
             ) {
               setSelectedDay(week, day, cycle);
             }
@@ -102,9 +102,9 @@ function AppContent() {
             return;
           }
         }
-        window.location.hash = `#/dashboard/cycle/${state.currentCycle}`;
+        window.location.hash = `#/dashboard/cycle/${state.metadata.currentCycle}`;
       } else {
-        window.location.hash = `#/dashboard/cycle/${state.currentCycle}`;
+        window.location.hash = `#/dashboard/cycle/${state.metadata.currentCycle}`;
       }
     };
 
@@ -113,10 +113,10 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [
     setSelectedDay,
-    state.currentCycle,
-    state.selectedCycle,
-    state.selectedWeek,
-    state.selectedDay,
+    state.metadata.currentCycle,
+    state.ui.selectedCycle,
+    state.ui.selectedWeek,
+    state.ui.selectedDay,
   ]);
 
   const activeTab =
@@ -132,7 +132,7 @@ function AppContent() {
     } else if (tab === 'history') {
       window.location.hash = '#/history';
     } else {
-      window.location.hash = `#/dashboard/cycle/${state.selectedCycle}`;
+      window.location.hash = `#/dashboard/cycle/${state.ui.selectedCycle}`;
     }
   };
 

@@ -33,7 +33,7 @@ describe('WorkoutContext - App Check Disabled', () => {
   it('should set sync status to idle and exit early if ENABLE_APP_CHECK is false', async () => {
     const TestComponent = () => {
       const { syncStatus, state } = useWorkout();
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return <div data-testid="sync-status">{syncStatus}</div>;
     };
 
@@ -52,7 +52,7 @@ describe('WorkoutContext - App Check Disabled', () => {
     const TestComponent = () => {
       const { loadCycleLogs, state } = useWorkout();
       loadCycleFn = loadCycleLogs;
-      if (state.loading) return <div data-testid="loading">Loading...</div>;
+      if (state.ui.loading) return <div data-testid="loading">Loading...</div>;
       return null;
     };
 

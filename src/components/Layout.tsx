@@ -15,7 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
   const { state } = useWorkout();
   const [showSettings, setShowSettings] = useState(false);
 
-  if (state.loading) {
+  if (state.ui.loading) {
     return <LoadingScreen />;
   }
 
@@ -26,7 +26,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTa
           <div className="logo-section">
             <span className="logo-text">Workout Tracker</span>
             <Text variant="p" color="secondary" size="0.8rem" style={{ marginTop: '2px' }}>
-              Cycle {state.currentCycle} • Week {state.currentWeek} • Day {state.currentDay}
+              Cycle {state.metadata.currentCycle} • Week {state.metadata.currentWeek} • Day{' '}
+              {state.metadata.currentDay}
             </Text>
           </div>
 

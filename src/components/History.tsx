@@ -9,15 +9,15 @@ export const History: React.FC = () => {
   const [expandedCycle, setExpandedCycle] = useState<number | null>(null);
 
   const getCycleStats = (cycleNum: number) => {
-    const stats = state.cycleStats?.[cycleNum];
+    const stats = state.metadata.cycleStats?.[cycleNum];
     const completedCount = stats ? stats.completedCount : 0;
     const skippedCount = stats ? stats.skippedCount : 0;
-    const activeProg = state.activeProgramId || 'p90x';
+    const activeProg = state.metadata.activeProgramId || 'p90x';
     const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
     const totalDays = program.totalDays;
     const loggedCount = completedCount + skippedCount;
     const progressPercent = stats ? Math.round((loggedCount / totalDays) * 100) : 0;
-    const isCompleted = cycleNum < state.currentCycle;
+    const isCompleted = cycleNum < state.metadata.currentCycle;
 
     return {
       completedCount,
@@ -29,7 +29,7 @@ export const History: React.FC = () => {
   };
 
   const getPhases = () => {
-    const activeProg = state.activeProgramId || 'p90x';
+    const activeProg = state.metadata.activeProgramId || 'p90x';
     const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
     return program.phases;
   };
@@ -46,7 +46,7 @@ export const History: React.FC = () => {
       )
     ) {
       startNewCycle();
-      window.location.hash = `#/dashboard/cycle/${state.currentCycle + 1}`;
+      window.location.hash = `#/dashboard/cycle/${state.metadata.currentCycle + 1}`;
     }
   };
 
@@ -70,10 +70,10 @@ export const History: React.FC = () => {
 
       {/* Cycle List */}
       <Flex direction="column" gap={6}>
-        {Array.from({ length: state.currentCycle }, (_, i) => i + 1).map((cNum) => {
+        {Array.from({ length: state.metadata.currentCycle }, (_, i) => i + 1).map((cNum) => {
           const stats = getCycleStats(cNum);
           const isExpanded = expandedCycle === cNum;
-          const isActive = cNum === state.currentCycle;
+          const isActive = cNum === state.metadata.currentCycle;
 
           return (
             <Card key={cNum} style={{ padding: '24px' }}>
@@ -194,7 +194,7 @@ export const History: React.FC = () => {
               {/* Detailed Schedule Breakdown (Expanded View) */}
               {isExpanded &&
                 (() => {
-                  const isCycleLoading = state.loadingCycles[cNum];
+                  const isCycleLoading = state.ui.loadingCycles[cNum];
                   const cycleLogs = state.loadedCycles[cNum] || [];
 
                   if (isCycleLoading) {
@@ -259,9 +259,9 @@ export const History: React.FC = () => {
                           <Flex direction="column" gap={4}>
                             {phase.weeks.map((weekNum) => {
                               const weekDays = getScheduleForProgram(
-                                state.activeProgramId || 'p90x'
+                                state.metadata.activeProgramId || 'p90x'
                               ).filter((d) => d.weekNumber === weekNum);
-                              const activeProg = state.activeProgramId || 'p90x';
+                              const activeProg = state.metadata.activeProgramId || 'p90x';
                               const program = PROGRAMS[activeProg] || PROGRAMS.p90x;
                               const isRecoveryWeek = (program.recoveryWeeks || []).includes(
                                 weekNum

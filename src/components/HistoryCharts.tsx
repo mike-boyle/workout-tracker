@@ -25,14 +25,14 @@ export const HistoryCharts: React.FC = () => {
   // Load all historical cycles in the background when visiting Analytics
   React.useEffect(() => {
     const loadAllCycles = async () => {
-      for (let c = 1; c <= state.currentCycle; c++) {
-        if (state.loadedCycles[c] === undefined && !state.loadingCycles[c]) {
+      for (let c = 1; c <= state.metadata.currentCycle; c++) {
+        if (state.loadedCycles[c] === undefined && !state.ui.loadingCycles[c]) {
           await loadCycleLogs(c);
         }
       }
     };
     loadAllCycles();
-  }, [state.currentCycle, state.loadedCycles, state.loadingCycles, loadCycleLogs]);
+  }, [state.metadata.currentCycle, state.loadedCycles, state.ui.loadingCycles, loadCycleLogs]);
 
   // Combine logs from all loaded cycles
   const allLogs = useMemo(() => {
@@ -41,13 +41,13 @@ export const HistoryCharts: React.FC = () => {
 
   // Check if historical data is still loading
   const isHistoryLoading = useMemo(() => {
-    for (let c = 1; c <= state.currentCycle; c++) {
+    for (let c = 1; c <= state.metadata.currentCycle; c++) {
       if (state.loadedCycles[c] === undefined) {
         return true;
       }
     }
     return false;
-  }, [state.currentCycle, state.loadedCycles]);
+  }, [state.metadata.currentCycle, state.loadedCycles]);
 
   // Filter only resistance workouts
   const resistanceWorkouts = useMemo(() => {
