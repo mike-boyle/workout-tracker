@@ -242,43 +242,53 @@ export const WorkoutSession: React.FC = () => {
       <Flex direction="column" gap={6} className="animate-fade-in">
         {/* Non-resistance Workout Details */}
         {!isResistance && (
-          <Card style={{ padding: '32px', textAlign: 'center' }}>
-            <Badge variant="purple" style={{ marginBottom: '12px' }}>
-              {workoutDef.type} Routine
-            </Badge>
-            <Heading level={3} style={{ marginBottom: '12px' }}>
-              Ready to push play?
-            </Heading>
-            <Text
-              variant="p"
-              color="secondary"
-              style={{
-                marginBottom: '24px',
-                maxWidth: '600px',
-                margin: '0 auto 24px auto',
-              }}
-            >
-              Grab your water, get your heart rate monitor, and start the workout video. Complete
-              the entire session and mark it finished.
-            </Text>
-            {workoutDef.abRipper && (
-              <Flex justify="center" align="center" gap={2} style={{ marginBottom: '24px' }}>
-                <input
-                  type="checkbox"
-                  id="ab-ripper-nonres"
-                  checked={abRipperCompleted}
-                  onChange={(e) => setAbRipperCompleted(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <label htmlFor="ab-ripper-nonres" style={{ cursor: 'pointer', fontWeight: '500' }}>
-                  Completed Ab Ripper X (+15 mins)
-                </label>
-              </Flex>
-            )}
-            <button className="btn btn-primary" onClick={handleSave} style={{ minWidth: '200px' }}>
-              Mark Workout Completed
-            </button>
-          </Card>
+          <>
+            <RestTimer />
+            <Card style={{ padding: '32px', textAlign: 'center' }}>
+              <Badge variant="purple" style={{ marginBottom: '12px' }}>
+                {workoutDef.type} Routine
+              </Badge>
+              <Heading level={3} style={{ marginBottom: '12px' }}>
+                Ready to push play?
+              </Heading>
+              <Text
+                variant="p"
+                color="secondary"
+                style={{
+                  marginBottom: '24px',
+                  maxWidth: '600px',
+                  margin: '0 auto 24px auto',
+                }}
+              >
+                Grab your water, get your heart rate monitor, and start the workout video. Complete
+                the entire session and mark it finished.
+              </Text>
+              {workoutDef.abRipper && (
+                <Flex justify="center" align="center" gap={2} style={{ marginBottom: '24px' }}>
+                  <input
+                    type="checkbox"
+                    id="ab-ripper-nonres"
+                    checked={abRipperCompleted}
+                    onChange={(e) => setAbRipperCompleted(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label
+                    htmlFor="ab-ripper-nonres"
+                    style={{ cursor: 'pointer', fontWeight: '500' }}
+                  >
+                    Completed Ab Ripper X (+15 mins)
+                  </label>
+                </Flex>
+              )}
+              <button
+                className="btn btn-primary"
+                onClick={handleSave}
+                style={{ minWidth: '200px' }}
+              >
+                Mark Workout Completed
+              </button>
+            </Card>
+          </>
         )}
 
         {/* Resistance Exercise Views */}
