@@ -141,24 +141,22 @@ export const RestTimer: React.FC = () => {
             +60s
           </button>
 
-          {secondsLeft > 0 && (
-            <>
-              <button
-                className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={toggleTimer}
-                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-              >
-                {isActive ? 'Pause' : 'Start'}
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={resetTimer}
-                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-              >
-                Reset
-              </button>
-            </>
-          )}
+          <button
+            className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={toggleTimer}
+            disabled={secondsLeft === 0}
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+          >
+            {isActive ? 'Pause' : 'Start'}
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={resetTimer}
+            disabled={secondsLeft === 0}
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+          >
+            Reset
+          </button>
         </Flex>
       </Flex>
     </Card>

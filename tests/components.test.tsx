@@ -47,6 +47,8 @@ describe('RestTimer Component', () => {
     render(<RestTimer />);
     expect(screen.getByText('⏱️ Rest Timer')).toBeInTheDocument();
     expect(screen.getByText('0:00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
   });
 
   it('should add 30 seconds and start the timer when clicking +30s', () => {
@@ -114,7 +116,8 @@ describe('RestTimer Component', () => {
 
     expect(screen.getByText('0:00')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
 
     // Advance an extra 200ms to trigger the second buzzer tone
     act(() => {
