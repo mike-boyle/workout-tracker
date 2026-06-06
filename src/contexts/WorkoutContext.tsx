@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from 'react';
 import type { User } from 'firebase/auth';
 import type { UserMetadata, WorkoutLog, SetLog } from '../types';
 import { assertDefined } from '../utils/assert';
@@ -27,7 +35,7 @@ import {
   type ExtendedState,
   type WorkoutAction,
   type WorkoutContextType,
-  INITIAL_STATE,
+  INITIAL_PARTITIONED_STATE,
 } from './workoutTypes';
 import { workoutReducer } from './workoutReducer';
 
@@ -36,7 +44,7 @@ export type { ExtendedState, WorkoutAction, WorkoutContextType };
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
 export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(workoutReducer, INITIAL_STATE);
+  const [state, dispatch] = useReducer(workoutReducer, INITIAL_PARTITIONED_STATE);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'linking' | 'syncing' | 'synced' | 'error'>(
     'idle'
@@ -45,6 +53,16 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const wasLoggedInRef = useRef(false);
   const hasPendingChangesRef = useRef(false);
   const syncedLogsRef = useRef<{ [cycle: number]: WorkoutLog[] }>({});
+
+  // Memoize the flattened ExtendedState that we expose to context consumers
+  const exposedState = useMemo<ExtendedState>(() => {
+    return {
+      ...state.metadata,
+      ...state.ui,
+      loadedCycles: state.loadedCycles,
+      logs: state.loadedCycles[state.ui.selectedCycle] || [],
+    };
+  }, [state.metadata, state.ui, state.loadedCycles]);
 
   // Load initial local state on mount
   useEffect(() => {
@@ -141,26 +159,17 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setSyncStatus('synced');
           } else {
             // New Firebase user: migrate local state to Firestore
-            const currentMetadata: UserMetadata = {
-              version: state.version,
-              currentCycle: state.currentCycle,
-              currentWeek: state.currentWeek,
-              currentDay: state.currentDay,
-              cycleTimestamps: state.cycleTimestamps,
-              cycleStats: state.cycleStats,
-              activeProgramId: state.activeProgramId,
-              programs: state.programs,
-            };
+            const currentMetadata = state.metadata;
             await saveFirebaseMetadata(user.uid, currentMetadata);
-            const activeCycleLogs = state.loadedCycles[state.currentCycle] || [];
+            const activeCycleLogs = state.loadedCycles[currentMetadata.currentCycle] || [];
             await saveFirebaseCycle(
               user.uid,
-              state.currentCycle,
+              currentMetadata.currentCycle,
               activeCycleLogs,
-              state.activeProgramId
+              currentMetadata.activeProgramId
             );
             syncedLogsRef.current = {
-              [state.currentCycle]: activeCycleLogs,
+              [currentMetadata.currentCycle]: activeCycleLogs,
             };
             setSyncStatus('synced');
           }
@@ -185,62 +194,34 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Save changes to local database (metadata + selected cycle logs)
   useEffect(() => {
-    if (state.loading) return;
+    if (state.ui.loading) return;
 
-    const metadataToPersist: UserMetadata = {
-      version: state.version,
-      currentCycle: state.currentCycle,
-      currentWeek: state.currentWeek,
-      currentDay: state.currentDay,
-      cycleTimestamps: state.cycleTimestamps,
-      cycleStats: state.cycleStats,
-      activeProgramId: state.activeProgramId,
-      programs: state.programs,
-    };
+    const metadataToPersist: UserMetadata = state.metadata;
 
     saveLocalMetadata(metadataToPersist).catch((err) =>
       console.error('Failed to save metadata:', err)
     );
 
-    const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
+    const selectedCycleLogs = state.loadedCycles[state.ui.selectedCycle];
     if (selectedCycleLogs) {
       saveLocalState(
         metadataToPersist,
-        state.selectedCycle,
+        state.ui.selectedCycle,
         selectedCycleLogs,
-        state.activeProgramId
+        state.metadata.activeProgramId
       ).catch((err) =>
-        console.error('Failed to save cycle ' + state.selectedCycle + ' logs:', err)
+        console.error('Failed to save cycle ' + state.ui.selectedCycle + ' logs:', err)
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Separately tracking state fields to persist changes; full state object triggers infinite renders
-  }, [
-    state.currentCycle,
-    state.currentWeek,
-    state.currentDay,
-    state.cycleStats,
-    state.selectedCycle,
-    state.loadedCycles,
-    state.loading,
-    state.activeProgramId,
-  ]);
+  }, [state.metadata, state.loadedCycles, state.ui.selectedCycle, state.ui.loading]);
 
   // Save changes to Firestore if authenticated and sync is active
   useEffect(() => {
     if (!ENABLE_APP_CHECK) return;
-    if (state.loading || !firebaseUser || syncStatus !== 'synced') return;
+    if (state.ui.loading || !firebaseUser || syncStatus !== 'synced') return;
     if (!hasPendingChangesRef.current) return;
 
-    const metadataToPersist: UserMetadata = {
-      version: state.version,
-      currentCycle: state.currentCycle,
-      currentWeek: state.currentWeek,
-      currentDay: state.currentDay,
-      cycleTimestamps: state.cycleTimestamps,
-      cycleStats: state.cycleStats,
-      activeProgramId: state.activeProgramId,
-      programs: state.programs,
-    };
+    const metadataToPersist: UserMetadata = state.metadata;
 
     const debounceHandler = setTimeout(() => {
       const syncToFirebase = async () => {
@@ -275,7 +256,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 firebaseUser.uid,
                 cycleNum,
                 changedLogs,
-                state.activeProgramId
+                state.metadata.activeProgramId
               );
             }
 
@@ -303,22 +284,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(debounceHandler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Selective dependency array to prevent infinite rendering loop
-  }, [
-    state.currentCycle,
-    state.currentWeek,
-    state.currentDay,
-    state.cycleStats,
-    state.selectedCycle,
-    state.loadedCycles,
-    state.loading,
-    state.activeProgramId,
-    firebaseUser,
-    syncStatus,
-  ]);
+  }, [state.metadata, state.loadedCycles, state.ui.loading, firebaseUser, syncStatus]);
 
   const loadCycleLogs = async (cycleNum: number) => {
-    if (state.loadedCycles[cycleNum] !== undefined || state.loadingCycles[cycleNum]) {
+    if (state.loadedCycles[cycleNum] !== undefined || state.ui.loadingCycles[cycleNum]) {
       return;
     }
 
@@ -326,24 +295,24 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       // 1. Try local IndexedDB
-      let cycleLogs = await loadLocalCycleLogs(cycleNum, state.activeProgramId);
+      let cycleLogs = await loadLocalCycleLogs(cycleNum, state.metadata.activeProgramId);
 
       // 2. If Firebase is signed in, App Check is enabled, and we don't have it locally, fetch from Firestore
       if (cycleLogs.length === 0 && firebaseUser && ENABLE_APP_CHECK) {
-        cycleLogs = await loadFirebaseCycle(firebaseUser.uid, cycleNum, state.activeProgramId);
+        cycleLogs = await loadFirebaseCycle(
+          firebaseUser.uid,
+          cycleNum,
+          state.metadata.activeProgramId
+        );
 
         // Save locally for future offline runs
-        const metadataToPersist: UserMetadata = {
-          version: state.version,
-          currentCycle: state.currentCycle,
-          currentWeek: state.currentWeek,
-          currentDay: state.currentDay,
-          cycleTimestamps: state.cycleTimestamps,
-          cycleStats: state.cycleStats,
-          activeProgramId: state.activeProgramId,
-          programs: state.programs,
-        };
-        await saveLocalState(metadataToPersist, cycleNum, cycleLogs, state.activeProgramId);
+        const metadataToPersist = state.metadata;
+        await saveLocalState(
+          metadataToPersist,
+          cycleNum,
+          cycleLogs,
+          state.metadata.activeProgramId
+        );
       }
 
       syncedLogsRef.current[cycleNum] = cycleLogs;
@@ -359,24 +328,24 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     abRipperCompleted: boolean,
     comments: string
   ) => {
-    const schedule = getScheduleForProgram(state.activeProgramId);
+    const schedule = getScheduleForProgram(state.metadata.activeProgramId);
     const dayInfo = schedule.find(
-      (d) => d.weekNumber === state.selectedWeek && d.dayOfWeek === state.selectedDay
+      (d) => d.weekNumber === state.ui.selectedWeek && d.dayOfWeek === state.ui.selectedDay
     );
     assertDefined(
       dayInfo,
-      `No schedule day found for week ${state.selectedWeek} day ${state.selectedDay}`
+      `No schedule day found for week ${state.ui.selectedWeek} day ${state.ui.selectedDay}`
     );
     const workoutId = dayInfo.workoutId;
 
     logAnalyticsEvent('complete_workout', {
       workout_id: workoutId,
-      week: state.selectedWeek,
-      day: state.selectedDay,
-      cycle: state.selectedCycle,
+      week: state.ui.selectedWeek,
+      day: state.ui.selectedDay,
+      cycle: state.ui.selectedCycle,
       ab_ripper_completed: abRipperCompleted,
       has_comments: comments.trim().length > 0,
-      program_id: state.activeProgramId,
+      program_id: state.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
@@ -388,28 +357,19 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const switchProgram = async (programId: string) => {
     logAnalyticsEvent('switch_program', {
-      from_program: state.activeProgramId,
+      from_program: state.metadata.activeProgramId,
       to_program: programId,
     });
 
     hasPendingChangesRef.current = true;
-    const metadataToPersist: UserMetadata = {
-      version: state.version,
-      currentCycle: state.currentCycle,
-      currentWeek: state.currentWeek,
-      currentDay: state.currentDay,
-      cycleTimestamps: state.cycleTimestamps,
-      cycleStats: state.cycleStats,
-      activeProgramId: state.activeProgramId,
-      programs: state.programs,
-    };
+    const metadataToPersist = state.metadata;
 
-    const currentActiveProg = state.activeProgramId;
-    const selectedCycleLogs = state.loadedCycles[state.selectedCycle];
+    const currentActiveProg = state.metadata.activeProgramId;
+    const selectedCycleLogs = state.loadedCycles[state.ui.selectedCycle];
     if (selectedCycleLogs) {
       await saveLocalState(
         metadataToPersist,
-        state.selectedCycle,
+        state.ui.selectedCycle,
         selectedCycleLogs,
         currentActiveProg
       );
@@ -443,10 +403,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const skipDay = (workoutId: string) => {
     logAnalyticsEvent('skip_day', {
       workout_id: workoutId,
-      week: state.selectedWeek,
-      day: state.selectedDay,
-      cycle: state.selectedCycle,
-      program_id: state.activeProgramId,
+      week: state.ui.selectedWeek,
+      day: state.ui.selectedDay,
+      cycle: state.ui.selectedCycle,
+      program_id: state.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
@@ -459,8 +419,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const startNewCycle = () => {
     logAnalyticsEvent('start_new_cycle', {
-      next_cycle: state.currentCycle + 1,
-      program_id: state.activeProgramId,
+      next_cycle: state.metadata.currentCycle + 1,
+      program_id: state.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
@@ -469,12 +429,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const fastForwardToDay = (week: number, day: number) => {
     logAnalyticsEvent('fast_forward_to_day', {
-      from_week: state.currentWeek,
-      from_day: state.currentDay,
+      from_week: state.metadata.currentWeek,
+      from_day: state.metadata.currentDay,
       to_week: week,
       to_day: day,
-      cycle: state.currentCycle,
-      program_id: state.activeProgramId,
+      cycle: state.metadata.currentCycle,
+      program_id: state.metadata.activeProgramId,
     });
 
     hasPendingChangesRef.current = true;
@@ -484,7 +444,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <WorkoutContext.Provider
       value={{
-        state,
+        state: exposedState,
         user: firebaseUser,
         syncStatus,
         errorMsg,

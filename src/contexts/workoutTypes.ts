@@ -11,6 +11,18 @@ export interface ExtendedState extends UserMetadata {
   loadingCycles: { [cycle: number]: boolean };
 }
 
+export interface PartitionedState {
+  metadata: UserMetadata;
+  loadedCycles: { [cycle: number]: WorkoutLog[] };
+  ui: {
+    selectedCycle: number;
+    selectedWeek: number;
+    selectedDay: number;
+    loading: boolean;
+    loadingCycles: { [cycle: number]: boolean };
+  };
+}
+
 export type WorkoutAction =
   | {
       type: 'INITIALIZE_STATE';
@@ -98,4 +110,38 @@ export const INITIAL_STATE: ExtendedState = {
   logs: [],
   loadedCycles: {},
   loadingCycles: {},
+};
+
+export const INITIAL_PARTITIONED_STATE: PartitionedState = {
+  metadata: {
+    version: 1,
+    currentCycle: 1,
+    currentWeek: 1,
+    currentDay: 1,
+    cycleTimestamps: {},
+    cycleStats: {},
+    activeProgramId: 'p90x',
+    programs: {
+      p90x: {
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleStats: {},
+      },
+      test_workout: {
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+        cycleStats: {},
+      },
+    },
+  },
+  loadedCycles: {},
+  ui: {
+    selectedCycle: 1,
+    selectedWeek: 1,
+    selectedDay: 1,
+    loading: true,
+    loadingCycles: {},
+  },
 };

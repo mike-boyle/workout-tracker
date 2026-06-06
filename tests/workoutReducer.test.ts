@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { workoutReducer } from '../src/contexts/workoutReducer';
 import {
-  INITIAL_STATE,
-  type ExtendedState,
+  INITIAL_PARTITIONED_STATE,
+  type PartitionedState,
   type WorkoutAction,
 } from '../src/contexts/workoutTypes';
 import type { WorkoutLog } from '../src/types';
@@ -19,6 +19,7 @@ describe('workoutReducer unit tests', () => {
           currentDay: 4,
           cycleStats: {},
           activeProgramId: 'p90x',
+          cycleTimestamps: {},
           programs: {
             p90x: {
               currentCycle: 2,
@@ -32,15 +33,15 @@ describe('workoutReducer unit tests', () => {
       },
     };
 
-    const nextState = workoutReducer(INITIAL_STATE, action);
+    const nextState = workoutReducer(INITIAL_PARTITIONED_STATE, action);
 
-    expect(nextState.currentCycle).toBe(2);
-    expect(nextState.currentWeek).toBe(3);
-    expect(nextState.currentDay).toBe(4);
-    expect(nextState.selectedCycle).toBe(2);
-    expect(nextState.selectedWeek).toBe(3);
-    expect(nextState.selectedDay).toBe(4);
-    expect(nextState.loading).toBe(false);
+    expect(nextState.metadata.currentCycle).toBe(2);
+    expect(nextState.metadata.currentWeek).toBe(3);
+    expect(nextState.metadata.currentDay).toBe(4);
+    expect(nextState.ui.selectedCycle).toBe(2);
+    expect(nextState.ui.selectedWeek).toBe(3);
+    expect(nextState.ui.selectedDay).toBe(4);
+    expect(nextState.ui.loading).toBe(false);
   });
 
   it('should handle START_LOAD_CYCLE action', () => {
@@ -49,8 +50,8 @@ describe('workoutReducer unit tests', () => {
       payload: 2,
     };
 
-    const nextState = workoutReducer(INITIAL_STATE, action);
-    expect(nextState.loadingCycles[2]).toBe(true);
+    const nextState = workoutReducer(INITIAL_PARTITIONED_STATE, action);
+    expect(nextState.ui.loadingCycles[2]).toBe(true);
   });
 
   it('should handle LOAD_CYCLE_SUCCESS action', () => {
@@ -70,8 +71,11 @@ describe('workoutReducer unit tests', () => {
     ];
 
     const state = {
-      ...INITIAL_STATE,
-      selectedCycle: 1,
+      ...INITIAL_PARTITIONED_STATE,
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+      },
     };
 
     const action = {
@@ -84,20 +88,24 @@ describe('workoutReducer unit tests', () => {
 
     const nextState = workoutReducer(state, action);
     expect(nextState.loadedCycles[1]).toEqual(mockLogs);
-    expect(nextState.loadingCycles[1]).toBe(false);
-    expect(nextState.logs).toEqual(mockLogs);
+    expect(nextState.ui.loadingCycles[1]).toBe(false);
   });
 
   it('should handle COMPLETE_WORKOUT action and advance day pointer', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 1,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 1,
+      },
     };
 
     const action = {
@@ -113,27 +121,32 @@ describe('workoutReducer unit tests', () => {
     const nextState = workoutReducer(state, action);
 
     // active pointer advances from W1D1 -> W1D2
-    expect(nextState.currentCycle).toBe(1);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(2);
-    expect(nextState.selectedWeek).toBe(1);
-    expect(nextState.selectedDay).toBe(2);
-    expect(nextState.logs.length).toBe(1);
-    expect(nextState.logs[0].workoutId).toBe('chest_and_back');
-    expect(nextState.logs[0].abRipperCompleted).toBe(true);
-    expect(nextState.logs[0].comments).toBe('Great workout');
+    expect(nextState.metadata.currentCycle).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(2);
+    expect(nextState.ui.selectedWeek).toBe(1);
+    expect(nextState.ui.selectedDay).toBe(2);
+    expect(nextState.loadedCycles[1].length).toBe(1);
+    expect(nextState.loadedCycles[1][0].workoutId).toBe('chest_and_back');
+    expect(nextState.loadedCycles[1][0].abRipperCompleted).toBe(true);
+    expect(nextState.loadedCycles[1][0].comments).toBe('Great workout');
   });
 
   it('should handle SKIP_DAY action and advance day pointer', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 1,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 1,
+      },
     };
 
     const action = {
@@ -146,19 +159,22 @@ describe('workoutReducer unit tests', () => {
     const nextState = workoutReducer(state, action);
 
     // active pointer advances W1D1 -> W1D2
-    expect(nextState.currentCycle).toBe(1);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(2);
-    expect(nextState.logs.length).toBe(1);
-    expect(nextState.logs[0].skipped).toBe(true);
+    expect(nextState.metadata.currentCycle).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(2);
+    expect(nextState.loadedCycles[1].length).toBe(1);
+    expect(nextState.loadedCycles[1][0].skipped).toBe(true);
   });
 
   it('should handle SET_SELECTED_DAY action', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 1,
+    const state: PartitionedState = {
+      ...INITIAL_PARTITIONED_STATE,
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 1,
+      },
       loadedCycles: {
         2: [
           {
@@ -187,23 +203,26 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.selectedCycle).toBe(2);
-    expect(nextState.selectedWeek).toBe(2);
-    expect(nextState.selectedDay).toBe(3);
-    expect(nextState.logs.length).toBe(1);
-    expect(nextState.logs[0].id).toBe('log-c2');
+    expect(nextState.ui.selectedCycle).toBe(2);
+    expect(nextState.ui.selectedWeek).toBe(2);
+    expect(nextState.ui.selectedDay).toBe(3);
   });
 
   it('should handle START_NEW_CYCLE action', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 12,
-      currentDay: 7,
-      selectedCycle: 1,
-      selectedWeek: 12,
-      selectedDay: 7,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 12,
+        currentDay: 7,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 12,
+        selectedDay: 7,
+      },
     };
 
     const action = {
@@ -211,13 +230,13 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentCycle).toBe(2);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(1);
-    expect(nextState.selectedCycle).toBe(2);
-    expect(nextState.selectedWeek).toBe(1);
-    expect(nextState.selectedDay).toBe(1);
-    expect(nextState.logs).toEqual([]);
+    expect(nextState.metadata.currentCycle).toBe(2);
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(1);
+    expect(nextState.ui.selectedCycle).toBe(2);
+    expect(nextState.ui.selectedWeek).toBe(1);
+    expect(nextState.ui.selectedDay).toBe(1);
+    expect(nextState.loadedCycles[2]).toEqual([]);
   });
 
   it('should handle SYNC_FIREBASE_DATA action', () => {
@@ -258,20 +277,23 @@ describe('workoutReducer unit tests', () => {
       },
     };
 
-    const nextState = workoutReducer(INITIAL_STATE, action);
-    expect(nextState.currentCycle).toBe(3);
-    expect(nextState.currentWeek).toBe(5);
-    expect(nextState.currentDay).toBe(6);
-    expect(nextState.logs.length).toBe(1);
-    expect(nextState.logs[0].id).toBe('c3-log');
+    const nextState = workoutReducer(INITIAL_PARTITIONED_STATE, action);
+    expect(nextState.metadata.currentCycle).toBe(3);
+    expect(nextState.metadata.currentWeek).toBe(5);
+    expect(nextState.metadata.currentDay).toBe(6);
+    expect(nextState.loadedCycles[3].length).toBe(1);
+    expect(nextState.loadedCycles[3][0].id).toBe('c3-log');
   });
 
   it('should handle RESET_DATABASE action', () => {
     const state = {
-      ...INITIAL_STATE,
-      currentCycle: 3,
-      currentWeek: 5,
-      currentDay: 6,
+      ...INITIAL_PARTITIONED_STATE,
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 3,
+        currentWeek: 5,
+        currentDay: 6,
+      },
     };
 
     const action = {
@@ -279,10 +301,10 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentCycle).toBe(1);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(1);
-    expect(nextState.loading).toBe(false);
+    expect(nextState.metadata.currentCycle).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(1);
+    expect(nextState.ui.loading).toBe(false);
   });
 
   it('should handle FAST_FORWARD_TO_DAY action and create intermediate skips', () => {
@@ -299,16 +321,20 @@ describe('workoutReducer unit tests', () => {
       comments: '',
     };
 
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 6,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 6,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 6,
+      },
       loadedCycles: { 1: [mockLogDay6] },
-      logs: [mockLogDay6],
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 6,
+      },
     };
 
     const action = {
@@ -320,28 +346,33 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(2);
-    expect(nextState.currentDay).toBe(2);
-    expect(nextState.logs.length).toBe(3); // mockLogDay6, intermediate skip for Day 7, and intermediate skip for Week 2 Day 1
-    expect(nextState.logs[0]).toEqual(mockLogDay6);
-    expect(nextState.logs[1].week).toBe(1);
-    expect(nextState.logs[1].day).toBe(7);
-    expect(nextState.logs[1].skipped).toBe(true);
-    expect(nextState.logs[2].week).toBe(2);
-    expect(nextState.logs[2].day).toBe(1);
-    expect(nextState.logs[2].skipped).toBe(true);
+    expect(nextState.metadata.currentWeek).toBe(2);
+    expect(nextState.metadata.currentDay).toBe(2);
+    expect(nextState.loadedCycles[1].length).toBe(3); // mockLogDay6, intermediate skip for Day 7, and intermediate skip for Week 2 Day 1
+    expect(nextState.loadedCycles[1][0]).toEqual(mockLogDay6);
+    expect(nextState.loadedCycles[1][1].week).toBe(1);
+    expect(nextState.loadedCycles[1][1].day).toBe(7);
+    expect(nextState.loadedCycles[1][1].skipped).toBe(true);
+    expect(nextState.loadedCycles[1][2].week).toBe(2);
+    expect(nextState.loadedCycles[1][2].day).toBe(1);
+    expect(nextState.loadedCycles[1][2].skipped).toBe(true);
   });
 
   it('should rollover to next week when skipping day 7', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 7,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 7,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 7,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 7,
+      },
     };
 
     const action = {
@@ -352,22 +383,27 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(2);
-    expect(nextState.currentDay).toBe(1);
-    expect(nextState.selectedWeek).toBe(2);
-    expect(nextState.selectedDay).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(2);
+    expect(nextState.metadata.currentDay).toBe(1);
+    expect(nextState.ui.selectedWeek).toBe(2);
+    expect(nextState.ui.selectedDay).toBe(1);
   });
 
   it('should cap week and day at the end of the program when skipping day', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 13,
-      currentDay: 7,
-      selectedCycle: 1,
-      selectedWeek: 13,
-      selectedDay: 7,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 13,
+        currentDay: 7,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 13,
+        selectedDay: 7,
+      },
     };
 
     const action = {
@@ -378,22 +414,27 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(13);
-    expect(nextState.currentDay).toBe(7);
-    expect(nextState.selectedWeek).toBe(13);
-    expect(nextState.selectedDay).toBe(7);
+    expect(nextState.metadata.currentWeek).toBe(13);
+    expect(nextState.metadata.currentDay).toBe(7);
+    expect(nextState.ui.selectedWeek).toBe(13);
+    expect(nextState.ui.selectedDay).toBe(7);
   });
 
   it('should rollover to next week when completing day 7', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 7,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 7,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 7,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 7,
+      },
     };
 
     const action = {
@@ -407,22 +448,27 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(2);
-    expect(nextState.currentDay).toBe(1);
-    expect(nextState.selectedWeek).toBe(2);
-    expect(nextState.selectedDay).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(2);
+    expect(nextState.metadata.currentDay).toBe(1);
+    expect(nextState.ui.selectedWeek).toBe(2);
+    expect(nextState.ui.selectedDay).toBe(1);
   });
 
   it('should cap week and day at the end of the program when completing day', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 13,
-      currentDay: 7,
-      selectedCycle: 1,
-      selectedWeek: 13,
-      selectedDay: 7,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 13,
+        currentDay: 7,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 13,
+        selectedDay: 7,
+      },
     };
 
     const action = {
@@ -436,22 +482,27 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(13);
-    expect(nextState.currentDay).toBe(7);
-    expect(nextState.selectedWeek).toBe(13);
-    expect(nextState.selectedDay).toBe(7);
+    expect(nextState.metadata.currentWeek).toBe(13);
+    expect(nextState.metadata.currentDay).toBe(7);
+    expect(nextState.ui.selectedWeek).toBe(13);
+    expect(nextState.ui.selectedDay).toBe(7);
   });
 
   it('should handle SKIP_DAY when isCompletingActiveDay is false', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 2,
-      selectedCycle: 1,
-      selectedWeek: 1,
-      selectedDay: 1,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 2,
+      },
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+        selectedWeek: 1,
+        selectedDay: 1,
+      },
     };
 
     const action = {
@@ -463,20 +514,23 @@ describe('workoutReducer unit tests', () => {
 
     const nextState = workoutReducer(state, action);
 
-    expect(nextState.currentCycle).toBe(1);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(2);
-    expect(nextState.selectedWeek).toBe(1);
-    expect(nextState.selectedDay).toBe(1);
+    expect(nextState.metadata.currentCycle).toBe(1);
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(2);
+    expect(nextState.ui.selectedWeek).toBe(1);
+    expect(nextState.ui.selectedDay).toBe(1);
     expect(nextState.loadedCycles[1].length).toBe(1);
     expect(nextState.loadedCycles[1][0].skipped).toBe(true);
   });
 
   it('should handle SET_SELECTED_DAY when changing cycle to an unloaded cycle', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      selectedCycle: 1,
+    const state: PartitionedState = {
+      ...INITIAL_PARTITIONED_STATE,
       loadedCycles: { 1: [] },
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 1,
+      },
     };
 
     const action = {
@@ -489,19 +543,22 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.selectedCycle).toBe(3);
-    expect(nextState.logs).toEqual([]);
+    expect(nextState.ui.selectedCycle).toBe(3);
   });
 
   it('should handle FAST_FORWARD_TO_DAY when selectedCycle is not currentCycle', () => {
-    const state: ExtendedState = {
-      ...INITIAL_STATE,
-      currentCycle: 1,
-      currentWeek: 1,
-      currentDay: 1,
-      selectedCycle: 2,
+    const state: PartitionedState = {
+      metadata: {
+        ...INITIAL_PARTITIONED_STATE.metadata,
+        currentCycle: 1,
+        currentWeek: 1,
+        currentDay: 1,
+      },
       loadedCycles: { 1: [] },
-      logs: [{ id: 'some-other-log' } as WorkoutLog],
+      ui: {
+        ...INITIAL_PARTITIONED_STATE.ui,
+        selectedCycle: 2,
+      },
     };
 
     const action = {
@@ -513,16 +570,14 @@ describe('workoutReducer unit tests', () => {
     };
 
     const nextState = workoutReducer(state, action);
-    expect(nextState.currentWeek).toBe(1);
-    expect(nextState.currentDay).toBe(3);
-    expect(nextState.logs.length).toBe(1);
-    expect(nextState.logs[0].id).toBe('some-other-log');
+    expect(nextState.metadata.currentWeek).toBe(1);
+    expect(nextState.metadata.currentDay).toBe(3);
   });
 
   it('should return current state for default case', () => {
-    const nextState = workoutReducer(INITIAL_STATE, {
+    const nextState = workoutReducer(INITIAL_PARTITIONED_STATE, {
       type: 'INVALID_ACTION',
     } as unknown as WorkoutAction);
-    expect(nextState).toEqual(INITIAL_STATE);
+    expect(nextState).toEqual(INITIAL_PARTITIONED_STATE);
   });
 });
