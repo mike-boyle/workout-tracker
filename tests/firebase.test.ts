@@ -10,8 +10,8 @@ import {
   logAnalyticsEvent,
 } from '../src/services/firebase';
 import { getDoc, setDoc, getDocs, writeBatch } from 'firebase/firestore/lite';
-import type { QuerySnapshot, DocumentSnapshot } from 'firebase/firestore/lite';
-import type { WorkoutLog } from '../src/types';
+import type { QuerySnapshot, DocumentSnapshot, Firestore } from 'firebase/firestore/lite';
+import type { WorkoutLog, UserMetadata } from '../src/types';
 import { signInWithPopup, signOut, onAuthStateChanged, type UserCredential } from 'firebase/auth';
 
 // Unmock the firebase service so we test the actual implementation
@@ -82,7 +82,7 @@ vi.mock('firebase/firestore/lite', () => {
 });
 
 describe('Firebase Service - Cycles storage and migration', () => {
-  const mockBatch = writeBatch();
+  const mockBatch = writeBatch(undefined as unknown as Firestore);
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -1,4 +1,4 @@
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';

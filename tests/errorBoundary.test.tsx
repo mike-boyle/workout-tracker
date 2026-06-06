@@ -1,7 +1,6 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import * as storage from '../src/services/storage';
 
@@ -100,7 +99,7 @@ describe('ErrorBoundary', () => {
   it('resets database and reloads on "Reset Database" click with confirm', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const clearSpy = vi.spyOn(storage, 'clearLocalState').mockResolvedValue(Promise.resolve());
+    const clearSpy = vi.spyOn(storage, 'clearLocalState').mockResolvedValue(undefined);
 
     render(
       <ErrorBoundary>

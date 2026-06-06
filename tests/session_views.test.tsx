@@ -1,4 +1,4 @@
-import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ExerciseCard } from '../src/components/session/ExerciseCard';
@@ -121,6 +121,7 @@ describe('ResistanceSheetView Component', () => {
     id: 'chest_and_back',
     name: 'Chest & Back',
     type: 'resistance',
+    abRipper: false,
     exercises: ['cb_standard_pushup', 'non-existent-exercise'],
   };
 
@@ -147,6 +148,7 @@ describe('ResistanceWizardView Component', () => {
     id: 'chest_and_back',
     name: 'Chest & Back',
     type: 'resistance',
+    abRipper: false,
     exercises: ['cb_standard_pushup'],
   };
 
@@ -238,6 +240,7 @@ describe('ResistanceWizardView Component', () => {
       id: 'shoulders_and_arms',
       name: 'Shoulders & Arms',
       type: 'resistance',
+      abRipper: false,
       exercises: ['sa_alt_shoulder_press'],
     };
 
@@ -269,6 +272,7 @@ describe('ResistanceWizardView Component', () => {
       id: 'legs_and_back',
       name: 'Legs & Back',
       type: 'resistance',
+      abRipper: false,
       exercises: ['lb_balanced_lunge'],
     };
 
@@ -301,6 +305,7 @@ describe('ResistanceWizardView Component', () => {
       id: 'empty',
       name: 'Empty Workout',
       type: 'resistance',
+      abRipper: false,
       exercises: [],
     };
     const { container: container1, rerender } = render(
@@ -321,6 +326,7 @@ describe('ResistanceWizardView Component', () => {
       id: 'chest_and_back',
       name: 'Chest & Back',
       type: 'resistance',
+      abRipper: false,
       exercises: ['cb_standard_pushup'],
     };
     rerender(
@@ -342,6 +348,7 @@ describe('ResistanceWizardView Component', () => {
       id: 'chest_and_back',
       name: 'Chest & Back',
       type: 'resistance',
+      abRipper: false,
       exercises: ['non-existent-exercise-id'],
     };
     rerender(

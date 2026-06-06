@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { handlers } from './mocks/handlers';

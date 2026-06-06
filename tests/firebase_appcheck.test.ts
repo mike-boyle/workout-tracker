@@ -63,7 +63,7 @@ describe('Firebase Service App Check Initialization Failure', () => {
 
   it('should set debug token in window if in DEV mode', async () => {
     vi.resetModules();
-    vi.stubEnv('DEV', true as unknown as string);
+    vi.stubEnv('DEV', true);
 
     const mockAppCheck = await import('firebase/app-check');
     vi.mocked(mockAppCheck.initializeAppCheck).mockImplementationOnce(

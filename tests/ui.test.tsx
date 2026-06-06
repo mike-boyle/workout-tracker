@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { Flex, Grid, Card, Badge, Heading, Text } from '../src/components/ui';

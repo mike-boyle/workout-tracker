@@ -1,4 +1,5 @@
 import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { RestTimer } from '../src/components/RestTimer';

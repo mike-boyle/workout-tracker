@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { WorkoutProvider } from '../src/contexts/WorkoutProvider';

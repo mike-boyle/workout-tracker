@@ -444,7 +444,7 @@ describe('Workout Context & Reducer', () => {
     });
 
     vi.spyOn(firebase, 'saveFirebaseMetadata')
-      .mockResolvedValueOnce(Promise.resolve()) // login migration succeeds
+      .mockResolvedValueOnce(undefined) // login migration succeeds
       .mockRejectedValueOnce(new Error('permission-denied')); // auto-sync fails
 
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -478,7 +478,7 @@ describe('Workout Context & Reducer', () => {
     );
 
     // Mock success for the retry
-    vi.spyOn(firebase, 'saveFirebaseMetadata').mockResolvedValue(Promise.resolve());
+    vi.spyOn(firebase, 'saveFirebaseMetadata').mockResolvedValue(undefined);
 
     // Advance 60s for the retry timeout
     await act(async () => {
@@ -497,7 +497,7 @@ describe('Workout Context & Reducer', () => {
     });
 
     vi.spyOn(firebase, 'saveFirebaseMetadata')
-      .mockResolvedValueOnce(Promise.resolve()) // login migration succeeds
+      .mockResolvedValueOnce(undefined) // login migration succeeds
       .mockRejectedValueOnce(new Error('Some other error')); // auto-sync fails
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -636,7 +636,7 @@ describe('Workout Context & Reducer', () => {
       },
     ];
     vi.spyOn(firebase, 'loadFirebaseCycle').mockResolvedValueOnce(mockLogs);
-    vi.spyOn(storage, 'saveLocalState').mockResolvedValue(Promise.resolve());
+    vi.spyOn(storage, 'saveLocalState').mockResolvedValue(undefined);
 
     const TestLoadBtn = () => {
       const { state, loadCycleLogs } = useWorkout();
@@ -960,14 +960,14 @@ describe('Workout Context & Reducer', () => {
     const analyticsSpy = vi.spyOn(firebase, 'logAnalyticsEvent');
 
     await act(async () => {
-      triggerAuth!({ uid: 'mock-user-123' });
+      triggerAuth!({ uid: 'mock-user-123' } as unknown as User);
     });
 
     expect(analyticsSpy).toHaveBeenCalledWith('login', { method: 'google' });
     analyticsSpy.mockClear();
 
     await act(async () => {
-      triggerAuth!({ uid: 'mock-user-123' });
+      triggerAuth!({ uid: 'mock-user-123' } as unknown as User);
     });
 
     expect(analyticsSpy).not.toHaveBeenCalledWith('login', expect.anything());
